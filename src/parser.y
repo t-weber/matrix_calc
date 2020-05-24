@@ -272,7 +272,7 @@ expr[res]
 	| '+' expr[term] %prec UNARY_OP		{ $res = $term; }
 	| '-' expr[term] %prec UNARY_OP		{ $res = std::make_shared<ASTUMinus>($term); }
 	| '|' expr[term] '|'	{ $res = std::make_shared<ASTNorm>($term); }
-	| expr[term] '\'' 		{ $res = std::make_shared<ASTTransp>($term); }
+	| expr[term] '\''	{ $res = std::make_shared<ASTTransp>($term); }
 
 
 	// binary expressions

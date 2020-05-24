@@ -1,0 +1,35 @@
+#
+# crystallographic B matrix, B = 2pi * A^(-T)
+# see: https://en.wikipedia.org/wiki/Fractional_coordinates
+#
+func mat 3 3 B_matrix(scalar a, scalar b, scalar c, scalar alpha, scalar beta, scalar gamma)
+{
+	scalar sc = sin(gamma);
+	scalar ca = cos(alpha);
+	scalar cb = cos(beta);
+	scalar cc = cos(gamma);
+	scalar rr = sqrt(1. + 2.*ca*cb*cc - (ca*ca + cb*cb + cc*cc));
+
+	mat 3 3 B;
+	B[0,0] = 1./a;						B[0,1] = 0.;						B[0,2] = 0.;
+	B[1,0] = -1./a * cc/sc;				B[1,1] = 1./b * 1./sc;				B[1,2] = 0.;
+	B[2,0] = (cc*ca - cb)/(a*sc*rr); 	B[2,1] = (cb*cc-ca)/(b*sc*rr);		B[2,2] = sc/(c*rr);
+
+	ret B;
+}
+
+
+func start()
+{
+	scalar a = getflt("a = ");
+	scalar b = getflt("b = ");
+	scalar c = getflt("c = ");
+	scalar alpha = getflt("alpha = ");
+	scalar beta = getflt("beta = ");
+	scalar gamma = getflt("gamma = ");
+
+	mat 3 3 B = B_matrix(a,b,c, alpha,beta,gamma);
+
+	putstr("B matrix: " + B);
+	putstr("inverse B matrix: " + B^(-1));
+}
