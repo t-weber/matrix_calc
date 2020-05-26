@@ -2050,6 +2050,8 @@ t_astret LLAsm::visit(const ASTComp* ast)
 	t_astret term1 = ast->GetTerm1()->accept(this);
 	t_astret term2 = ast->GetTerm2()->accept(this);
 
+	// TODO: array types
+
 	// cast if needed
 	SymbolType ty = term1->ty;
 	if(term1->ty==SymbolType::SCALAR || term2->ty==SymbolType::SCALAR)

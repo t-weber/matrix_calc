@@ -25,3 +25,8 @@
 
 # CMake build files
 build/**
+
+# LLVM intermediate files
+*.asm
+*.s
+*.bc
