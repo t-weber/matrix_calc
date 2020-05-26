@@ -82,7 +82,7 @@
 %type<std::shared_ptr<ASTStmts>> block
 %type<std::shared_ptr<ASTFunc>> function
 %type<std::shared_ptr<ASTTypeDecl>> typedecl
-%type<std::shared_ptr<ASTNumList<double>>> numlist
+%type<std::shared_ptr<ASTExprList>> exprlist
 %type<std::shared_ptr<AST>> opt_assign
 
 
@@ -246,16 +246,11 @@ arguments[res]
 	;
 
 
-numlist[res]
-	: REAL[num] ',' numlist[lst]	{ $lst->AddNum($num); $res = $lst; }
-	| REAL[num] {
-			$res = std::make_shared<ASTNumList<double>>();
-			$res->AddNum($num);
-		}
-	| INT[num] ',' numlist[lst]	{ $lst->AddNum(double($num)); $res = $lst; }
-	| INT[num] {
-			$res = std::make_shared<ASTNumList<double>>();
-			$res->AddNum(double($num));
+exprlist[res]
+	: expr[num] ',' exprlist[lst]	{ $lst->AddExpr($num); $res = $lst; }
+	| expr[num] {
+			$res = std::make_shared<ASTExprList>();
+			$res->AddExpr($num);
 		}
 	;
 
@@ -295,7 +290,7 @@ expr[res]
 	| REAL[num]		{ $res = std::make_shared<ASTNumConst<double>>($num); }
 	| INT[num]		{ $res = std::make_shared<ASTNumConst<std::int64_t>>($num); }
 	| STRING[str]	{ $res = std::make_shared<ASTStrConst>($str); }
-	| '[' numlist[arr] ']'	{ $res = $arr; }
+	| '[' exprlist[arr] ']'	{ $res = $arr; }
 
 	// variable
 	| IDENT[ident]	{

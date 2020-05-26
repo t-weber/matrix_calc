@@ -43,8 +43,8 @@ class ASTArrayAccess;
 class ASTComp;
 class ASTCond;
 class ASTLoop;
+class ASTExprList;
 template<class> class ASTNumConst;
-template<class> class ASTNumList;
 
 
 enum class ASTType
@@ -72,8 +72,8 @@ enum class ASTType
 	Comp,
 	Cond,
 	Loop,
+	ExprList,
 	NumConst,
-	NumList
 };
 
 
@@ -111,9 +111,9 @@ public:
 	virtual t_astret visit(const ASTCond* ast) = 0;
 	virtual t_astret visit(const ASTLoop* ast) = 0;
 	virtual t_astret visit(const ASTStrConst* ast) = 0;
+	virtual t_astret visit(const ASTExprList* ast) = 0;
 	virtual t_astret visit(const ASTNumConst<double>* ast) = 0;
 	virtual t_astret visit(const ASTNumConst<std::int64_t>* ast) = 0;
-	virtual t_astret visit(const ASTNumList<double>* ast) = 0;
 };
 
 
@@ -660,28 +660,27 @@ private:
 };
 
 
-template<class t_num = double>
-class ASTNumList : public AST
+class ASTExprList : public AST
 {
 public:
-	ASTNumList()
+	ASTExprList()
 	{}
 
-	void AddNum(t_num num)
+	void AddExpr(std::shared_ptr<AST> expr)
 	{
-		nums.push_front(num);
+		exprs.push_front(expr);
 	}
 
-	const std::list<t_num>& GetList() const
+	const std::list<std::shared_ptr<AST>>& GetList() const
 	{
-		return nums;
+		return exprs;
 	}
 
-	virtual ASTType type() override { return ASTType::NumList; }
+	virtual ASTType type() override { return ASTType::ExprList; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::list<t_num> nums;
+	std::list<std::shared_ptr<AST>> exprs;
 };
 
 

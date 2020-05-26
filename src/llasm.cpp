@@ -1908,8 +1908,7 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 	t_astret sym = get_sym(var);
 
 	// cast if needed
-	if(expr->ty != sym->ty)
-		expr = convert_sym(expr, sym->ty);
+	expr = convert_sym(expr, sym->ty);
 
 	if(expr->ty == SymbolType::SCALAR || expr->ty == SymbolType::INT)
 	{
@@ -2354,8 +2353,7 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 	else if(sym->ty == SymbolType::MATRIX)
 	{
 		// cast if needed
-		if(expr->ty != SymbolType::SCALAR)
-			expr = convert_sym(expr, SymbolType::SCALAR);
+		expr = convert_sym(expr, SymbolType::SCALAR);
 
 		if(!num2)	// second argument needed
 			throw std::runtime_error("ASTArrayAssign: Invalid element assignment for matrix \"" + sym->name + "\".");
@@ -2381,8 +2379,7 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 	else if(sym->ty == SymbolType::STRING)
 	{
 		// cast if needed
-		if(expr->ty != SymbolType::STRING)
-			expr = convert_sym(expr, SymbolType::STRING);
+		expr = convert_sym(expr, SymbolType::STRING);
 
 		if(num2)	// no second argument needed
 			throw std::runtime_error("ASTArrayAssign: Invalid element assignment for string \"" + sym->name + "\".");
@@ -2468,7 +2465,7 @@ t_astret LLAsm::visit(const ASTStrConst* ast)
 }
 
 
-t_astret LLAsm::visit(const ASTNumList<double>* ast)
+t_astret LLAsm::visit(const ASTExprList* ast)
 {
 	// array values and size
 	const auto& lst = ast->GetList();
@@ -2487,8 +2484,10 @@ t_astret LLAsm::visit(const ASTNumList<double>* ast)
 		(*m_ostr) << "%" << ptr->name << " = getelementptr [" << len << " x double], ["
 			<< len << " x double]* %" << vec_mem->name << ", i64 0, i64 " << idx << "\n";
 
-		double val = *iter;
-		(*m_ostr) << "store double " << val << ", double* %"  << ptr->name << "\n";
+		t_astret val = (*iter)->accept(this);
+		val = convert_sym(val, SymbolType::SCALAR);
+
+		(*m_ostr) << "store double %" << val->name << ", double* %"  << ptr->name << "\n";
 		++iter;
 	}
 
