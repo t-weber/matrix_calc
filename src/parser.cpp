@@ -155,9 +155,6 @@ int main(int argc, char** argv)
 		ctx.AddFunc("labs", SymbolType::INT, {SymbolType::INT});
 
 		ctx.AddFunc("strlen", SymbolType::INT, {SymbolType::STRING});
-		ctx.AddFunc("strncpy", SymbolType::STRING, {SymbolType::STRING, SymbolType::STRING, SymbolType::INT});
-		ctx.AddFunc("strncat", SymbolType::STRING, {SymbolType::STRING, SymbolType::STRING, SymbolType::INT});
-		ctx.AddFunc("memcpy", SymbolType::STRING, {SymbolType::STRING, SymbolType::STRING, SymbolType::INT});
 
 		ctx.AddFunc("putstr", SymbolType::VOID, {SymbolType::STRING});
 		ctx.AddFunc("putflt", SymbolType::VOID, {SymbolType::SCALAR});
@@ -219,6 +216,7 @@ declare i64 @labs(i64)
 declare i64 @strlen(i8*)
 declare i8* @strncpy(i8*, i8*, i64)
 declare i8* @strncat(i8*, i8*, i64)
+declare i32 @strncmp(i8*, i8*, i64)
 declare i32 @puts(i8*)
 declare i32 @snprintf(i8*, i64, i8*, ...)
 declare i32 @printf(i8*, ...)

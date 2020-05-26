@@ -2050,56 +2050,111 @@ t_astret LLAsm::visit(const ASTComp* ast)
 	t_astret term1 = ast->GetTerm1()->accept(this);
 	t_astret term2 = ast->GetTerm2()->accept(this);
 
-	// TODO: array types
-
-	// cast if needed
-	SymbolType ty = term1->ty;
-	if(term1->ty==SymbolType::SCALAR || term2->ty==SymbolType::SCALAR)
-		ty = SymbolType::SCALAR;
-	t_astret var = get_tmp_var(ty, &term1->dims);
-
-	term1 = convert_sym(term1, ty);
-	term2 = convert_sym(term2, ty);
-
-
-	std::string op;
-	switch(ast->GetOp())
+	// string comparison
+	if(term1->ty == SymbolType::STRING || term2->ty == SymbolType::STRING)
 	{
-		case ASTComp::EQU: op = "eq"; break;
-		case ASTComp::NEQ: op = "ne"; break;
-		case ASTComp::GT: op = "gt"; break;
-		case ASTComp::LT: op = "lt"; break;
-		case ASTComp::GEQ: op = "ge"; break;
-		case ASTComp::LEQ: op = "le"; break;
+		term1 = convert_sym(term1, SymbolType::STRING);
+		term2 = convert_sym(term2, SymbolType::STRING);
+
+		std::size_t maxdim = std::max(std::get<0>(term1->dims), std::get<0>(term2->dims));
+
+		// get string pointer
+		t_astret term1ptr = get_tmp_var(SymbolType::STRING);
+		t_astret term2ptr = get_tmp_var(SymbolType::STRING);
+		(*m_ostr) << "%" << term1ptr->name << " = bitcast [" << std::get<0>(term1->dims)
+			<< " x i8]* %" << term1->name << " to i8*\n";
+		(*m_ostr) << "%" << term2ptr->name << " = bitcast [" << std::get<0>(term2->dims)
+			<< " x i8]* %" << term2->name << " to i8*\n";
+
+		// compare strings
+		t_astret strcmp = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << strcmp->name << " = call i32 @strncmp(i8* %"
+			<< term1ptr->name << ", i8* %" << term2ptr->name << ", i64 " << maxdim << ")\n";
+
+		t_astret cmp = get_tmp_var(SymbolType::INT);
+
+		std::string op;
+		switch(ast->GetOp())
+		{
+			case ASTComp::EQU: op = "eq"; break;
+			case ASTComp::NEQ: op = "ne"; break;
+			case ASTComp::GT: op = "sgt"; break;
+			case ASTComp::LT: op = "slt"; break;
+			case ASTComp::GEQ: op = "sge"; break;
+			case ASTComp::LEQ: op = "sle"; break;
+		}
+
+		(*m_ostr) << "%" << cmp->name << " = icmp " << op << " i32 %" << strcmp->name << ", 0\n";
+		return cmp;
 	}
 
-	std::string cmpop;
-	switch(ty)
+	else if(term1->ty == SymbolType::VECTOR || term2->ty == SymbolType::VECTOR)
 	{
-		case SymbolType::SCALAR:
-		{
-			cmpop = "fcmp";
-			op = "o" + op;
-			break;
-		}
-		case SymbolType::INT:
-		{
-			cmpop = "icmp";
-			if(op != "eq" && op != "ne")
-				op = "s" + op;	// signed
-			break;
-		}
-		default:
-		{
-			throw std::runtime_error("ASTComp: Invalid comparison between variables of type "
-				+ get_type_name(ty) + ".");
-			break;
-		}
+		// TODO
 	}
 
-	(*m_ostr) << "%" << var->name << " = " << cmpop << " " << op << " "
-		<< get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
-	return var;
+	else if(term1->ty == SymbolType::MATRIX || term2->ty == SymbolType::MATRIX)
+	{
+		// TODO
+	}
+
+	// scalar types
+	else
+	{
+		// TODO: add epsilon for float comparison
+		// cast if needed
+		SymbolType ty = term1->ty;
+		if(term1->ty==SymbolType::SCALAR || term2->ty==SymbolType::SCALAR)
+			ty = SymbolType::SCALAR;
+		t_astret var = get_tmp_var(SymbolType::INT);
+
+		term1 = convert_sym(term1, ty);
+		term2 = convert_sym(term2, ty);
+
+
+		std::string op;
+		switch(ast->GetOp())
+		{
+			case ASTComp::EQU: op = "eq"; break;
+			case ASTComp::NEQ: op = "ne"; break;
+			case ASTComp::GT: op = "gt"; break;
+			case ASTComp::LT: op = "lt"; break;
+			case ASTComp::GEQ: op = "ge"; break;
+			case ASTComp::LEQ: op = "le"; break;
+		}
+
+		std::string cmpop;
+		switch(ty)
+		{
+			case SymbolType::SCALAR:
+			{
+				cmpop = "fcmp";
+				op = "o" + op;
+				break;
+			}
+			case SymbolType::INT:
+			{
+				cmpop = "icmp";
+				if(op != "eq" && op != "ne")
+					op = "s" + op;	// signed
+				break;
+			}
+			default:
+			{
+				throw std::runtime_error("ASTComp: Invalid comparison between variables of type "
+					+ get_type_name(ty) + ".");
+				break;
+			}
+		}
+
+		(*m_ostr) << "%" << var->name << " = " << cmpop << " " << op << " "
+			<< get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
+		return var;
+	}
+
+	throw std::runtime_error("ASTComp: Invalid comparison of \""
+		+ term1->name + "\" and \"" + term2->name + "\".");
+	return nullptr;
 }
 
 

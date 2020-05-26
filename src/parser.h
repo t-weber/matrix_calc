@@ -13,6 +13,9 @@
 #include <iostream>
 #include <string>
 #include <array>
+#include <variant>
+#include <unordered_map>
+#include <cmath>
 
 #include <FlexLexer.h>
 
@@ -56,6 +59,10 @@ namespace yy
 		std::shared_ptr<ASTStmts> m_statements;
 
 		SymTab m_symbols;
+		std::unordered_map<std::string, std::variant<double, std::int64_t, std::string>> m_consts
+		{{
+			{"pi", double(M_PI)},
+		}};
 
 		// information about currently parsed symbol
 		std::vector<std::string> m_curscope;
@@ -137,8 +144,19 @@ namespace yy
 			m_symdims[0] = dim1;
 			m_symdims[1] = dim2;
 		}
-		// --------------------------------------------------------------------
 
+
+		std::pair<bool, std::variant<double, std::int64_t, std::string>>
+		GetConst(const std::string& name) const
+		{
+			auto iter = m_consts.find(name);
+			if(iter == m_consts.end())
+				return std::make_pair(0, 0.);
+
+			return std::make_pair(1, iter->second);
+		}
+
+		// --------------------------------------------------------------------
 
 		std::size_t GetCurLine() const { return m_lex.GetCurLine(); }
 	};

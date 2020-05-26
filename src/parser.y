@@ -298,7 +298,26 @@ expr[res]
 	| '[' numlist[arr] ']'	{ $res = $arr; }
 
 	// variable
-	| IDENT[ident]		{ $res = std::make_shared<ASTVar>($ident); }
+	| IDENT[ident]	{
+			// does the identifier name a constant?
+			auto pair = context.GetConst($ident);
+			if(std::get<0>(pair))
+			{
+				auto variant = std::get<1>(pair);
+				if(std::holds_alternative<double>(variant))
+					$res = std::make_shared<ASTNumConst<double>>(std::get<double>(variant));
+				else if(std::holds_alternative<std::int64_t>(variant))
+					$res = std::make_shared<ASTNumConst<std::int64_t>>(std::get<std::int64_t>(variant));
+				else if(std::holds_alternative<std::string>(variant))
+					$res = std::make_shared<ASTStrConst>(std::get<std::string>(variant));
+			}
+
+			// identifier names a variable
+			else
+			{
+				$res = std::make_shared<ASTVar>($ident);
+			}
+		}
 
 	// array access and assignment
 	| expr[term] '[' expr[num] ']' opt_assign[opt_term] {
