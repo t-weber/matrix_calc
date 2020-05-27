@@ -35,7 +35,6 @@ class ASTArgNames;
 class ASTTypeDecl;
 class ASTFunc;
 class ASTReturn;
-class ASTArgs;
 class ASTCall;
 class ASTAssign;
 class ASTArrayAssign;
@@ -64,7 +63,6 @@ enum class ASTType
 	TypeDecl,
 	Func,
 	Return,
-	Args,
 	Call,
 	Assign,
 	ArrayAssign,
@@ -102,7 +100,6 @@ public:
 	virtual t_astret visit(const ASTTypeDecl* ast) = 0;
 	virtual t_astret visit(const ASTFunc* ast) = 0;
 	virtual t_astret visit(const ASTReturn* ast) = 0;
-	virtual t_astret visit(const ASTArgs* ast) = 0;
 	virtual t_astret visit(const ASTCall* ast) = 0;
 	virtual t_astret visit(const ASTAssign* ast) = 0;
 	virtual t_astret visit(const ASTArrayAssign* ast) = 0;
@@ -443,27 +440,27 @@ private:
 };
 
 
-class ASTArgs : public AST
+class ASTExprList : public AST
 {
 public:
-	ASTArgs() : args{}
+	ASTExprList()
 	{}
 
-	void AddArgument(std::shared_ptr<AST> arg)
+	void AddExpr(std::shared_ptr<AST> expr)
 	{
-		args.push_front(arg);
+		exprs.push_front(expr);
 	}
 
-	const std::list<std::shared_ptr<AST>>& GetArgumentList() const
+	const std::list<std::shared_ptr<AST>>& GetList() const
 	{
-		return args;
+		return exprs;
 	}
 
-	virtual ASTType type() override { return ASTType::Args; }
+	virtual ASTType type() override { return ASTType::ExprList; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::list<std::shared_ptr<AST>> args;
+	std::list<std::shared_ptr<AST>> exprs;
 };
 
 
@@ -471,22 +468,22 @@ class ASTCall : public AST
 {
 public:
 	ASTCall(const std::string& ident)
-		: ident{ident}, args{std::make_shared<ASTArgs>()}
+		: ident{ident}, args{std::make_shared<ASTExprList>()}
 	{}
 
-	ASTCall(const std::string& ident, std::shared_ptr<ASTArgs> args)
+	ASTCall(const std::string& ident, std::shared_ptr<ASTExprList> args)
 		: ident{ident}, args{args}
 	{}
 
 	const std::string& GetIdent() const { return ident; }
-	const std::list<std::shared_ptr<AST>>& GetArgumentList() const { return args->GetArgumentList(); }
+	const std::list<std::shared_ptr<AST>>& GetArgumentList() const { return args->GetList(); }
 
 	virtual ASTType type() override { return ASTType::Call; }
 	ASTVISITOR_ACCEPT
 
 private:
 	std::string ident;
-	std::shared_ptr<ASTArgs> args;
+	std::shared_ptr<ASTExprList> args;
 };
 
 
@@ -657,30 +654,6 @@ public:
 
 private:
 	std::string val;
-};
-
-
-class ASTExprList : public AST
-{
-public:
-	ASTExprList()
-	{}
-
-	void AddExpr(std::shared_ptr<AST> expr)
-	{
-		exprs.push_front(expr);
-	}
-
-	const std::list<std::shared_ptr<AST>>& GetList() const
-	{
-		return exprs;
-	}
-
-	virtual ASTType type() override { return ASTType::ExprList; }
-	ASTVISITOR_ACCEPT
-
-private:
-	std::list<std::shared_ptr<AST>> exprs;
 };
 
 

@@ -76,9 +76,9 @@
 %type<std::shared_ptr<AST>> statement
 %type<std::shared_ptr<ASTStmts>> statements
 %type<std::shared_ptr<ASTVarDecl>> variables
-%type<std::shared_ptr<ASTArgNames>> all_argumentnames
-%type<std::shared_ptr<ASTArgNames>> argumentnames
-%type<std::shared_ptr<ASTArgs>> arguments
+%type<std::shared_ptr<ASTArgNames>> full_argumentlist
+%type<std::shared_ptr<ASTArgNames>> argumentlist
+%type<std::shared_ptr<ASTArgNames>> typelist
 %type<std::shared_ptr<ASTStmts>> block
 %type<std::shared_ptr<ASTFunc>> function
 %type<std::shared_ptr<ASTTypeDecl>> typedecl
@@ -187,25 +187,42 @@ statement[res]
 
 
 function[res]
+	// single return value
 	: FUNC typedecl[rettype] IDENT[ident] {
 			context.EnterScope($ident);
 		}
-		'(' all_argumentnames[args] ')' block[blk] {
+		'(' full_argumentlist[args] ')' block[blk] {
 			$res = std::make_shared<ASTFunc>($ident, $rettype, $args, $blk);
 
 			context.LeaveScope($ident);
 			std::array<std::size_t, 2> retdims{{$rettype->GetDim(0), $rettype->GetDim(1)}};
 			context.AddFunc($ident, $rettype->GetType(), $args->GetArgTypes(), &retdims);
 		}
+
+	// no return value
 	| FUNC IDENT[ident] {
 			context.EnterScope($ident);
 		}
-		'(' all_argumentnames[args] ')' block[blk] {
+		'(' full_argumentlist[args] ')' block[blk] {
 			auto rettype = std::make_shared<ASTTypeDecl>(SymbolType::VOID);
 			$res = std::make_shared<ASTFunc>($ident, rettype, $args, $blk);
 
 			context.LeaveScope($ident);
 			context.AddFunc($ident, SymbolType::VOID, $args->GetArgTypes());
+		}
+
+	// multiple return values, TODO
+	| FUNC '(' typelist[retargs] ')' IDENT[ident] {
+			context.EnterScope($ident);
+		}
+		'(' full_argumentlist[args] ')' block[blk] {
+			// TODO
+			//$res = std::make_shared<ASTFunc>($ident, $rettype, $args, $blk);
+
+			context.LeaveScope($ident);
+
+			//std::array<std::size_t, 2> retdims{{$rettype->GetDim(0), $rettype->GetDim(1)}};
+			//context.AddFunc($ident, $rettype->GetType(), $args->GetArgTypes(), &retdims);
 		}
 	;
 
@@ -219,14 +236,14 @@ typedecl[res]
 	;
 
 
-all_argumentnames[res]
-	: argumentnames[args]	{ $res = $args; }
+full_argumentlist[res]
+	: argumentlist[args]	{ $res = $args; }
 	| /*epsilon*/		{ $res = std::make_shared<ASTArgNames>(); }
 	;
 
 
-argumentnames[res]
-	: typedecl[ty] IDENT[argname] ',' argumentnames[lst] {
+argumentlist[res]
+	: typedecl[ty] IDENT[argname] ',' argumentlist[lst] {
 			$lst->AddArg($argname, $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
 			$res = $lst;
 		}
@@ -237,11 +254,14 @@ argumentnames[res]
 	;
 
 
-arguments[res]
-	: expr[arg] ',' arguments[lst]	{ $lst->AddArgument($arg); $res = $lst; }
-	| expr[arg]	{
-			$res = std::make_shared<ASTArgs>();
-			$res->AddArgument($arg);
+typelist[res]
+	: typedecl[ty] ',' typelist[lst] {
+			$lst->AddArg("ret", $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
+			$res = $lst;
+		}
+	| typedecl[ty] {
+			$res = std::make_shared<ASTArgNames>();
+			$res->AddArg("ret", $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
 		}
 	;
 
@@ -356,7 +376,7 @@ expr[res]
 
 	// function calls
 	| IDENT[ident] '(' ')'	{ $res = std::make_shared<ASTCall>($ident); }
-	| IDENT[ident] '(' arguments[args] ')' {
+	| IDENT[ident] '(' exprlist[args] ')' {
 		$res = std::make_shared<ASTCall>($ident, $args);
 	}
 
