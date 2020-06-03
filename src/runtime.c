@@ -14,7 +14,26 @@
 typedef double t_real;
 typedef int64_t t_int;
 
-#define EPS DBL_EPSILON
+//static t_real g_eps = DBL_EPSILON;
+static t_real g_eps = 0.1;
+
+
+/**
+ * set float epsilon
+ */
+void ext_set_eps(t_real eps)
+{
+	g_eps = eps;
+}
+
+
+/**
+ * get float epsilon
+ */
+t_real ext_get_eps()
+{
+	return g_eps;
+}
 
 
 /**
@@ -76,7 +95,7 @@ t_real ext_determinant(const t_real* M, t_int N)
 		t_int numZeros = 0;
 		for(t_int curCol=0; curCol<N; ++curCol)
 		{
-			if(ext_equals(M[curRow*N + curCol], 0, EPS))
+			if(ext_equals(M[curRow*N + curCol], 0, g_eps))
 				++numZeros;
 		}
 
@@ -95,7 +114,7 @@ t_real ext_determinant(const t_real* M, t_int N)
 	for(t_int col=0; col<N; ++col)
 	{
 		const t_real elem = M[row*N + col];
-		if(ext_equals(elem, 0, EPS))
+		if(ext_equals(elem, 0, g_eps))
 			continue;
 
 		ext_submat(M, N, submat, row, col);
@@ -117,7 +136,7 @@ t_int ext_inverse(const t_real* M, t_real* I, t_int N)
 	t_real fullDet = ext_determinant(M, N);
 
 	// fail if determinant is zero
-	if(ext_equals(fullDet, 0., EPS))
+	if(ext_equals(fullDet, 0., g_eps))
 		return 0;
 
 	t_real *submat = (t_real*)malloc(sizeof(t_real)*(N-1)*(N-1));

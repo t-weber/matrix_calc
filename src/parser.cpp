@@ -229,6 +229,9 @@ declare void @free(i8*)
 
 ; -----------------------------------------------------------------------------
 ; external runtime functions from runtime.cpp
+declare void @ext_set_eps(double)
+declare double @ext_get_eps()
+
 declare double @ext_determinant(double*, i64)
 declare i64 @ext_power(double*, double*, i64, i64)
 declare i64 @ext_transpose(double*, double*, i64, i64)

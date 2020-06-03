@@ -2070,8 +2070,6 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		(*m_ostr) << "%" << strcmp->name << " = call i32 @strncmp(i8* %"
 			<< term1ptr->name << ", i8* %" << term2ptr->name << ", i64 " << maxdim << ")\n";
 
-		t_astret cmp = get_tmp_var(SymbolType::INT);
-
 		std::string op;
 		switch(ast->GetOp())
 		{
@@ -2083,6 +2081,7 @@ t_astret LLAsm::visit(const ASTComp* ast)
 			case ASTComp::LEQ: op = "sle"; break;
 		}
 
+		t_astret cmp = get_tmp_var(SymbolType::INT);
 		(*m_ostr) << "%" << cmp->name << " = icmp " << op << " i32 %" << strcmp->name << ", 0\n";
 		return cmp;
 	}
@@ -2100,55 +2099,111 @@ t_astret LLAsm::visit(const ASTComp* ast)
 	// scalar types
 	else
 	{
-		// TODO: add epsilon for float comparison
 		// cast if needed
 		SymbolType ty = term1->ty;
 		if(term1->ty==SymbolType::SCALAR || term2->ty==SymbolType::SCALAR)
 			ty = SymbolType::SCALAR;
-		t_astret var = get_tmp_var(SymbolType::INT);
 
 		term1 = convert_sym(term1, ty);
 		term2 = convert_sym(term2, ty);
 
 
-		std::string op;
-		switch(ast->GetOp())
+		// comparison within an epsilon range
+		if(ty == SymbolType::SCALAR && (ast->GetOp() == ASTComp::EQU || ast->GetOp() == ASTComp::NEQ))
 		{
-			case ASTComp::EQU: op = "eq"; break;
-			case ASTComp::NEQ: op = "ne"; break;
-			case ASTComp::GT: op = "gt"; break;
-			case ASTComp::LT: op = "lt"; break;
-			case ASTComp::GEQ: op = "ge"; break;
-			case ASTComp::LEQ: op = "le"; break;
+			// get epsilon
+			t_astret eps = get_tmp_var(SymbolType::SCALAR);
+			(*m_ostr) << "%" << eps->name << " = call double @ext_get_eps()\n";
+
+			// diff = term1 - term2
+			t_astret diff = get_tmp_var(SymbolType::SCALAR);
+			t_astret diff_abs_ptr = get_tmp_var(SymbolType::SCALAR);
+			(*m_ostr) << "%" << diff_abs_ptr->name << " = alloca double\n";
+
+			(*m_ostr) << "%" << diff->name << " = fsub double %" << term1->name << ", %" << term2->name << "\n";
+
+			// diff_neg = |diff|
+			t_astret cond = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << cond->name << " = fcmp olt double %" << diff->name << ", 0.\n";
+
+			std::string labelIf = get_label();
+			std::string labelElse = get_label();
+			std::string labelEnd = get_label();
+
+			(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelElse << "\n";			(*m_ostr) << labelIf << ":\n";
+			t_astret diff_neg = get_tmp_var(SymbolType::SCALAR);
+			(*m_ostr) << "%" << diff_neg->name << " = fneg double %" << diff->name << "\n";
+			(*m_ostr) << "store double %" << diff_neg->name << ", double* %" << diff_abs_ptr->name << "\n";
+			(*m_ostr) << "br label %" << labelEnd << "\n";
+
+			(*m_ostr) << labelElse << ":\n";
+			(*m_ostr) << "store double %" << diff->name << ", double* %" << diff_abs_ptr->name << "\n";
+			(*m_ostr) << "br label %" << labelEnd << "\n";
+
+			(*m_ostr) << labelEnd << ":\n";
+
+			t_astret diff_abs = get_tmp_var(SymbolType::SCALAR);
+			t_astret varbool = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << diff_abs->name << " = load double, double* %" << diff_abs_ptr->name << "\n";
+			// diff_abs <= eps
+			if(ast->GetOp() == ASTComp::EQU)
+			{
+				(*m_ostr) << "%" << varbool->name << " = fcmp ole double %"
+					<< diff_abs->name << ", %" << eps->name << "\n";
+			}
+			// diff_abs > eps
+			else if(ast->GetOp() == ASTComp::NEQ)
+			{
+				(*m_ostr) << "%" << varbool->name << " = fcmp ogt double %"
+					<< diff_abs->name << ", %" << eps->name << "\n";
+			}
+
+			return varbool;
 		}
 
-		std::string cmpop;
-		switch(ty)
+		// exact comparison
+		else
 		{
-			case SymbolType::SCALAR:
+			std::string op;
+			switch(ast->GetOp())
 			{
-				cmpop = "fcmp";
-				op = "o" + op;
-				break;
+				case ASTComp::EQU: op = "eq"; break;
+				case ASTComp::NEQ: op = "ne"; break;
+				case ASTComp::GT: op = "gt"; break;
+				case ASTComp::LT: op = "lt"; break;
+				case ASTComp::GEQ: op = "ge"; break;
+				case ASTComp::LEQ: op = "le"; break;
 			}
-			case SymbolType::INT:
-			{
-				cmpop = "icmp";
-				if(op != "eq" && op != "ne")
-					op = "s" + op;	// signed
-				break;
-			}
-			default:
-			{
-				throw std::runtime_error("ASTComp: Invalid comparison between variables of type "
-					+ get_type_name(ty) + ".");
-				break;
-			}
-		}
 
-		(*m_ostr) << "%" << var->name << " = " << cmpop << " " << op << " "
-			<< get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
-		return var;
+			std::string cmpop;
+			switch(ty)
+			{
+				case SymbolType::SCALAR:
+				{
+					cmpop = "fcmp";
+					op = "o" + op;
+					break;
+				}
+				case SymbolType::INT:
+				{
+					cmpop = "icmp";
+					if(op != "eq" && op != "ne")
+						op = "s" + op;	// signed
+					break;
+				}
+				default:
+				{
+					throw std::runtime_error("ASTComp: Invalid comparison between variables of type "
+						+ get_type_name(ty) + ".");
+					break;
+				}
+			}
+
+			t_astret var = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << var->name << " = " << cmpop << " " << op << " "
+				<< get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
+			return var;
+		}
 	}
 
 	throw std::runtime_error("ASTComp: Invalid comparison of \""
