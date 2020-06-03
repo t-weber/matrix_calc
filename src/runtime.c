@@ -14,8 +14,7 @@
 typedef double t_real;
 typedef int64_t t_int;
 
-//static t_real g_eps = DBL_EPSILON;
-static t_real g_eps = 0.1;
+static t_real g_eps = DBL_EPSILON;
 
 
 /**
