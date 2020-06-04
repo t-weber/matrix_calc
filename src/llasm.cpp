@@ -1965,13 +1965,13 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 
 		// ---------------
 		// loop statements
-		t_astret elemptr_src = get_tmp_var(SymbolType::STRING);
+		t_astret elemptr_src = get_tmp_var(SymbolType::SCALAR);
 		(*m_ostr) << "%" << elemptr_src->name << " = getelementptr [" << dim << " x double], ["
 			<< dim << " x double]* %" << expr->name << ", i64 0, i64 %" << ctrval->name << "\n";
-		t_astret elemptr_dst = get_tmp_var(SymbolType::STRING);
+		t_astret elemptr_dst = get_tmp_var(SymbolType::SCALAR);
 		(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr [" << dim << " x double], ["
 			<< dim << " x double]* %" << sym->name << ", i64 0, i64 %" << ctrval->name << "\n";
-		t_astret elem_src = get_tmp_var(SymbolType::STRING);
+		t_astret elem_src = get_tmp_var(SymbolType::SCALAR);
 		(*m_ostr) << "%" << elem_src->name << " = load double, double* %" << elemptr_src->name << "\n";
 
 		(*m_ostr) << "store double %" << elem_src->name << ", double* %" << elemptr_dst->name << "\n";
@@ -2046,6 +2046,60 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 
 t_astret LLAsm::visit(const ASTComp* ast)
 {
+	// code generation for equality test of two scalars
+	auto scalars_equal = [this](const t_astret& term1, const t_astret& term2, ASTComp::CompOp op=ASTComp::EQU) -> t_astret
+	{
+		// get epsilon
+		t_astret eps = get_tmp_var(SymbolType::SCALAR);
+		(*m_ostr) << "%" << eps->name << " = call double @ext_get_eps()\n";
+
+		// diff = term1 - term2
+		t_astret diff = get_tmp_var(SymbolType::SCALAR);
+		t_astret diff_abs_ptr = get_tmp_var(SymbolType::SCALAR);
+		(*m_ostr) << "%" << diff_abs_ptr->name << " = alloca double\n";
+
+		(*m_ostr) << "%" << diff->name << " = fsub double %" << term1->name << ", %" << term2->name << "\n";
+
+		// diff_neg = |diff|
+		t_astret cond = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << cond->name << " = fcmp olt double %" << diff->name << ", 0.\n";
+
+		std::string labelIf = get_label();
+		std::string labelElse = get_label();
+		std::string labelEnd = get_label();
+
+		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelElse << "\n";			(*m_ostr) << labelIf << ":\n";
+		t_astret diff_neg = get_tmp_var(SymbolType::SCALAR);
+		(*m_ostr) << "%" << diff_neg->name << " = fneg double %" << diff->name << "\n";
+		(*m_ostr) << "store double %" << diff_neg->name << ", double* %" << diff_abs_ptr->name << "\n";
+		(*m_ostr) << "br label %" << labelEnd << "\n";
+
+		(*m_ostr) << labelElse << ":\n";
+		(*m_ostr) << "store double %" << diff->name << ", double* %" << diff_abs_ptr->name << "\n";
+		(*m_ostr) << "br label %" << labelEnd << "\n";
+
+		(*m_ostr) << labelEnd << ":\n";
+
+		t_astret diff_abs = get_tmp_var(SymbolType::SCALAR);
+		t_astret varbool = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << diff_abs->name << " = load double, double* %" << diff_abs_ptr->name << "\n";
+		// diff_abs <= eps
+		if(op == ASTComp::EQU)
+		{
+			(*m_ostr) << "%" << varbool->name << " = fcmp ole double %"
+				<< diff_abs->name << ", %" << eps->name << "\n";
+		}
+		// diff_abs > eps
+		else if(op == ASTComp::NEQ)
+		{
+			(*m_ostr) << "%" << varbool->name << " = fcmp ogt double %"
+				<< diff_abs->name << ", %" << eps->name << "\n";
+		}
+
+		return varbool;
+	};
+
+
 	t_astret term1 = ast->GetTerm1()->accept(this);
 	t_astret term2 = ast->GetTerm2()->accept(this);
 
@@ -2086,18 +2140,211 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		return cmp;
 	}
 
-	else if(term1->ty == SymbolType::VECTOR || term2->ty == SymbolType::VECTOR)
+	// vector comparison
+	else if(term1->ty == SymbolType::VECTOR && term2->ty == SymbolType::VECTOR &&
+		(ast->GetOp() == ASTComp::EQU || ast->GetOp() == ASTComp::NEQ))
 	{
-		// TODO
+		bool bNeq = (ast->GetOp() == ASTComp::NEQ);
+
+		t_astret varbool = get_tmp_var(SymbolType::INT);
+		t_astret varbool_ptr = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << varbool_ptr->name << " = alloca i1\n";
+		(*m_ostr) << "store i1 1, i1* %" << varbool_ptr->name << "\n";
+
+		std::size_t dim1 = std::get<0>(term1->dims);
+		std::size_t dim2 = std::get<0>(term2->dims);
+
+		// vectors are unequal if they are of different size
+		if(dim1 != dim2)
+		{
+			if(bNeq)
+				(*m_ostr) << "store i1 true, i1* %" << varbool_ptr->name << "\n";
+			else
+				(*m_ostr) << "store i1 false, i1* %" << varbool_ptr->name << "\n";
+
+			(*m_ostr) << "%" << varbool->name << " = load i1, i1* %" << varbool_ptr->name << "\n";
+			return varbool;
+		}
+
+
+		// compare elements in a loop
+		std::string labelStart = get_label();
+		std::string labelBegin = get_label();
+		std::string labelEnd = get_label();
+		std::string labelCont = get_label();
+
+		// loop counter
+		t_astret ctr = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctr->name << " = alloca i64\n";
+		(*m_ostr) << "store i64 0, i64* %" << ctr->name << "\n";
+
+		(*m_ostr) << "br label %" << labelStart << "\n";
+		(*m_ostr) << labelStart << ":\n";
+
+		// loop condition: ctr < dim
+		t_astret ctrval = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctrval->name << " = load i64, i64* %" << ctr->name << "\n";
+
+		t_astret cond = get_tmp_var();
+		(*m_ostr) << "%" << cond->name << " = icmp slt i64 %" << ctrval->name <<  ", " << dim1 << "\n";
+		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelBegin << ", label %" << labelEnd << "\n";
+
+		(*m_ostr) << labelBegin << ":\n";
+
+		// ---------------
+		// loop statements
+		t_astret elemptr1 = get_tmp_var(SymbolType::SCALAR);
+		t_astret elemptr2 = get_tmp_var(SymbolType::SCALAR);
+
+		(*m_ostr) << "%" << elemptr1->name << " = getelementptr [" << dim1 << " x double], ["
+			<< dim1 << " x double]* %" << term1->name << ", i64 0, i64 %" << ctrval->name << "\n";
+		(*m_ostr) << "%" << elemptr2->name << " = getelementptr [" << dim2 << " x double], ["
+			<< dim2 << " x double]* %" << term2->name << ", i64 0, i64 %" << ctrval->name << "\n";
+
+		t_astret elem1 = get_tmp_var(SymbolType::SCALAR);
+		t_astret elem2 = get_tmp_var(SymbolType::SCALAR);
+		(*m_ostr) << "%" << elem1->name << " = load double, double* %" << elemptr1->name << "\n";
+		(*m_ostr) << "%" << elem2->name << " = load double, double* %" << elemptr2->name << "\n";
+
+		t_astret elems_equal = scalars_equal(elem1, elem2, ASTComp::EQU);
+		(*m_ostr) << "store i1 %" << elems_equal->name << ", i1* %" << varbool_ptr->name << "\n";
+
+		// break loop if not equal
+		(*m_ostr) << "br i1 %" << elems_equal->name << ", label %" << labelCont << ", label %" << labelEnd << "\n";
+		(*m_ostr) << labelCont << ":\n";
+
+
+		// increment counter
+		t_astret newctrval = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << newctrval->name << " = add i64 %" << ctrval->name << ", 1\n";
+		(*m_ostr) << "store i64 %" << newctrval->name << ", i64* %" << ctr->name << "\n";
+		// ---------------
+
+		(*m_ostr) << "br label %" << labelStart << "\n";
+		(*m_ostr) << labelEnd << ":\n";
+
+
+		t_astret elems_equal2 = get_tmp_var(SymbolType::SCALAR);
+		(*m_ostr) << "%" << elems_equal2->name << " = load i1, i1* %" << varbool_ptr->name << "\n";
+
+		if(bNeq)
+		{
+			// elems_equal = !elems_notequal
+			t_astret elems_notequal = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << elems_notequal->name << " = xor i1 1, %" << elems_equal2->name << "\n";
+
+			(*m_ostr) << "store i1 %" << elems_notequal->name << ", i1* %" << varbool_ptr->name << "\n";
+		}
+
+		(*m_ostr) << "%" << varbool->name << " = load i1, i1* %" << varbool_ptr->name << "\n";
+		return varbool;
 	}
 
-	else if(term1->ty == SymbolType::MATRIX || term2->ty == SymbolType::MATRIX)
+	// matrix comparison
+	else if(term1->ty == SymbolType::MATRIX && term2->ty == SymbolType::MATRIX && (ast->GetOp() == ASTComp::EQU || ast->GetOp() == ASTComp::NEQ))
 	{
-		// TODO
+		bool bNeq = (ast->GetOp() == ASTComp::NEQ);
+
+		t_astret varbool = get_tmp_var(SymbolType::INT);
+		t_astret varbool_ptr = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << varbool_ptr->name << " = alloca i1\n";
+		(*m_ostr) << "store i1 1, i1* %" << varbool_ptr->name << "\n";
+
+		std::size_t dim1_1 = std::get<0>(term1->dims);
+		std::size_t dim1_2 = std::get<1>(term1->dims);
+		std::size_t dim2_1 = std::get<0>(term2->dims);
+		std::size_t dim2_2 = std::get<1>(term2->dims);
+
+		// matrices are unequal if they are of different size
+		if(dim1_1 != dim2_1 || dim1_2 != dim2_2)
+		{
+			if(bNeq)
+				(*m_ostr) << "store i1 true, i1* %" << varbool_ptr->name << "\n";
+			else
+				(*m_ostr) << "store i1 false, i1* %" << varbool_ptr->name << "\n";
+
+			(*m_ostr) << "%" << varbool->name << " = load i1, i1* %" << varbool_ptr->name << "\n";
+			return varbool;
+		}
+
+
+		// compare elements in a loop
+		std::size_t dim = dim1_1*dim1_2;
+		std::string labelStart = get_label();
+		std::string labelBegin = get_label();
+		std::string labelEnd = get_label();
+		std::string labelCont = get_label();
+
+		// loop counter
+		t_astret ctr = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctr->name << " = alloca i64\n";
+		(*m_ostr) << "store i64 0, i64* %" << ctr->name << "\n";
+
+		(*m_ostr) << "br label %" << labelStart << "\n";
+		(*m_ostr) << labelStart << ":\n";
+
+		// loop condition: ctr < dim
+		t_astret ctrval = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctrval->name << " = load i64, i64* %" << ctr->name << "\n";
+
+		t_astret cond = get_tmp_var();
+		(*m_ostr) << "%" << cond->name << " = icmp slt i64 %" << ctrval->name <<  ", " << dim << "\n";
+		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelBegin << ", label %" << labelEnd << "\n";
+
+		(*m_ostr) << labelBegin << ":\n";
+
+		// ---------------
+		// loop statements
+		t_astret elemptr1 = get_tmp_var(SymbolType::SCALAR);
+		t_astret elemptr2 = get_tmp_var(SymbolType::SCALAR);
+
+		(*m_ostr) << "%" << elemptr1->name << " = getelementptr [" << dim << " x double], ["
+			<< dim << " x double]* %" << term1->name << ", i64 0, i64 %" << ctrval->name << "\n";
+		(*m_ostr) << "%" << elemptr2->name << " = getelementptr [" << dim << " x double], ["
+			<< dim << " x double]* %" << term2->name << ", i64 0, i64 %" << ctrval->name << "\n";
+
+		t_astret elem1 = get_tmp_var(SymbolType::SCALAR);
+		t_astret elem2 = get_tmp_var(SymbolType::SCALAR);
+		(*m_ostr) << "%" << elem1->name << " = load double, double* %" << elemptr1->name << "\n";
+		(*m_ostr) << "%" << elem2->name << " = load double, double* %" << elemptr2->name << "\n";
+
+		t_astret elems_equal = scalars_equal(elem1, elem2, ASTComp::EQU);
+		(*m_ostr) << "store i1 %" << elems_equal->name << ", i1* %" << varbool_ptr->name << "\n";
+
+		// break loop if not equal
+		(*m_ostr) << "br i1 %" << elems_equal->name << ", label %" << labelCont << ", label %" << labelEnd << "\n";
+		(*m_ostr) << labelCont << ":\n";
+
+
+		// increment counter
+		t_astret newctrval = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << newctrval->name << " = add i64 %" << ctrval->name << ", 1\n";
+		(*m_ostr) << "store i64 %" << newctrval->name << ", i64* %" << ctr->name << "\n";
+		// ---------------
+
+		(*m_ostr) << "br label %" << labelStart << "\n";
+		(*m_ostr) << labelEnd << ":\n";
+
+
+		t_astret elems_equal2 = get_tmp_var(SymbolType::SCALAR);
+		(*m_ostr) << "%" << elems_equal2->name << " = load i1, i1* %" << varbool_ptr->name << "\n";
+
+		if(bNeq)
+		{
+			// elems_equal = !elems_notequal
+			t_astret elems_notequal = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << elems_notequal->name << " = xor i1 1, %" << elems_equal2->name << "\n";
+
+			(*m_ostr) << "store i1 %" << elems_notequal->name << ", i1* %" << varbool_ptr->name << "\n";
+		}
+
+		(*m_ostr) << "%" << varbool->name << " = load i1, i1* %" << varbool_ptr->name << "\n";
+		return varbool;
 	}
 
 	// scalar types
-	else
+	else if((term1->ty == SymbolType::SCALAR || term1->ty == SymbolType::INT)
+		&& (term2->ty == SymbolType::SCALAR || term2->ty == SymbolType::INT))
 	{
 		// cast if needed
 		SymbolType ty = term1->ty;
@@ -2111,54 +2358,7 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		// comparison within an epsilon range
 		if(ty == SymbolType::SCALAR && (ast->GetOp() == ASTComp::EQU || ast->GetOp() == ASTComp::NEQ))
 		{
-			// get epsilon
-			t_astret eps = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << eps->name << " = call double @ext_get_eps()\n";
-
-			// diff = term1 - term2
-			t_astret diff = get_tmp_var(SymbolType::SCALAR);
-			t_astret diff_abs_ptr = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << diff_abs_ptr->name << " = alloca double\n";
-
-			(*m_ostr) << "%" << diff->name << " = fsub double %" << term1->name << ", %" << term2->name << "\n";
-
-			// diff_neg = |diff|
-			t_astret cond = get_tmp_var(SymbolType::INT);
-			(*m_ostr) << "%" << cond->name << " = fcmp olt double %" << diff->name << ", 0.\n";
-
-			std::string labelIf = get_label();
-			std::string labelElse = get_label();
-			std::string labelEnd = get_label();
-
-			(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelElse << "\n";			(*m_ostr) << labelIf << ":\n";
-			t_astret diff_neg = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << diff_neg->name << " = fneg double %" << diff->name << "\n";
-			(*m_ostr) << "store double %" << diff_neg->name << ", double* %" << diff_abs_ptr->name << "\n";
-			(*m_ostr) << "br label %" << labelEnd << "\n";
-
-			(*m_ostr) << labelElse << ":\n";
-			(*m_ostr) << "store double %" << diff->name << ", double* %" << diff_abs_ptr->name << "\n";
-			(*m_ostr) << "br label %" << labelEnd << "\n";
-
-			(*m_ostr) << labelEnd << ":\n";
-
-			t_astret diff_abs = get_tmp_var(SymbolType::SCALAR);
-			t_astret varbool = get_tmp_var(SymbolType::INT);
-			(*m_ostr) << "%" << diff_abs->name << " = load double, double* %" << diff_abs_ptr->name << "\n";
-			// diff_abs <= eps
-			if(ast->GetOp() == ASTComp::EQU)
-			{
-				(*m_ostr) << "%" << varbool->name << " = fcmp ole double %"
-					<< diff_abs->name << ", %" << eps->name << "\n";
-			}
-			// diff_abs > eps
-			else if(ast->GetOp() == ASTComp::NEQ)
-			{
-				(*m_ostr) << "%" << varbool->name << " = fcmp ogt double %"
-					<< diff_abs->name << ", %" << eps->name << "\n";
-			}
-
-			return varbool;
+			return scalars_equal(term1, term2, ast->GetOp());
 		}
 
 		// exact comparison
