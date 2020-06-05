@@ -97,6 +97,13 @@ protected:
 	void generate_loop(t_funcCond funcCond, t_funcBody funcBody);
 
 
+	/**
+	 * generates loop code with managed counter
+	 */
+	template<class t_funcBody>
+	void generate_loop(std::int64_t start, std::int64_t end, t_funcBody funcBody);
+
+
 private:
 	std::size_t m_varCount = 0;	// # of tmp vars
 	std::size_t m_labelCount = 0;	// # of labels
@@ -188,6 +195,44 @@ void LLAsm::generate_loop(t_funcCond funcCond, t_funcBody funcBody)
 	(*m_ostr) << "br label %" << labelStart << "\n";
 	(*m_ostr) << labelEnd << ":\n";
 	(*m_ostr) << ";-------------------------------------------------------------\n\n";
+}
+
+
+
+/**
+ * generates loop code with managed counter
+ */
+template<class t_funcBody>
+void LLAsm::generate_loop(std::int64_t start, std::int64_t end, t_funcBody funcBody)
+{
+	(*m_ostr) << "\n;-------------------------------------------------------------\n";
+	(*m_ostr) << "; loop counter\n";
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+	t_astret ctr = get_tmp_var(SymbolType::INT);
+	t_astret ctrval = get_tmp_var(SymbolType::INT);
+	(*m_ostr) << "%" << ctr->name << " = alloca i64\n";
+	(*m_ostr) << "store i64 " << start << ", i64* %" << ctr->name << "\n";
+
+	generate_loop([this, ctr, ctrval, end]() -> t_astret
+	{
+		// loop condition: ctr < end
+		(*m_ostr) << "%" << ctrval->name << " = load i64, i64* %" << ctr->name << "\n";
+
+		t_astret _cond = get_tmp_var();
+		(*m_ostr) << "%" << _cond->name << " = icmp slt i64 %" << ctrval->name <<  ", " << end << "\n";
+
+		return _cond;
+	}, [this, &funcBody, ctr, ctrval]
+	{
+		funcBody(ctrval);
+
+		(*m_ostr) << ";-------------------------------------------------------------\n";
+		(*m_ostr) << "; increment loop counter\n";
+		(*m_ostr) << ";-------------------------------------------------------------\n";
+		t_astret newctrval = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << newctrval->name << " = add i64 %" << ctrval->name << ", 1\n";
+		(*m_ostr) << "store i64 %" << newctrval->name << ", i64* %" << ctr->name << "\n";
+	});
 }
 
 #endif
