@@ -240,78 +240,57 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 			// separator ", " or "; "
 			if(sym->ty == SymbolType::MATRIX)
 			{
-				// don't output last "; " or ", ": i < num_floats-1
-				t_astret cond = get_tmp_var(SymbolType::INT);
-				(*m_ostr) << "%" << cond->name << " = icmp slt i64 %"
-					<< ctrval->name << ", " << num_floats-1 << "\n";
-
-				std::string labelIf = get_label();
-				std::string labelEnd = get_label();
-
-				(*m_ostr) << "br i1 %" << cond->name << ", label %"
-					<< labelIf << ", label %" << labelEnd << "\n";
-
-				(*m_ostr) << labelIf << ":\n";
+				generate_cond([this, ctrval, num_floats]() -> t_astret
 				{
-					//output ';' or ','?: ((i+1) % std::get<1>(sym->dims)) == 0
-					t_astret cond_M_or_v = get_tmp_var(SymbolType::INT);
+					// don't output last "; " or ", ": i < num_floats-1
+					t_astret cond = get_tmp_var(SymbolType::INT);
+					(*m_ostr) << "%" << cond->name << " = icmp slt i64 %"
+						<< ctrval->name << ", " << num_floats-1 << "\n";
+					return cond;
+				}, [this, sym, ctrval, strptr, matsep, vecsep]
+				{
 					t_astret ctr_1 = get_tmp_var(SymbolType::INT);
 					t_astret ctr_mod_cols = get_tmp_var(SymbolType::INT);
-					(*m_ostr) << "%" << ctr_1->name << " = add i64 %" << ctrval->name << ", 1\n";
-					(*m_ostr) << "%" << ctr_mod_cols->name << " = srem i64 %" << ctr_1->name
-						<< ", " << std::get<0>(sym->dims) << "\n";
-					(*m_ostr) << "%" << cond_M_or_v->name << " = icmp eq i64 %"
-						<< ctr_mod_cols->name << ", 0\n";
 
-					std::string labelIf_M_or_v = get_label();
-					std::string labelElse_M_or_v = get_label();
-					std::string labelEnd_M_or_v = get_label();
-
-					(*m_ostr) << "br i1 %" << cond_M_or_v->name << ", label %"
-						<< labelIf_M_or_v << ", label %" << labelElse_M_or_v << "\n";
-
-					// if: matrix separator case
-					(*m_ostr) << labelIf_M_or_v << ":\n";
+					generate_cond([this, sym, ctrval, ctr_1, ctr_mod_cols]() -> t_astret
 					{
+						//output ';' or ','?: ((i+1) % std::get<1>(sym->dims)) == 0
+						t_astret cond_M_or_v = get_tmp_var(SymbolType::INT);
+						(*m_ostr) << "%" << ctr_1->name << " = add i64 %" << ctrval->name << ", 1\n";
+						(*m_ostr) << "%" << ctr_mod_cols->name << " = srem i64 %" << ctr_1->name
+							<< ", " << std::get<0>(sym->dims) << "\n";
+						(*m_ostr) << "%" << cond_M_or_v->name << " = icmp eq i64 %"
+							<< ctr_mod_cols->name << ", 0\n";
+						return cond_M_or_v;
+					}, [this, strptr, matsep]
+					{
+						// if: matrix separator case
 						(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name
 							<< ", i8* %" << matsep->name << ", i64 3)\n";
-					}
-					(*m_ostr) << "br label %" << labelEnd_M_or_v << "\n";
-
-					// else: vector separator case
-					(*m_ostr) << labelElse_M_or_v << ":\n";
+					}, [this, strptr, vecsep]
 					{
+						// else: vector separator case
 						(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name
 							<< ", i8* %" << vecsep->name << ", i64 3)\n";
-					}
-					(*m_ostr) << "br label %" << labelEnd_M_or_v << "\n";
 
-					(*m_ostr) << labelEnd_M_or_v << ":\n";
-				}
-				(*m_ostr) << "br label %" << labelEnd << "\n";
-
-				(*m_ostr) << labelEnd << ":\n";
+					}, true);
+				}, []{}, false);
 			}
 
 			else if(sym->ty == SymbolType::VECTOR)
 			{
-				// don't output last ", ": i < num_floats-1
-				t_astret cond = get_tmp_var(SymbolType::INT);
-				(*m_ostr) << "%" << cond->name << " = icmp slt i64 %"
-					<< ctrval->name << ", " << num_floats-1 << "\n";
-
-				std::string labelIf = get_label();
-				std::string labelEnd = get_label();
-
-				(*m_ostr) << "br i1 %" << cond->name << ", label %"
-					<< labelIf << ", label %" << labelEnd << "\n";
-
-				(*m_ostr) << labelIf << ":\n";
-				(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name
-					<< ", i8* %" << vecsep->name << ", i64 3)\n";
-				(*m_ostr) << "br label %" << labelEnd << "\n";
-
-				(*m_ostr) << labelEnd << ":\n";
+				generate_cond([this, ctrval, num_floats]() -> t_astret
+				{
+					// don't output last ", ": i < num_floats-1
+					t_astret cond = get_tmp_var(SymbolType::INT);
+					(*m_ostr) << "%" << cond->name << " = icmp slt i64 %"
+						<< ctrval->name << ", " << num_floats-1 << "\n";
+					return cond;
+				}, [this, strptr, vecsep]
+				{
+					(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name
+						<< ", i8* %" << vecsep->name << ", i64 3)\n";
+				}, []{}, false);
 			}
 
 			// increment counter
@@ -2061,24 +2040,21 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		(*m_ostr) << "%" << diff->name << " = fsub double %" << term1->name << ", %" << term2->name << "\n";
 
 		// diff_neg = |diff|
-		t_astret cond = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << cond->name << " = fcmp olt double %" << diff->name << ", 0.\n";
+		generate_cond([this, diff]() -> t_astret
+		{
+			t_astret cond = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << cond->name << " = fcmp olt double %" << diff->name << ", 0.\n";
+			return cond;
+		}, [this, diff, diff_abs_ptr]
+		{
+			t_astret diff_neg = get_tmp_var(SymbolType::SCALAR);
+			(*m_ostr) << "%" << diff_neg->name << " = fneg double %" << diff->name << "\n";
+			(*m_ostr) << "store double %" << diff_neg->name << ", double* %" << diff_abs_ptr->name << "\n";
+		}, [this, diff, diff_abs_ptr]
+		{
+			(*m_ostr) << "store double %" << diff->name << ", double* %" << diff_abs_ptr->name << "\n";
+		}, true);
 
-		std::string labelIf = get_label();
-		std::string labelElse = get_label();
-		std::string labelEnd = get_label();
-
-		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelElse << "\n";			(*m_ostr) << labelIf << ":\n";
-		t_astret diff_neg = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << diff_neg->name << " = fneg double %" << diff->name << "\n";
-		(*m_ostr) << "store double %" << diff_neg->name << ", double* %" << diff_abs_ptr->name << "\n";
-		(*m_ostr) << "br label %" << labelEnd << "\n";
-
-		(*m_ostr) << labelElse << ":\n";
-		(*m_ostr) << "store double %" << diff->name << ", double* %" << diff_abs_ptr->name << "\n";
-		(*m_ostr) << "br label %" << labelEnd << "\n";
-
-		(*m_ostr) << labelEnd << ":\n";
 
 		t_astret diff_abs = get_tmp_var(SymbolType::SCALAR);
 		t_astret varbool = get_tmp_var(SymbolType::INT);
@@ -2412,31 +2388,19 @@ t_astret LLAsm::visit(const ASTComp* ast)
 }
 
 
+
 t_astret LLAsm::visit(const ASTCond* ast)
 {
-	t_astret cond = ast->GetCond()->accept(this);
-
-	std::string labelIf = get_label();
-	std::string labelElse = ast->HasElse() ? get_label() : "";
-	std::string labelEnd = get_label();
-
-	if(ast->HasElse())
-		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelElse << "\n";
-	else
-		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelEnd << "\n";
-
-	(*m_ostr) << labelIf << ":  ; if branch\n";
-	ast->GetIf()->accept(this);
-	(*m_ostr) << "br label %" << labelEnd << "\n";
-
-	if(ast->HasElse())
+	generate_cond([this, ast]() -> t_astret
 	{
-		(*m_ostr) << labelElse << ":  ; else branch\n";
+		return ast->GetCond()->accept(this);
+	}, [this, ast]
+	{
+		ast->GetIf()->accept(this);
+	}, [this, ast]
+	{
 		ast->GetElse()->accept(this);
-		(*m_ostr) << "br label %" << labelEnd << "\n";
-	}
-
-	(*m_ostr) << labelEnd << ":  ; endif\n";
+	}, ast->HasElse());
 
 	return nullptr;
 }

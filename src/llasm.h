@@ -83,6 +83,13 @@ protected:
 	std::string get_type_name(SymbolType ty);
 
 
+	/**
+	 * generates if-then-else code
+	 */
+	template<class t_funcCond, class t_funcBody, class t_funcElseBody>
+	void generate_cond(t_funcCond funcCond, t_funcBody funcBody, t_funcElseBody funcElseBody, bool hasElse=0);
+
+
 private:
 	std::size_t m_varCount = 0;	// # of tmp vars
 	std::size_t m_labelCount = 0;	// # of labels
@@ -96,6 +103,53 @@ private:
 	// helper functions to reduce code redundancy
 	t_astret scalar_matrix_prod(t_astret scalar, t_astret matrix, bool mul_or_div=1);
 };
+
+
+
+/**
+ * generates if-then-else code
+ */
+template<class t_funcCond, class t_funcBody, class t_funcElseBody>
+void LLAsm::generate_cond(t_funcCond funcCond, t_funcBody funcBody, t_funcElseBody funcElseBody, bool hasElse)
+{
+	(*m_ostr) << "\n;-------------------------------------------------------------\n";
+	(*m_ostr) << "; condition head\n";
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+	t_astret cond = funcCond();
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+
+	std::string labelIf = get_label();
+	std::string labelElse = hasElse ? get_label() : "";
+	std::string labelEnd = get_label();
+
+	if(hasElse)
+		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelElse << "\n";
+	else
+		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelEnd << "\n";
+
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+	(*m_ostr) << "; condition body\n";
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+	(*m_ostr) << labelIf << ":\n";
+	funcBody();
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+
+	(*m_ostr) << "br label %" << labelEnd << "\n";
+
+	if(hasElse)
+	{
+		(*m_ostr) << ";-------------------------------------------------------------\n";
+		(*m_ostr) << "; condition \"else\" body\n";
+		(*m_ostr) << ";-------------------------------------------------------------\n";
+		(*m_ostr) << labelElse << ":\n";
+		funcElseBody();
+		(*m_ostr) << ";-------------------------------------------------------------\n";
+		(*m_ostr) << "br label %" << labelEnd << "\n";
+	}
+
+	(*m_ostr) << labelEnd << ":\n";
+	(*m_ostr) << ";-------------------------------------------------------------\n\n";
+}
 
 
 #endif
