@@ -90,6 +90,13 @@ protected:
 	void generate_cond(t_funcCond funcCond, t_funcBody funcBody, t_funcElseBody funcElseBody, bool hasElse=0);
 
 
+	/**
+	 * generates loop code
+	 */
+	template<class t_funcCond, class t_funcBody>
+	void generate_loop(t_funcCond funcCond, t_funcBody funcBody);
+
+
 private:
 	std::size_t m_varCount = 0;	// # of tmp vars
 	std::size_t m_labelCount = 0;	// # of labels
@@ -151,5 +158,36 @@ void LLAsm::generate_cond(t_funcCond funcCond, t_funcBody funcBody, t_funcElseBo
 	(*m_ostr) << ";-------------------------------------------------------------\n\n";
 }
 
+
+
+/**
+ * generates loop code
+ */
+template<class t_funcCond, class t_funcBody>
+void LLAsm::generate_loop(t_funcCond funcCond, t_funcBody funcBody)
+{
+	std::string labelStart = get_label();
+	std::string labelBegin = get_label();
+	std::string labelEnd = get_label();
+
+	(*m_ostr) << "\n;-------------------------------------------------------------\n";
+	(*m_ostr) << "; loop head\n";
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+	(*m_ostr) << "br label %" << labelStart << "\n";
+	(*m_ostr) << labelStart << ":\n";
+	t_astret cond = funcCond();
+	(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelBegin << ", label %" << labelEnd << "\n";
+
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+	(*m_ostr) << "; loop body\n";
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+	(*m_ostr) << labelBegin << ":\n";
+	funcBody();
+	(*m_ostr) << ";-------------------------------------------------------------\n";
+
+	(*m_ostr) << "br label %" << labelStart << "\n";
+	(*m_ostr) << labelEnd << ":\n";
+	(*m_ostr) << ";-------------------------------------------------------------\n\n";
+}
 
 #endif

@@ -143,6 +143,11 @@ int main(int argc, char** argv)
 		std::cout << "Parsing \"" << inprog << "\"..." << std::endl;
 
 		std::ifstream ifstr{inprog};
+		if(!ifstr)
+		{
+			std::cerr << "Cannot open \"" << inprog << "\"." << std::endl;
+			return -1;
+		}
 		yy::ParserContext ctx{ifstr};
 
 		// register runtime functions
