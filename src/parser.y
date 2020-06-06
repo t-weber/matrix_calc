@@ -68,7 +68,7 @@
 %token IF THEN ELSE
 %token LOOP DO
 %token EQU NEQ GT LT GEQ LEQ
-%token AND OR NOT
+%token AND XOR OR NOT
 
 
 // nonterminals
@@ -91,12 +91,14 @@
 %nonassoc RET
 %left ','
 %right '='
+%left XOR
 %left OR
 %left AND
 %left GT LT GEQ LEQ
 %left EQU NEQ
 %left '+' '-'
 %left '*' '/' '%'
+%right NOT
 %right UNARY_OP
 %right '^' '\''
 %left '(' '[' '{' '|'
@@ -289,6 +291,8 @@ expr[res]
 	| '|' expr[term] '|'	{ $res = std::make_shared<ASTNorm>($term); }
 	| expr[term] '\''	{ $res = std::make_shared<ASTTransp>($term); }
 
+	// unary boolean expression
+	| NOT expr[term]	{ $res = std::make_shared<ASTBool>($term, ASTBool::NOT); }
 
 	// binary expressions
 	| expr[term1] '+' expr[term2]	{ $res = std::make_shared<ASTPlus>($term1, $term2, 0); }
@@ -297,6 +301,11 @@ expr[res]
 	| expr[term1] '/' expr[term2]	{ $res = std::make_shared<ASTMult>($term1, $term2, 1); }
 	| expr[term1] '%' expr[term2]	{ $res = std::make_shared<ASTMod>($term1, $term2); }
 	| expr[term1] '^' expr[term2]	{ $res = std::make_shared<ASTPow>($term1, $term2); }
+
+	// binary boolean expressions
+	| expr[term1] AND expr[term2]	{ $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::AND); }
+	| expr[term1] OR expr[term2]	{ $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::OR); }
+	| expr[term1] XOR expr[term2]	{ $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::XOR); }
 
 	// comparison expressions
 	| expr[term1] EQU expr[term2]	{ $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::EQU); }

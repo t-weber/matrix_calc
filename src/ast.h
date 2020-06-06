@@ -40,6 +40,7 @@ class ASTAssign;
 class ASTArrayAssign;
 class ASTArrayAccess;
 class ASTComp;
+class ASTBool;
 class ASTCond;
 class ASTLoop;
 class ASTExprList;
@@ -68,6 +69,7 @@ enum class ASTType
 	ArrayAssign,
 	ArrayAccess,
 	Comp,
+	Bool,
 	Cond,
 	Loop,
 	ExprList,
@@ -105,6 +107,7 @@ public:
 	virtual t_astret visit(const ASTArrayAssign* ast) = 0;
 	virtual t_astret visit(const ASTArrayAccess* ast) = 0;
 	virtual t_astret visit(const ASTComp* ast) = 0;
+	virtual t_astret visit(const ASTBool* ast) = 0;
 	virtual t_astret visit(const ASTCond* ast) = 0;
 	virtual t_astret visit(const ASTLoop* ast) = 0;
 	virtual t_astret visit(const ASTStrConst* ast) = 0;
@@ -534,6 +537,37 @@ public:
 private:
 	std::shared_ptr<AST> term1, term2;
 	CompOp op;
+};
+
+
+class ASTBool : public AST
+{
+public:
+	enum BoolOp
+	{
+		NOT,
+		AND, OR, XOR
+	};
+
+public:
+	ASTBool(std::shared_ptr<AST> term1, std::shared_ptr<AST> term2, BoolOp op)
+		: term1{term1}, term2{term2}, op{op}
+	{}
+
+	ASTBool(std::shared_ptr<AST> term1, BoolOp op)
+		: term1{term1}, term2{nullptr}, op{op}
+	{}
+
+	const std::shared_ptr<AST> GetTerm1() const { return term1; }
+	const std::shared_ptr<AST> GetTerm2() const { return term2; }
+	BoolOp GetOp() const { return op; }
+
+	virtual ASTType type() override { return ASTType::Bool; }
+	ASTVISITOR_ACCEPT
+
+private:
+	std::shared_ptr<AST> term1, term2;
+	BoolOp op;
 };
 
 

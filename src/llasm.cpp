@@ -1956,11 +1956,50 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		}
 	}
 
-	throw std::runtime_error("ASTComp: Invalid comparison of \""
-		+ term1->name + "\" and \"" + term2->name + "\".");
+	throw std::runtime_error("ASTComp: Invalid comparison of \"" + term1->name + "\" and \"" + term2->name + "\".");
 	return nullptr;
 }
 
+
+t_astret LLAsm::visit(const ASTBool* ast)
+{
+	t_astret term1 = ast->GetTerm1()->accept(this);
+	t_astret term2 = nullptr;
+	if(ast->GetTerm2())
+		term2 = ast->GetTerm2()->accept(this);
+
+	t_astret ret = get_tmp_var(SymbolType::INT);
+	switch(ast->GetOp())
+	{
+		case ASTBool::XOR:
+		{
+			(*m_ostr) << "%" << ret->name << " = xor i1 %" << term1->name << ", %" << term2->name << "\n";
+			break;
+		}
+		case ASTBool::OR:
+		{
+			(*m_ostr) << "%" << ret->name << " = or i1 %" << term1->name << ", %" << term2->name << "\n";
+			break;
+		}
+		case ASTBool::AND:
+		{
+			(*m_ostr) << "%" << ret->name << " = and i1 %" << term1->name << ", %" << term2->name << "\n";
+			break;
+		}
+		case ASTBool::NOT:
+		{
+			(*m_ostr) << "%" << ret->name << " = xor i1 1, %" << term1->name << "\n";
+			break;
+		}
+		default:
+		{
+			throw std::runtime_error("ASTBool: Invalid operation.");
+			return nullptr;
+		}
+	}
+
+	return ret;
+}
 
 
 t_astret LLAsm::visit(const ASTCond* ast)
