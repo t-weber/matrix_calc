@@ -6,6 +6,7 @@
  */
 
 #include "printast.h"
+#include "sym.h"
 
 
 ASTPrinter::ASTPrinter(std::ostream* ostr)
@@ -156,9 +157,23 @@ t_astret ASTPrinter::visit(const ASTVarDecl* ast)
 
 t_astret ASTPrinter::visit(const ASTFunc* ast)
 {
-	(*m_ostr) << "<Func ident=\"" << ast->GetIdent() << "\">\n";
+	(*m_ostr) << "<Func ident=\"" << ast->GetIdent() << "\"" << ">\n";
 
-	// TODO: args, ret vars
+	auto ret = ast->GetRetType();
+	std::string retTypeName = Symbol::get_type_name(std::get<0>(ret));
+	(*m_ostr) << "<ret type=\"" << retTypeName << "\" dim1=" << std::get<1>(ret) << " dim2=" << std::get<2>(ret);
+	(*m_ostr) << " />\n";
+
+	std::size_t argidx = 0;
+	for(const auto& arg : ast->GetArgNames())
+	{
+		std::string argTypeName = Symbol::get_type_name(std::get<1>(arg));
+
+		(*m_ostr) << "<arg_" << argidx << " name=\"" << std::get<0>(arg) << "\"";
+		(*m_ostr) << " type=\"" << argTypeName << "\" dim1=" << std::get<2>(arg) << " dim2=" << std::get<3>(arg);
+		(*m_ostr) << " />\n";
+		++argidx;
+	}
 
 	ast->GetStatements()->accept(this);
 	(*m_ostr) << "</Func>\n";
@@ -355,7 +370,7 @@ t_astret ASTPrinter::visit(const ASTExprList* ast)
 
 t_astret ASTPrinter::visit(const ASTNumConst<double>* ast)
 {
-	(*m_ostr) << "<Const type=\"d\" val=\"" << ast->GetVal() << "\" />\n";
+	(*m_ostr) << "<Const type=\"scalar\" val=\"" << ast->GetVal() << "\" />\n";
 
 	return nullptr;
 }
@@ -363,7 +378,7 @@ t_astret ASTPrinter::visit(const ASTNumConst<double>* ast)
 
 t_astret ASTPrinter::visit(const ASTNumConst<std::int64_t>* ast)
 {
-	(*m_ostr) << "<Const type=\"i64\" val=\"" << ast->GetVal() << "\" />\n";
+	(*m_ostr) << "<Const type=\"int\" val=\"" << ast->GetVal() << "\" />\n";
 
 	return nullptr;
 }

@@ -42,6 +42,26 @@ struct Symbol
 
 	bool tmp = false;		// temporary or declared variable?
 	bool on_heap = false;	// heap or stack variable?
+
+
+	/**
+	 * get the corresponding data type name
+	 */
+	static std::string get_type_name(SymbolType ty)
+	{
+		switch(ty)
+		{
+			case SymbolType::SCALAR: return "scalar";
+			case SymbolType::VECTOR: return "vec";
+			case SymbolType::MATRIX: return "mat";
+			case SymbolType::STRING: return "str";
+			case SymbolType::INT: return "int";
+			case SymbolType::VOID: return "void";
+			case SymbolType::FUNC: return "func";	// TODO: function pointers
+		}
+
+		return "unknown";
+	}
 };
 
 

@@ -69,6 +69,11 @@ protected:
 	std::string get_label();
 
 	/**
+	 * get the type name for a symbol
+	 */
+	static std::string get_type_name(SymbolType ty);
+
+	/**
 	 * find the symbol with a specific name in the symbol table
 	 */
 	t_astret get_sym(const std::string& name) const;
@@ -77,11 +82,6 @@ protected:
 	 * convert symbol to another type
 	 */
 	t_astret convert_sym(t_astret sym, SymbolType ty_to);
-
-	/**
-	 * get the corresponding data type name
-	 */
-	std::string get_type_name(SymbolType ty);
 
 
 	/**

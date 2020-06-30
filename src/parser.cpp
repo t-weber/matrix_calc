@@ -207,7 +207,7 @@ int main(int argc, char** argv)
 			for(auto iter=stmts.rbegin(); iter!=stmts.rend(); ++iter)
 			{
 				(*iter)->accept(&printer);
-				ostrAST << "\n\n";
+				ostrAST << "\n";
 			}
 			ostrAST << "</ast>" << std::endl;
 		}

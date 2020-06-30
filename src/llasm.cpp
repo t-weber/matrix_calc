@@ -46,6 +46,27 @@ std::string LLAsm::get_label()
 
 
 /**
+ * get the corresponding data type name
+ */
+std::string LLAsm::get_type_name(SymbolType ty)
+{
+	switch(ty)
+	{
+		case SymbolType::SCALAR: return "double";
+		case SymbolType::VECTOR: return "double*";
+		case SymbolType::MATRIX: return "double*";
+		case SymbolType::STRING: return "i8*";
+		case SymbolType::INT: return "i64";
+		case SymbolType::VOID: return "void";
+		case SymbolType::FUNC: return "func";	// TODO: function pointers
+	}
+
+	return "unknown";
+}
+
+
+
+/**
  * find the symbol with a specific name in the symbol table
  */
 t_astret LLAsm::get_sym(const std::string& name) const
@@ -97,8 +118,8 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 		if(op == "")
 			throw std::runtime_error("Invalid scalar type conversion.");
 
-		std::string from = get_type_name(sym->ty);
-		std::string to = get_type_name(ty_to);
+		std::string from = LLAsm::get_type_name(sym->ty);
+		std::string to = LLAsm::get_type_name(ty_to);
 
 		t_astret var = get_tmp_var(ty_to, &sym->dims);
 		(*m_ostr) << "%" << var->name << " = " << op << " " << from << "%" << sym->name << " to " << to << "\n";
@@ -287,26 +308,6 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 }
 
 
-/**
-	* get the corresponding data type name
-	*/
-std::string LLAsm::get_type_name(SymbolType ty)
-{
-	switch(ty)
-	{
-		case SymbolType::SCALAR: return "double";
-		case SymbolType::VECTOR: return "double*";
-		case SymbolType::MATRIX: return "double*";
-		case SymbolType::STRING: return "i8*";
-		case SymbolType::INT: return "i64";
-		case SymbolType::VOID: return "void";
-		case SymbolType::FUNC: return "func";	// TODO: function pointers
-	}
-
-	return "unknown";
-}
-
-
 LLAsm::LLAsm(SymTab* syms, std::ostream* ostr) : m_syms{syms}, m_ostr{ostr}
 {}
 
@@ -354,14 +355,14 @@ t_astret LLAsm::visit(const ASTUMinus* ast)
 
 	else if(term->ty == SymbolType::SCALAR)
 	{
-		(*m_ostr) << "%" << var->name << " = fneg " << get_type_name(term->ty)
+		(*m_ostr) << "%" << var->name << " = fneg " << LLAsm::get_type_name(term->ty)
 			<< " %" << term->name << "\n";
 		return var;
 	}
 
 	else if(term->ty == SymbolType::INT)
 	{
-		(*m_ostr) << "%" << var->name << " = sub " << get_type_name(term->ty) << " "
+		(*m_ostr) << "%" << var->name << " = sub " << LLAsm::get_type_name(term->ty) << " "
 			<< "0, %" << term->name << "\n";
 		return var;
 	}
@@ -496,7 +497,7 @@ t_astret LLAsm::visit(const ASTPlus* ast)
 			op = "f" + op;
 
 		(*m_ostr) << "%" << var->name << " = " << op << " "
-			<< get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
+			<< LLAsm::get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
 
 		return var;
 	}
@@ -864,7 +865,7 @@ t_astret LLAsm::visit(const ASTMult* ast)
 			op = "s" + op;
 
 		(*m_ostr) << "%" << var->name << " = " << op << " "
-			<< get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
+			<< LLAsm::get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
 
 		return var;
 	}
@@ -897,7 +898,7 @@ t_astret LLAsm::visit(const ASTMod* ast)
 		op = "s" + op;
 
 	(*m_ostr) << "%" << var->name << " = " << op << " "
-		<< get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
+		<< LLAsm::get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
 
 	return var;
 }
@@ -957,8 +958,8 @@ t_astret LLAsm::visit(const ASTPow* ast)
 		term2 = convert_sym(term2, ty);
 
 		(*m_ostr) << "%" << var->name << " = call double @pow("
-			<< get_type_name(ty) << " %" << term1->name << ", "
-			<< get_type_name(ty) << " %" << term2->name << ")\n";
+			<< LLAsm::get_type_name(ty) << " %" << term1->name << ", "
+			<< LLAsm::get_type_name(ty) << " %" << term2->name << ")\n";
 
 		return var;
 	}
@@ -1118,7 +1119,7 @@ t_astret LLAsm::visit(const ASTVar* ast)
 	if(sym->ty == SymbolType::SCALAR || sym->ty == SymbolType::INT)
 	{
 		t_astret retvar = get_tmp_var(sym->ty, &sym->dims);
-		std::string ty = get_type_name(sym->ty);
+		std::string ty = LLAsm::get_type_name(sym->ty);
 		(*m_ostr) << "%" << retvar->name << " = load " << ty  << ", " << ty << "* " << var << "\n";
 		return retvar;
 	}
@@ -1199,7 +1200,7 @@ t_astret LLAsm::visit(const ASTCall* ast)
 
 
 	t_astret retvar = get_tmp_var(func->retty, &func->retdims);
-	std::string retty = get_type_name(func->retty);
+	std::string retty = LLAsm::get_type_name(func->retty);
 
 	// call function
 	if(func->retty != SymbolType::VOID)
@@ -1207,7 +1208,7 @@ t_astret LLAsm::visit(const ASTCall* ast)
 	(*m_ostr) << "call " << retty << " @" << funcname << "(";
 	for(std::size_t idx=0; idx<args.size(); ++idx)
 	{
-		(*m_ostr) << get_type_name(args[idx]->ty) << " %" << args[idx]->name;
+		(*m_ostr) << LLAsm::get_type_name(args[idx]->ty) << " %" << args[idx]->name;
 		if(idx < args.size()-1)
 			(*m_ostr) << ", ";
 	}
@@ -1285,7 +1286,7 @@ t_astret LLAsm::visit(const ASTVarDecl* ast)
 	for(const auto& _var : ast->GetVariables())
 	{
 		t_astret sym = get_sym(_var);
-		std::string ty = get_type_name(sym->ty);
+		std::string ty = LLAsm::get_type_name(sym->ty);
 
 		if(sym->ty == SymbolType::SCALAR || sym->ty == SymbolType::INT)
 		{
@@ -1334,7 +1335,7 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 {
 	m_curscope.push_back(ast->GetIdent());
 
-	std::string rettype = get_type_name(std::get<0>(ast->GetRetType()));
+	std::string rettype = LLAsm::get_type_name(std::get<0>(ast->GetRetType()));
 	(*m_ostr) << "define " << rettype << " @" << ast->GetIdent() << "(";
 
 	auto argnames = ast->GetArgNames();
@@ -1342,7 +1343,7 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 	for(const auto& [argname, argtype, dim1, dim2] : argnames)
 	{
 		const std::string arg = std::string{"__arg_"} + argname;
-		(*m_ostr) << get_type_name(argtype) << " %" << arg;
+		(*m_ostr) << LLAsm::get_type_name(argtype) << " %" << arg;
 		if(idx < argnames.size()-1)
 			(*m_ostr) << ", ";
 		++idx;
@@ -1360,7 +1361,7 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 
 		if(argtype == SymbolType::SCALAR || argtype == SymbolType::INT)
 		{
-			std::string ty = get_type_name(argtype);
+			std::string ty = LLAsm::get_type_name(argtype);
 			(*m_ostr) << "%" << symcpy->name << " = alloca " << ty << "\n";
 			(*m_ostr) << "store " << ty << " %" << arg << ", " << ty << "* %" << symcpy->name << "\n";
 		}
@@ -1440,7 +1441,7 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 
 		if(term->ty == SymbolType::SCALAR || term->ty == SymbolType::INT)
 		{
-			(*m_ostr) << "ret " << get_type_name(term->ty) << " %" << term->name << "\n";
+			(*m_ostr) << "ret " << LLAsm::get_type_name(term->ty) << " %" << term->name << "\n";
 			return term;
 		}
 
@@ -1497,7 +1498,7 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 		else
 		{
 			throw std::runtime_error("ASTReturn: Unhandled return type \""
-				+ get_type_name(term->ty) + "\".");
+				+ LLAsm::get_type_name(term->ty) + "\".");
 		}
 	}
 	else
@@ -1520,7 +1521,7 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 
 	if(expr->ty == SymbolType::SCALAR || expr->ty == SymbolType::INT)
 	{
-		std::string ty = get_type_name(expr->ty);
+		std::string ty = LLAsm::get_type_name(expr->ty);
 		(*m_ostr) << "store " << ty << " %" << expr->name << ", "<< ty << "* %" << var << "\n";
 	}
 
@@ -1944,14 +1945,14 @@ t_astret LLAsm::visit(const ASTComp* ast)
 				default:
 				{
 					throw std::runtime_error("ASTComp: Invalid comparison between variables of type "
-						+ get_type_name(ty) + ".");
+						+ LLAsm::get_type_name(ty) + ".");
 					break;
 				}
 			}
 
 			t_astret var = get_tmp_var(SymbolType::INT);
 			(*m_ostr) << "%" << var->name << " = " << cmpop << " " << op << " "
-				<< get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
+				<< LLAsm::get_type_name(ty) << " %" << term1->name << ", %" << term2->name << "\n";
 			return var;
 		}
 	}
