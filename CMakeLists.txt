@@ -21,7 +21,7 @@ add_definitions(${Boost_CXX_FLAGS})
 include_directories(
 	"${PROJECT_SOURCE_DIR}"
 	"${PROJECT_SOURCE_DIR}/src"
-	"${Boost_INCLUDE_DIRS}/.."
+	"${FLEX_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}" "${Boost_INCLUDE_DIRS}/.."
 	"${CMAKE_CURRENT_BINARY_DIR}"
 )
 
@@ -50,7 +50,9 @@ message("Bison output header: ${BISON_parser_impl_OUTPUT_HEADER}")
 
 
 add_executable(mcalc
-	src/parser.cpp src/parser.h src/ast.h src/sym.h src/llasm.cpp src/llasm.h
+	src/parser.cpp src/parser.h src/ast.h src/sym.h
+	src/llasm.cpp src/llasm.h
+	src/printast.cpp src/printast.h
 	${FLEX_lexer_impl_OUTPUTS}
 	${BISON_parser_impl_OUTPUT_SOURCE} ${BISON_parser_impl_OUTPUT_HEADER}
 )

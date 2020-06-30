@@ -35,8 +35,8 @@ namespace yy
 		std::size_t m_curline = 1;
 
 	public:
-		Lexer() : yyFlexLexer(std::cin, std::cerr) {}
-		Lexer(std::istream& istr) : yyFlexLexer(istr, std::cerr) {}
+		Lexer() : yyFlexLexer{std::cin, std::cerr} {}
+		Lexer(std::istream& istr) : yyFlexLexer{istr, std::cerr} {}
 		virtual ~Lexer() = default;
 
 		virtual yy::Parser::symbol_type yylex(yy::ParserContext& context) /*override*/;

@@ -8,6 +8,7 @@
 #include "ast.h"
 #include "parser.h"
 #include "llasm.h"
+#include "printast.h"
 
 #include <fstream>
 #include <boost/program_options.hpp>
@@ -75,6 +76,7 @@ int main(int argc, char** argv)
 		bool interpret = false;
 		bool optimise = false;
 		bool show_symbols = false;
+		bool show_ast = false;
 		std::string outprog;
 
 		args::options_description arg_descr("Compiler arguments");
@@ -83,6 +85,7 @@ int main(int argc, char** argv)
 			("optimise,O", args::bool_switch(&optimise), "optimise program")
 			("interpret,i", args::bool_switch(&interpret), "directly run program in interpreter")
 			("symbols,s", args::bool_switch(&show_symbols), "print symbol table")
+			("ast,a", args::bool_switch(&show_ast), "print syntax tree")
 			("program", args::value<decltype(vecProgs)>(&vecProgs), "input program to compile");
 
 		args::positional_options_description posarg_descr;
@@ -122,6 +125,9 @@ int main(int argc, char** argv)
 			outprog = "out";
 			std::cerr << "No program output specified, using \"" << outprog << "\"." << std::endl;
 		}
+
+		std::string outprog_ast = outprog + "_ast.xml";
+		std::string outprog_syms = outprog + "_syms.txt";
 
 		std::string outprog_3ac = outprog + ".asm";
 		std::string outprog_3ac_opt = outprog + "_opt.asm";
@@ -182,8 +188,28 @@ int main(int argc, char** argv)
 
 		if(show_symbols)
 		{
-			std::cout << "\nSymbol table:\n";
-			std::cout << ctx.GetSymbols() << std::endl;
+			std::cout << "Writing symbol table to \"" << outprog_syms << "\"..." << std::endl;
+
+			std::ofstream ostrSyms{outprog_syms};
+			//ostrSyms << "\nSymbol table:\n";
+			ostrSyms << ctx.GetSymbols() << std::endl;
+		}
+
+		if(show_ast)
+		{
+			std::cout << "Writing AST to \"" << outprog_ast << "\"..." << std::endl;
+
+			std::ofstream ostrAST{outprog_ast};
+			ASTPrinter printer{&ostrAST};
+
+			ostrAST << "<ast>\n";
+			auto stmts = ctx.GetStatements()->GetStatementList();
+			for(auto iter=stmts.rbegin(); iter!=stmts.rend(); ++iter)
+			{
+				(*iter)->accept(&printer);
+				ostrAST << "\n\n";
+			}
+			ostrAST << "</ast>" << std::endl;
 		}
 		// --------------------------------------------------------------------
 

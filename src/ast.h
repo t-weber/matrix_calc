@@ -312,15 +312,8 @@ public:
 		: vars{}, optAssign{optAssign}
 	{}
 
-	void AddVariable(const std::string& var)
-	{
-		vars.push_front(var);
-	}
-
-	const std::list<std::string>& GetVariables() const
-	{
-		return vars;
-	}
+	void AddVariable(const std::string& var) { vars.push_front(var); }
+	const std::list<std::string>& GetVariables() const { return vars; }
 
 	const std::shared_ptr<ASTAssign> GetAssignment() const { return optAssign; }
 
