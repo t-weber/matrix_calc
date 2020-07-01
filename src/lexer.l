@@ -79,4 +79,11 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 	std::string str{yytext+1, yytext+yyleng-1};
 	return yy::Parser::make_STRING(str); }
 
+. {
+	std::string err = "Unknown token: \"";
+	err += yytext;
+	err += "\".";
+
+	LexerError(err.c_str());
+}
 %%
