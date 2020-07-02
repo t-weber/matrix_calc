@@ -1,2 +1,2 @@
 # matrix_calc
-A simple compiler for matrix calculations.
+A simple native compiler for linear algebra calculations.
