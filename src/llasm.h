@@ -74,6 +74,11 @@ protected:
 	static std::string get_type_name(SymbolType ty);
 
 	/**
+	 * get the (static) byte size of a symbol
+	 */
+	static std::size_t get_bytesize(t_astret sym);
+
+	/**
 	 * find the symbol with a specific name in the symbol table
 	 */
 	t_astret get_sym(const std::string& name) const;

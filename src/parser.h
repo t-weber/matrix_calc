@@ -26,6 +26,8 @@
 
 namespace yy
 {
+	class ParserContext;
+
 	/**
 	 * lexer
 	 */
@@ -34,18 +36,25 @@ namespace yy
 	private:
 		std::size_t m_curline = 1;
 
+	protected:
+		ParserContext* m_context = nullptr;
+
 	public:
 		Lexer() : yyFlexLexer{std::cin, std::cerr} {}
-		Lexer(std::istream& istr) : yyFlexLexer{istr, std::cerr} {}
+		Lexer(ParserContext* context, std::istream& istr)
+			: yyFlexLexer{istr, std::cerr}, m_context(context) {}
 		virtual ~Lexer() = default;
 
-		virtual yy::Parser::symbol_type yylex(yy::ParserContext& context) /*override*/;
+		virtual yy::Parser::symbol_type lex();
 
 		virtual void LexerOutput(const char* str, int len) override;
 		virtual void LexerError(const char* err) override;
 
 		void IncCurLine() { ++m_curline; }
 		std::size_t GetCurLine() const { return m_curline; }
+
+	private:
+		virtual int yylex() final { return -1; }
 	};
 
 
@@ -70,7 +79,7 @@ namespace yy
 		std::array<std::size_t, 2> m_symdims = {0, 0};
 
 	public:
-		ParserContext(std::istream& istr = std::cin) : m_lex{istr}, m_statements{}
+		ParserContext(std::istream& istr = std::cin) : m_lex{this, istr}, m_statements{}
 		{}
 
 		yy::Lexer& GetLexer() { return m_lex; }
@@ -165,7 +174,7 @@ namespace yy
 
 // yylex definition for lexer
 #undef YY_DECL
-#define YY_DECL yy::Parser::symbol_type yy::Lexer::yylex(yy::ParserContext&)
+#define YY_DECL yy::Parser::symbol_type yy::Lexer::lex()
 
 // yylex function which the parser calls
 extern yy::Parser::symbol_type yylex(yy::ParserContext &context);

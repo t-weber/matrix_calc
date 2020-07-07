@@ -1,0 +1,21 @@
+func (int, int) fac(int n)
+{
+	if n<= 1 then
+		ret 1, 1;
+
+	int prevn, prevfac;
+	assign prevn, prevfac = fac(n-1);
+	ret n, n*prevfac;
+}
+
+
+func start()
+{
+	loop 1==1 do
+	{
+		int n = getint("n = ");
+		int num, val;
+		assign num, val = fac(n);
+		putstr(num + "! = " + val);
+	}
+}

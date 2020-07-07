@@ -15,17 +15,23 @@
 #include <iostream>
 
 
+struct Symbol;
+using SymbolPtr = std::shared_ptr<Symbol>;
+
+
 enum class SymbolType
 {
 	SCALAR,
 	VECTOR,
 	MATRIX,
-
 	STRING,
 	INT,
 	VOID,
 
-	FUNC,
+	COMP,	// compound
+	FUNC,	// function pointer
+
+	UNKNOWN,
 };
 
 
@@ -39,6 +45,9 @@ struct Symbol
 	std::vector<SymbolType> argty{{}};
 	SymbolType retty = SymbolType::VOID;
 	std::array<std::size_t, 2> retdims{{0,0}};
+
+	// for compound type
+	std::vector<SymbolPtr> elems{};
 
 	bool tmp = false;		// temporary or declared variable?
 	bool on_heap = false;	// heap or stack variable?
@@ -57,10 +66,13 @@ struct Symbol
 			case SymbolType::STRING: return "str";
 			case SymbolType::INT: return "int";
 			case SymbolType::VOID: return "void";
-			case SymbolType::FUNC: return "func";	// TODO: function pointers
+			case SymbolType::COMP: return "comp";
+			case SymbolType::FUNC: return "func";
+
+			case SymbolType::UNKNOWN: return "unknown";
 		}
 
-		return "unknown";
+		return "invalid";
 	}
 };
 
@@ -71,9 +83,10 @@ public:
 	const Symbol* AddSymbol(const std::string& name_with_scope,
 		const std::string& name, SymbolType ty,
 		const std::array<std::size_t, 2>& dims,
-		bool is_temp=false, bool on_heap=false)
+		bool is_temp = false, bool on_heap = false)
 	{
-		Symbol sym{.name = name, .ty = ty, .dims=dims, .tmp = is_temp, .on_heap=on_heap};
+		Symbol sym{.name = name, .ty = ty, .dims = dims,
+			.elems = {}, .tmp = is_temp, .on_heap = on_heap};
 		auto pair = m_syms.insert_or_assign(name_with_scope, sym);
 		return &pair.first->second;
 	}

@@ -77,6 +77,7 @@ enum class ASTType
 };
 
 
+using ASTPtr = std::shared_ptr<AST>;
 using t_astret = const Symbol*;
 
 
@@ -136,37 +137,37 @@ public:
 class ASTUMinus : public AST
 {
 public:
-	ASTUMinus(std::shared_ptr<AST> term)
+	ASTUMinus(ASTPtr term)
 	: term{term}
 	{}
 
-	const std::shared_ptr<AST> GetTerm() const { return term; }
+	const ASTPtr GetTerm() const { return term; }
 
 	virtual ASTType type() override { return ASTType::UMinus; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term;
+	ASTPtr term;
 };
 
 
 class ASTPlus : public AST
 {
 public:
-	ASTPlus(std::shared_ptr<AST> term1, std::shared_ptr<AST> term2,
+	ASTPlus(ASTPtr term1, ASTPtr term2,
 		bool invert = 0)
 		: term1{term1}, term2{term2}, inverted{invert}
 	{}
 
-	const std::shared_ptr<AST> GetTerm1() const { return term1; }
-	const std::shared_ptr<AST> GetTerm2() const { return term2; }
+	const ASTPtr GetTerm1() const { return term1; }
+	const ASTPtr GetTerm2() const { return term2; }
 	bool IsInverted() const { return inverted; }
 
 	virtual ASTType type() override { return ASTType::Plus; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term1, term2;
+	ASTPtr term1, term2;
 	bool inverted = 0;
 };
 
@@ -174,20 +175,20 @@ private:
 class ASTMult : public AST
 {
 public:
-	ASTMult(std::shared_ptr<AST> term1, std::shared_ptr<AST> term2,
+	ASTMult(ASTPtr term1, ASTPtr term2,
 		bool invert = 0)
 		: term1{term1}, term2{term2}, inverted{invert}
 	{}
 
-	const std::shared_ptr<AST> GetTerm1() const { return term1; }
-	const std::shared_ptr<AST> GetTerm2() const { return term2; }
+	const ASTPtr GetTerm1() const { return term1; }
+	const ASTPtr GetTerm2() const { return term2; }
 	bool IsInverted() const { return inverted; }
 
 	virtual ASTType type() override { return ASTType::Mult; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term1, term2;
+	ASTPtr term1, term2;
 	bool inverted = 0;
 };
 
@@ -195,68 +196,68 @@ private:
 class ASTMod : public AST
 {
 public:
-	ASTMod(std::shared_ptr<AST> term1, std::shared_ptr<AST> term2)
+	ASTMod(ASTPtr term1, ASTPtr term2)
 		: term1{term1}, term2{term2}
 	{}
 
-	const std::shared_ptr<AST> GetTerm1() const { return term1; }
-	const std::shared_ptr<AST> GetTerm2() const { return term2; }
+	const ASTPtr GetTerm1() const { return term1; }
+	const ASTPtr GetTerm2() const { return term2; }
 
 	virtual ASTType type() override { return ASTType::Mod; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term1, term2;
+	ASTPtr term1, term2;
 };
 
 
 class ASTPow : public AST
 {
 public:
-	ASTPow(std::shared_ptr<AST> term1, std::shared_ptr<AST> term2)
+	ASTPow(ASTPtr term1, ASTPtr term2)
 		: term1{term1}, term2{term2}
 	{}
 
-	const std::shared_ptr<AST> GetTerm1() const { return term1; }
-	const std::shared_ptr<AST> GetTerm2() const { return term2; }
+	const ASTPtr GetTerm1() const { return term1; }
+	const ASTPtr GetTerm2() const { return term2; }
 
 	virtual ASTType type() override { return ASTType::Pow; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term1, term2;
+	ASTPtr term1, term2;
 };
 
 
 class ASTTransp : public AST
 {
 public:
-	ASTTransp(std::shared_ptr<AST> term) : term{term}
+	ASTTransp(ASTPtr term) : term{term}
 	{}
 
-	const std::shared_ptr<AST> GetTerm() const { return term; }
+	const ASTPtr GetTerm() const { return term; }
 
 	virtual ASTType type() override { return ASTType::Transp; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term;
+	ASTPtr term;
 };
 
 
 class ASTNorm : public AST
 {
 public:
-	ASTNorm(std::shared_ptr<AST> term) : term{term}
+	ASTNorm(ASTPtr term) : term{term}
 	{}
 
-	const std::shared_ptr<AST> GetTerm() const { return term; }
+	const ASTPtr GetTerm() const { return term; }
 
 	virtual ASTType type() override { return ASTType::Norm; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term;
+	ASTPtr term;
 };
 
 
@@ -283,12 +284,12 @@ public:
 	ASTStmts() : stmts{}
 	{}
 
-	void AddStatement(std::shared_ptr<AST> stmt)
+	void AddStatement(ASTPtr stmt)
 	{
 		stmts.push_front(stmt);
 	}
 
-	const std::list<std::shared_ptr<AST>>& GetStatementList() const
+	const std::list<ASTPtr>& GetStatementList() const
 	{
 		return stmts;
 	}
@@ -297,7 +298,7 @@ public:
 	ASTVISITOR_ACCEPT
 
 private:
-	std::list<std::shared_ptr<AST>> stmts;
+	std::list<ASTPtr> stmts;
 };
 
 
@@ -334,7 +335,9 @@ public:
 	ASTArgNames() : argnames{}
 	{}
 
-	void AddArg(const std::string& argname, SymbolType ty, std::size_t dim1=0, std::size_t dim2=0)
+	void AddArg(const std::string& argname,
+		SymbolType ty=SymbolType::UNKNOWN, 
+		std::size_t dim1=0, std::size_t dim2=0)
 	{
 		argnames.push_front(std::make_tuple(argname, ty, dim1, dim2));
 	}
@@ -342,6 +345,14 @@ public:
 	const std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>>& GetArgs() const
 	{
 		return argnames;
+	}
+
+	std::vector<std::string> GetArgIdents() const
+	{
+		std::vector<std::string> idents;
+		for(const auto& arg : argnames)
+			idents.push_back(std::get<0>(arg));
+		return idents;
 	}
 
 	std::vector<SymbolType> GetArgTypes() const
@@ -394,15 +405,23 @@ class ASTFunc : public AST
 {
 public:
 	ASTFunc(const std::string& ident, std::shared_ptr<ASTTypeDecl>& rettype,
-		std::shared_ptr<ASTArgNames>& args, std::shared_ptr<ASTStmts> stmts)
-		: ident{ident}, rettype{rettype->GetRet()}, argnames{args->GetArgs()}, stmts{stmts}
-	{}
+		std::shared_ptr<ASTArgNames> args, std::shared_ptr<ASTStmts> stmts,
+		std::shared_ptr<ASTArgNames> rets = nullptr)
+		: ident{ident}, rettype{rettype->GetRet()}, args{args->GetArgs()},
+			stmts{stmts}, rets{}
+	{
+		if(rets)
+			this->rets = rets->GetArgs();
+	}
 
 	const std::string& GetIdent() const { return ident; }
 	std::tuple<SymbolType, std::size_t, std::size_t> GetRetType() const { return rettype; }
 
 	const std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>>&
-	GetArgNames() const { return argnames; }
+	GetArgs() const { return args; }
+
+	const std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>>&
+	GetRets() const { return rets; }
 
 	const std::shared_ptr<ASTStmts> GetStatements() const { return stmts; }
 
@@ -412,27 +431,30 @@ public:
 private:
 	std::string ident;
 	std::tuple<SymbolType, std::size_t, std::size_t> rettype;
-	std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>> argnames;
+	std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>> args;
 	std::shared_ptr<ASTStmts> stmts;
+	std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>> rets;
 };
 
 
 class ASTReturn : public AST
 {
 public:
-	ASTReturn(std::shared_ptr<AST> term)
-		: term{term}
-	{}
-	ASTReturn()
+	ASTReturn(const std::shared_ptr<ASTExprList>& rets = nullptr, 
+		bool multi_return=false)
+		: rets{rets}, multi_return{multi_return}
 	{}
 
-	const std::shared_ptr<AST> GetTerm() const { return term; }
+	const std::shared_ptr<ASTExprList> GetRets() const { return rets; }
+
+	bool IsMultiReturn() const { return multi_return; }
 
 	virtual ASTType type() override { return ASTType::Return; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term;
+	std::shared_ptr<ASTExprList> rets;
+	bool multi_return = false;
 };
 
 
@@ -442,21 +464,35 @@ public:
 	ASTExprList()
 	{}
 
-	void AddExpr(std::shared_ptr<AST> expr)
+	void AddExpr(ASTPtr expr)
 	{
 		exprs.push_front(expr);
 	}
 
-	const std::list<std::shared_ptr<AST>>& GetList() const
+	const std::list<ASTPtr>& GetList() const
 	{
 		return exprs;
+	}
+	
+	/**
+	 * specialised use as an array of scalars
+	 */
+	void SetScalarArray(bool b)
+	{
+		m_scalararray = b;
+	}
+	
+	bool IsScalarArray() const
+	{
+		return m_scalararray;
 	}
 
 	virtual ASTType type() override { return ASTType::ExprList; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::list<std::shared_ptr<AST>> exprs;
+	std::list<ASTPtr> exprs;
+	bool m_scalararray = false;
 };
 
 
@@ -472,7 +508,7 @@ public:
 	{}
 
 	const std::string& GetIdent() const { return ident; }
-	const std::list<std::shared_ptr<AST>>& GetArgumentList() const { return args->GetList(); }
+	const std::list<ASTPtr>& GetArgumentList() const { return args->GetList(); }
 
 	virtual ASTType type() override { return ASTType::Call; }
 	ASTVISITOR_ACCEPT
@@ -486,19 +522,26 @@ private:
 class ASTAssign : public AST
 {
 public:
-	ASTAssign(const std::string& ident, std::shared_ptr<AST> expr)
-		: ident{ident}, expr{expr}
+	ASTAssign(const std::string& ident, ASTPtr expr)
+		: idents{{ident}}, expr{expr}
 	{}
 
-	const std::string& GetIdent() const { return ident; }
-	const std::shared_ptr<AST> GetExpr() const { return expr; }
+	ASTAssign(const std::vector<std::string>& idents, ASTPtr expr)
+		: idents{idents}, expr{expr}
+	{}
+
+	const std::vector<std::string>& GetIdents() const { return idents; }
+	const std::string& GetIdent() const { return GetIdents()[0]; }
+	const ASTPtr GetExpr() const { return expr; }
+
+	bool IsMultiAssign() const { return idents.size() > 1; }
 
 	virtual ASTType type() override { return ASTType::Assign; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::string ident;
-	std::shared_ptr<AST> expr;
+	std::vector<std::string> idents;
+	ASTPtr expr;
 };
 
 
@@ -512,23 +555,23 @@ public:
 	};
 
 public:
-	ASTComp(std::shared_ptr<AST> term1, std::shared_ptr<AST> term2, CompOp op)
+	ASTComp(ASTPtr term1, ASTPtr term2, CompOp op)
 		: term1{term1}, term2{term2}, op{op}
 	{}
 
-	ASTComp(std::shared_ptr<AST> term1, CompOp op)
+	ASTComp(ASTPtr term1, CompOp op)
 		: term1{term1}, term2{nullptr}, op{op}
 	{}
 
-	const std::shared_ptr<AST> GetTerm1() const { return term1; }
-	const std::shared_ptr<AST> GetTerm2() const { return term2; }
+	const ASTPtr GetTerm1() const { return term1; }
+	const ASTPtr GetTerm2() const { return term2; }
 	CompOp GetOp() const { return op; }
 
 	virtual ASTType type() override { return ASTType::Comp; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term1, term2;
+	ASTPtr term1, term2;
 	CompOp op;
 };
 
@@ -543,23 +586,23 @@ public:
 	};
 
 public:
-	ASTBool(std::shared_ptr<AST> term1, std::shared_ptr<AST> term2, BoolOp op)
+	ASTBool(ASTPtr term1, ASTPtr term2, BoolOp op)
 		: term1{term1}, term2{term2}, op{op}
 	{}
 
-	ASTBool(std::shared_ptr<AST> term1, BoolOp op)
+	ASTBool(ASTPtr term1, BoolOp op)
 		: term1{term1}, term2{nullptr}, op{op}
 	{}
 
-	const std::shared_ptr<AST> GetTerm1() const { return term1; }
-	const std::shared_ptr<AST> GetTerm2() const { return term2; }
+	const ASTPtr GetTerm1() const { return term1; }
+	const ASTPtr GetTerm2() const { return term2; }
 	BoolOp GetOp() const { return op; }
 
 	virtual ASTType type() override { return ASTType::Bool; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term1, term2;
+	ASTPtr term1, term2;
 	BoolOp op;
 };
 
@@ -567,87 +610,87 @@ private:
 class ASTCond : public AST
 {
 public:
-	ASTCond(const std::shared_ptr<AST> cond, std::shared_ptr<AST> if_stmt)
+	ASTCond(const ASTPtr cond, ASTPtr if_stmt)
 		: cond{cond}, if_stmt{if_stmt}
 	{}
-	ASTCond(const std::shared_ptr<AST> cond, std::shared_ptr<AST> if_stmt, std::shared_ptr<AST> else_stmt)
+	ASTCond(const ASTPtr cond, ASTPtr if_stmt, ASTPtr else_stmt)
 		: cond{cond}, if_stmt{if_stmt}, else_stmt{else_stmt}
 	{}
 
-	const std::shared_ptr<AST> GetCond() const { return cond; }
-	const std::shared_ptr<AST> GetIf() const { return if_stmt; }
-	const std::shared_ptr<AST> GetElse() const { return else_stmt; }
+	const ASTPtr GetCond() const { return cond; }
+	const ASTPtr GetIf() const { return if_stmt; }
+	const ASTPtr GetElse() const { return else_stmt; }
 	bool HasElse() const { return else_stmt != nullptr; }
 
 	virtual ASTType type() override { return ASTType::Cond; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> cond;
-	std::shared_ptr<AST> if_stmt, else_stmt;
+	ASTPtr cond;
+	ASTPtr if_stmt, else_stmt;
 };
 
 
 class ASTLoop : public AST
 {
 public:
-	ASTLoop(const std::shared_ptr<AST> cond, std::shared_ptr<AST> stmt)
+	ASTLoop(const ASTPtr cond, ASTPtr stmt)
 		: cond{cond}, stmt{stmt}
 	{}
 
-	const std::shared_ptr<AST> GetCond() const { return cond; }
-	const std::shared_ptr<AST> GetLoopStmt() const { return stmt; }
+	const ASTPtr GetCond() const { return cond; }
+	const ASTPtr GetLoopStmt() const { return stmt; }
 
 	virtual ASTType type() override { return ASTType::Loop; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> cond, stmt;
+	ASTPtr cond, stmt;
 };
 
 
 class ASTArrayAccess : public AST
 {
 public:
-	ASTArrayAccess(std::shared_ptr<AST> term,
-		std::shared_ptr<AST> num1, std::shared_ptr<AST> num2 = nullptr)
+	ASTArrayAccess(ASTPtr term,
+		ASTPtr num1, ASTPtr num2 = nullptr)
 	: term{term}, num1{num1}, num2{num2}
 	{}
 
-	const std::shared_ptr<AST> GetTerm() const { return term; }
-	const std::shared_ptr<AST> GetNum1() const { return num1; }
-	const std::shared_ptr<AST> GetNum2() const { return num2; }
+	const ASTPtr GetTerm() const { return term; }
+	const ASTPtr GetNum1() const { return num1; }
+	const ASTPtr GetNum2() const { return num2; }
 
 	virtual ASTType type() override { return ASTType::ArrayAccess; }
 	ASTVISITOR_ACCEPT
 
 private:
-	std::shared_ptr<AST> term;
-	std::shared_ptr<AST> num1, num2;
+	ASTPtr term;
+	ASTPtr num1, num2;
 };
 
 
 class ASTArrayAssign : public AST
 {
 public:
-	ASTArrayAssign(const std::string& ident, std::shared_ptr<AST> expr,
-		std::shared_ptr<AST> num1, std::shared_ptr<AST> num2 = nullptr
+	ASTArrayAssign(const std::string& ident, ASTPtr expr,
+		ASTPtr num1, ASTPtr num2 = nullptr
 	)
 		: ident{ident}, expr{expr}, num1{num1}, num2{num2}
 	{}
 
 	const std::string& GetIdent() const { return ident; }
-	const std::shared_ptr<AST> GetExpr() const { return expr; }
-	const std::shared_ptr<AST> GetNum1() const { return num1; }
-	const std::shared_ptr<AST> GetNum2() const { return num2; }
+	const ASTPtr GetExpr() const { return expr; }
+	const ASTPtr GetNum1() const { return num1; }
+	const ASTPtr GetNum2() const { return num2; }
 
 	virtual ASTType type() override { return ASTType::ArrayAssign; }
 	ASTVISITOR_ACCEPT
 
 private:
 	std::string ident;
-	std::shared_ptr<AST> expr;
-	std::shared_ptr<AST> num1, num2;
+	ASTPtr expr;
+	ASTPtr num1, num2;
 };
 
 

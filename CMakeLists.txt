@@ -10,11 +10,12 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+add_definitions(-Wall -Wextra)
+
 
 find_package(FLEX 2 REQUIRED)
 find_package(BISON 3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options)
-
 
 add_definitions(${Boost_CXX_FLAGS})
 

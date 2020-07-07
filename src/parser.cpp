@@ -50,7 +50,7 @@ void yy::Parser::error(const std::string& err)
  */
 extern yy::Parser::symbol_type yylex(yy::ParserContext &context)
 {
-	return context.GetLexer().yylex(context);
+	return context.GetLexer().lex();
 }
 
 
@@ -254,6 +254,7 @@ declare i32 @printf(i8*, ...)
 declare i32 @scanf(i8*, ...)
 declare i8* @memcpy(i8*, i8*, i64)
 declare i8* @malloc(i64)
+declare i8* @calloc(i64, i64)
 declare void @free(i8*)
 ; -----------------------------------------------------------------------------
 

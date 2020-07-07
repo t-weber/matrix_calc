@@ -161,16 +161,16 @@ t_astret ASTPrinter::visit(const ASTFunc* ast)
 
 	auto ret = ast->GetRetType();
 	std::string retTypeName = Symbol::get_type_name(std::get<0>(ret));
-	(*m_ostr) << "<ret type=\"" << retTypeName << "\" dim1=" << std::get<1>(ret) << " dim2=" << std::get<2>(ret);
+	(*m_ostr) << "<ret type=\"" << retTypeName << "\" dim1=\"" << std::get<1>(ret) << "\" dim2=\"" << std::get<2>(ret) << "\"";
 	(*m_ostr) << " />\n";
 
 	std::size_t argidx = 0;
-	for(const auto& arg : ast->GetArgNames())
+	for(const auto& arg : ast->GetArgs())
 	{
 		std::string argTypeName = Symbol::get_type_name(std::get<1>(arg));
 
 		(*m_ostr) << "<arg_" << argidx << " name=\"" << std::get<0>(arg) << "\"";
-		(*m_ostr) << " type=\"" << argTypeName << "\" dim1=" << std::get<2>(arg) << " dim2=" << std::get<3>(arg);
+		(*m_ostr) << " type=\"" << argTypeName << "\" dim1=\"" << std::get<2>(arg) << "\" dim2=\"" << std::get<3>(arg) << "\"";
 		(*m_ostr) << " />\n";
 		++argidx;
 	}
@@ -184,9 +184,33 @@ t_astret ASTPrinter::visit(const ASTFunc* ast)
 
 t_astret ASTPrinter::visit(const ASTReturn* ast)
 {
-	(*m_ostr) << "<Return>\n";
-	ast->GetTerm()->accept(this);
-	(*m_ostr) << "</Return>\n";
+	const auto& retvals = ast->GetRets()->GetList();
+	std::size_t numRets = retvals.size();
+	
+	if(numRets == 0)
+	{
+		(*m_ostr) << "<Return />\n";
+	}
+	else if(numRets == 1)
+	{
+		(*m_ostr) << "<Return>\n";
+		(*retvals.begin())->accept(this);
+		(*m_ostr) << "</Return>\n";
+	}
+	else if(numRets > 1)
+	{
+		(*m_ostr) << "<MultiReturn>\n";
+		std::size_t elemnr = 0;
+		for(const auto& elem : retvals)
+		{
+			(*m_ostr) << "<val_" << elemnr << ">\n";
+			elem->accept(this);
+			(*m_ostr) << "</val_" << elemnr << ">\n";
+
+			++elemnr;
+		}
+		(*m_ostr) << "</MultiReturn>\n";
+	}
 
 	return nullptr;
 }
@@ -194,9 +218,35 @@ t_astret ASTPrinter::visit(const ASTReturn* ast)
 
 t_astret ASTPrinter::visit(const ASTAssign* ast)
 {
-	(*m_ostr) << "<Assign ident=\"" << ast->GetIdent() << "\">\n";
-	ast->GetExpr()->accept(this);
-	(*m_ostr) << "</Assign>\n";
+	// multiple assignments
+	if(ast->IsMultiAssign())
+	{
+		(*m_ostr) << "<MultiAssign>\n";
+
+		const auto& idents = ast->GetIdents();
+		std::size_t identidx = 0;
+		for(const auto& ident : idents)
+		{
+			(*m_ostr) << "<ident_" << identidx << ">";
+			(*m_ostr) << ident;
+			(*m_ostr) << "</ident_" << identidx << ">\n";
+			++identidx;
+		}
+		
+		(*m_ostr) << "<rhs>\n";
+		ast->GetExpr()->accept(this);
+		(*m_ostr) << "</rhs>\n";
+
+		(*m_ostr) << "</MultiAssign>\n";
+	}
+	
+	// single assignment
+	else
+	{
+		(*m_ostr) << "<Assign ident=\"" << ast->GetIdent() << "\">\n";
+		ast->GetExpr()->accept(this);
+		(*m_ostr) << "</Assign>\n";
+	}
 
 	return nullptr;
 }

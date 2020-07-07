@@ -63,7 +63,7 @@
 %token<double> REAL
 %token<std::int64_t> INT
 %token<std::string> STRING
-%token FUNC RET
+%token FUNC RET ASSIGN
 %token SCALARDECL VECTORDECL MATRIXDECL STRINGDECL INTDECL
 %token IF THEN ELSE
 %token LOOP DO
@@ -78,6 +78,7 @@
 %type<std::shared_ptr<ASTVarDecl>> variables
 %type<std::shared_ptr<ASTArgNames>> full_argumentlist
 %type<std::shared_ptr<ASTArgNames>> argumentlist
+%type<std::shared_ptr<ASTArgNames>> identlist
 %type<std::shared_ptr<ASTArgNames>> typelist
 %type<std::shared_ptr<ASTStmts>> block
 %type<std::shared_ptr<ASTFunc>> function
@@ -107,6 +108,8 @@
 // see: https://www.gnu.org/software/bison/manual/html_node/Non-Operators.html
 %precedence IF THEN
 %precedence ELSE
+
+%precedence IDENT
 
 
 %%
@@ -145,9 +148,13 @@ statement[res]
 	: expr[term] ';'	{ $res = $term; }
 	| block[blk]		{ $res = $blk; }
 
+	// function
 	| function[func]	{ $res = $func;  }
-	| RET expr[term] ';'	{ $res = std::make_shared<ASTReturn>($term); }
-	| RET ';'		{ $res = std::make_shared<ASTReturn>(); }
+	
+	// (multiple) return(s)
+	| RET exprlist[terms] ';' {
+			$res = std::make_shared<ASTReturn>($terms);
+		}
 
 	// variable declarations
 	| SCALARDECL {
@@ -213,18 +220,16 @@ function[res]
 			context.AddFunc($ident, SymbolType::VOID, $args->GetArgTypes());
 		}
 
-	// multiple return values, TODO
+	// multiple return values
 	| FUNC '(' typelist[retargs] ')' IDENT[ident] {
 			context.EnterScope($ident);
 		}
 		'(' full_argumentlist[args] ')' block[blk] {
-			// TODO
-			//$res = std::make_shared<ASTFunc>($ident, $rettype, $args, $blk);
+			auto rettype = std::make_shared<ASTTypeDecl>(SymbolType::COMP);
+			$res = std::make_shared<ASTFunc>($ident, rettype, $args, $blk, $retargs);
 
 			context.LeaveScope($ident);
-
-			//std::array<std::size_t, 2> retdims{{$rettype->GetDim(0), $rettype->GetDim(1)}};
-			//context.AddFunc($ident, $rettype->GetType(), $args->GetArgTypes(), &retdims);
+			context.AddFunc($ident, SymbolType::COMP, $args->GetArgTypes());
 		}
 	;
 
@@ -256,6 +261,18 @@ argumentlist[res]
 	;
 
 
+identlist[res]
+	: IDENT[argname] ',' identlist[lst] {
+			$lst->AddArg($argname);
+			$res = $lst;
+		}
+	| IDENT[argname] {
+			$res = std::make_shared<ASTArgNames>();
+			$res->AddArg($argname);
+		}
+	;
+
+
 typelist[res]
 	: typedecl[ty] ',' typelist[lst] {
 			$lst->AddArg("ret", $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
@@ -269,7 +286,10 @@ typelist[res]
 
 
 exprlist[res]
-	: expr[num] ',' exprlist[lst]	{ $lst->AddExpr($num); $res = $lst; }
+	: expr[num] ',' exprlist[lst] {
+			$lst->AddExpr($num);
+			$res = $lst; 
+		}
 	| expr[num] {
 			$res = std::make_shared<ASTExprList>();
 			$res->AddExpr($num);
@@ -319,10 +339,13 @@ expr[res]
 	| REAL[num]		{ $res = std::make_shared<ASTNumConst<double>>($num); }
 	| INT[num]		{ $res = std::make_shared<ASTNumConst<std::int64_t>>($num); }
 	| STRING[str]	{ $res = std::make_shared<ASTStrConst>($str); }
-	| '[' exprlist[arr] ']'	{ $res = $arr; }
+	| '[' exprlist[arr] ']'	{	// scalar array
+			$arr->SetScalarArray(true); 
+			$res = $arr; 
+		}
 
 	// variable
-	| IDENT[ident]	{
+	| IDENT[ident] %prec IDENT	{
 			// does the identifier name a constant?
 			auto pair = context.GetConst($ident);
 			if(std::get<0>(pair))
@@ -389,9 +412,13 @@ expr[res]
 		$res = std::make_shared<ASTCall>($ident, $args);
 	}
 
-	// assignment
-	| IDENT[ident] '=' expr[term]	{ $res = std::make_shared<ASTAssign>($ident, $term); }
-
+	// (multiple) assignments
+	| IDENT[ident] '=' expr[term] %prec '=' {
+			$res = std::make_shared<ASTAssign>($ident, $term);
+		}
+	| ASSIGN identlist[idents] '=' expr[term] %prec '=' {
+			$res = std::make_shared<ASTAssign>($idents->GetArgIdents(), $term);
+		}
 	;
 
 
