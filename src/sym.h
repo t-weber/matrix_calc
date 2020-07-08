@@ -47,6 +47,7 @@ struct Symbol
 	std::array<std::size_t, 2> retdims{{0,0}};
 
 	// for compound type
+	//const Symbol *memblock = nullptr;
 	std::vector<SymbolPtr> elems{};
 
 	bool tmp = false;		// temporary or declared variable?
@@ -86,7 +87,8 @@ public:
 		bool is_temp = false, bool on_heap = false)
 	{
 		Symbol sym{.name = name, .ty = ty, .dims = dims,
-			.elems = {}, .tmp = is_temp, .on_heap = on_heap};
+			/*.memblock = nullptr,*/ .elems = {}, 
+			.tmp = is_temp, .on_heap = on_heap};
 		auto pair = m_syms.insert_or_assign(name_with_scope, sym);
 		return &pair.first->second;
 	}
@@ -95,11 +97,21 @@ public:
 	const Symbol* AddFunc(const std::string& name_with_scope,
 		const std::string& name, SymbolType retty,
 		const std::vector<SymbolType>& argtypes,
-		const std::array<std::size_t, 2>* retdims = nullptr)
+		const std::array<std::size_t, 2>* retdims = nullptr,
+		const std::vector<SymbolType>* multirettypes = nullptr)
 	{
 		Symbol sym{.name = name, .ty = SymbolType::FUNC, .argty = argtypes, .retty = retty};
 		if(retdims)
 			sym.retdims = *retdims;
+		if(multirettypes)
+		{
+			for(SymbolType ty : *multirettypes)
+			{
+				auto retsym = std::make_shared<Symbol>();
+				retsym->ty = ty;
+				sym.elems.emplace_back(retsym);
+			}
+		}
 		auto pair = m_syms.insert_or_assign(name_with_scope, sym);
 		return &pair.first->second;
 	}

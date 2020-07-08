@@ -95,19 +95,26 @@ protected:
 	template<class t_funcCond, class t_funcBody, class t_funcElseBody>
 	void generate_cond(t_funcCond funcCond, t_funcBody funcBody, t_funcElseBody funcElseBody, bool hasElse=0);
 
-
 	/**
 	 * generates loop code
 	 */
 	template<class t_funcCond, class t_funcBody>
 	void generate_loop(t_funcCond funcCond, t_funcBody funcBody);
 
-
 	/**
 	 * generates loop code with managed counter
 	 */
 	template<class t_funcBody>
 	void generate_loop(std::int64_t start, std::int64_t end, t_funcBody funcBody);
+
+
+	t_astret cp_comp_mem(t_astret sym, t_astret mem);
+	t_astret cp_vec_mem(t_astret sym, t_astret mem=nullptr);
+	t_astret cp_str_mem(t_astret sym, t_astret mem=nullptr);
+
+	t_astret cp_mem_comp(t_astret mem, t_astret sym);
+	t_astret cp_mem_vec(t_astret mem, t_astret sym, bool alloc_sym=true);
+	t_astret cp_mem_str(t_astret mem, t_astret sym, bool alloc_sym=true);
 
 
 private:

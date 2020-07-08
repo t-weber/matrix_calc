@@ -114,28 +114,43 @@
 
 %%
 // non-terminals / grammar
+
+/**
+ * program start symbol
+ */
 program
 	: statements[stmts]		{ context.SetStatements($stmts); }
 	;
 
 
+/**
+ * a list of statements
+ */
 statements[res]
 	: statement[stmt] statements[lst]	{ $lst->AddStatement($stmt); $res = $lst; }
 	| /* epsilon */			{ $res = std::make_shared<ASTStmts>(); }
 	;
 
 
+/**
+ * variables
+ */
 variables[res]
+	// several variables
 	: IDENT[name] ',' variables[lst] {
 			std::string symName = context.AddSymbol($name);
 			$lst->AddVariable(symName);
 			$res = $lst;
 		}
+	
+	// a variable
 	| IDENT[name] {
 			std::string symName = context.AddSymbol($name);
 			$res = std::make_shared<ASTVarDecl>();
 			$res->AddVariable(symName);
 		}
+	
+	// a variable with an assignment
 	| IDENT[name] '=' expr[term] {
 			std::string symName = context.AddSymbol($name);
 			$res = std::make_shared<ASTVarDecl>(std::make_shared<ASTAssign>($name, $term));
@@ -144,6 +159,9 @@ variables[res]
 	;
 
 
+/**
+ * statement
+ */
 statement[res]
 	: expr[term] ';'	{ $res = $term; }
 	| block[blk]		{ $res = $blk; }
@@ -157,10 +175,13 @@ statement[res]
 		}
 
 	// variable declarations
+	// scalar / double
 	| SCALARDECL {
 			context.SetSymType(SymbolType::SCALAR);
 		}
 		variables[vars] ';'	{ $res = $vars; }
+
+	// vector
 	| VECTORDECL INT[dim] {
 			context.SetSymType(SymbolType::VECTOR);
 			context.SetSymDims(std::size_t($dim));
@@ -168,6 +189,8 @@ statement[res]
 		variables[vars] ';' {
 			$res = $vars;
 		}
+
+	// matrix
 	| MATRIXDECL INT[dim1] INT[dim2] {
 			context.SetSymType(SymbolType::MATRIX);
 			context.SetSymDims(std::size_t($dim1), std::size_t($dim2));
@@ -175,26 +198,42 @@ statement[res]
 		variables[vars] ';' {
 			$res = $vars;
 		}
+
+	// string with default size
 	| STRINGDECL {
 			context.SetSymType(SymbolType::STRING);
 			context.SetSymDims(std::size_t(DEFAULT_STRING_SIZE));
 		}
 		variables[vars] ';'	{ $res = $vars; }
+
+	// string with a given (static) size
+	| STRINGDECL INT[dim] {
+			context.SetSymType(SymbolType::STRING);
+			context.SetSymDims(std::size_t(std::size_t($dim)));
+		}
+		variables[vars] ';'	{ $res = $vars; }
+
+	// int
 	| INTDECL {
 			context.SetSymType(SymbolType::INT);
 		}
 		variables[vars] ';'	{ $res = $vars; }
 
+	// conditional
 	| IF expr[cond] THEN statement[if_stmt] {
 		$res = std::make_shared<ASTCond>($cond, $if_stmt); }
 	| IF expr[cond] THEN statement[if_stmt] ELSE statement[else_stmt] {
 		$res = std::make_shared<ASTCond>($cond, $if_stmt, $else_stmt); }
 
+	// loop
 	| LOOP expr[cond] DO statement[stmt] {
 		$res = std::make_shared<ASTLoop>($cond, $stmt); }
 	;
 
 
+/**
+ * function
+ */
 function[res]
 	// single return value
 	: FUNC typedecl[rettype] IDENT[ident] {
@@ -229,17 +268,48 @@ function[res]
 			$res = std::make_shared<ASTFunc>($ident, rettype, $args, $blk, $retargs);
 
 			context.LeaveScope($ident);
-			context.AddFunc($ident, SymbolType::COMP, $args->GetArgTypes());
+			
+			std::vector<SymbolType> multirettypes = $retargs->GetArgTypes();
+			context.AddFunc($ident, SymbolType::COMP, $args->GetArgTypes(), 
+				nullptr, true, &multirettypes);
 		}
 	;
 
 
+/**
+ * declaration of variables
+ */
 typedecl[res]
-	: SCALARDECL	{ $res = std::make_shared<ASTTypeDecl>(SymbolType::SCALAR); }
-	| VECTORDECL INT[dim]	{ $res = std::make_shared<ASTTypeDecl>(SymbolType::VECTOR, $dim); }
-	| MATRIXDECL INT[dim1] INT[dim2]	{ $res = std::make_shared<ASTTypeDecl>(SymbolType::MATRIX, $dim1, $dim2); }
-	| STRINGDECL	{ $res = std::make_shared<ASTTypeDecl>(SymbolType::STRING, DEFAULT_STRING_SIZE); }
-	| INTDECL		{ $res = std::make_shared<ASTTypeDecl>(SymbolType::INT); }
+	// scalars
+	: SCALARDECL {
+		$res = std::make_shared<ASTTypeDecl>(SymbolType::SCALAR);
+	}
+	
+	// vectors
+	| VECTORDECL INT[dim] {
+		$res = std::make_shared<ASTTypeDecl>(SymbolType::VECTOR, $dim);
+	}
+	
+	// matrices
+	| MATRIXDECL INT[dim1] INT[dim2] 
+	{ 
+		$res = std::make_shared<ASTTypeDecl>(SymbolType::MATRIX, $dim1, $dim2);
+	}
+	
+	// strings with default size
+	| STRINGDECL { 
+		$res = std::make_shared<ASTTypeDecl>(SymbolType::STRING, DEFAULT_STRING_SIZE);
+	}
+
+	// strings with given size
+	| STRINGDECL INT[dim] { 
+		$res = std::make_shared<ASTTypeDecl>(SymbolType::STRING, $dim);
+	}
+
+	// ints
+	| INTDECL { 
+		$res = std::make_shared<ASTTypeDecl>(SymbolType::INT); 
+	}
 	;
 
 
@@ -249,6 +319,9 @@ full_argumentlist[res]
 	;
 
 
+/**
+ * a comma-separated list of type names and variable identifiers
+ */
 argumentlist[res]
 	: typedecl[ty] IDENT[argname] ',' argumentlist[lst] {
 			$lst->AddArg($argname, $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
@@ -261,6 +334,9 @@ argumentlist[res]
 	;
 
 
+/**
+ * a comma-separated list of variable identifiers
+ */
 identlist[res]
 	: IDENT[argname] ',' identlist[lst] {
 			$lst->AddArg($argname);
@@ -273,6 +349,9 @@ identlist[res]
 	;
 
 
+/**
+ * a comma-separated list of type names
+ */
 typelist[res]
 	: typedecl[ty] ',' typelist[lst] {
 			$lst->AddArg("ret", $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
@@ -285,6 +364,9 @@ typelist[res]
 	;
 
 
+/**
+ * a comma-separated list of expressions
+ */
 exprlist[res]
 	: expr[num] ',' exprlist[lst] {
 			$lst->AddExpr($num);
@@ -297,11 +379,17 @@ exprlist[res]
 	;
 
 
+/**
+ * a block of statements
+ */
 block[res]
 	: '{' statements[stmts] '}'		{ $res = $stmts; }
 	;
 
 
+/**
+ * expression
+ */
 expr[res]
 	: '(' expr[term] ')'	{ $res = $term; }
 
@@ -422,7 +510,9 @@ expr[res]
 	;
 
 
-// optional assignment
+/**
+ * optional assignment
+ */
 opt_assign[res]
 	: '=' expr[term]	{ $res = $term; }
 	| /*epsilon*/		{ $res = nullptr; }

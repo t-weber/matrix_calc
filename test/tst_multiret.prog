@@ -1,3 +1,4 @@
+# returns multiple ints
 func (int, int) fac(int n)
 {
 	if n<= 1 then
@@ -9,8 +10,30 @@ func (int, int) fac(int n)
 }
 
 
+# returns multiple variables of different types
+func (mat 2 2, mat 3 3, str 10, vec 2) tst()
+{
+	mat 2 2 A = [1, 2, 3, 4];
+	mat 3 3 B = [11, 22, 33, 44, 55, 66, 77, 88, 99];
+	vec 2 v = [9, 8];
+	str 10 s = "abcdef";
+
+	ret A, B, s, v;
+}
+
+
 func start()
 {
+	mat 2 2 A1;
+	mat 3 3 B1;
+	vec 2 v1;
+	str 10 s1;
+	assign A1, B1, s1, v1 = tst();
+	putstr(A1);
+	putstr(B1);
+	putstr(v1);
+	putstr(s1);
+
 	loop 1==1 do
 	{
 		int n = getint("n = ");
