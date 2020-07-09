@@ -54,6 +54,7 @@ add_executable(mcalc
 	src/parser.cpp src/parser.h src/ast.h src/sym.h
 	src/llasm.cpp src/llasm.h
 	src/printast.cpp src/printast.h
+	src/semantics.cpp src/semantics.h
 	${FLEX_lexer_impl_OUTPUTS}
 	${BISON_parser_impl_OUTPUT_SOURCE} ${BISON_parser_impl_OUTPUT_HEADER}
 )

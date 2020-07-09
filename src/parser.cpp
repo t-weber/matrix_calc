@@ -9,6 +9,7 @@
 #include "parser.h"
 #include "llasm.h"
 #include "printast.h"
+#include "semantics.h"
 
 #include <fstream>
 #include <boost/program_options.hpp>
@@ -213,6 +214,16 @@ int main(int argc, char** argv)
 		}
 		// --------------------------------------------------------------------
 
+
+		// --------------------------------------------------------------------
+		// TODO: semantic analysis
+		// --------------------------------------------------------------------
+		//std::cout << "Analysing semantics..." << std::endl;
+		//Semantics sema;
+		//
+		//for(const auto& stmt : ctx.GetStatements()->GetStatementList())
+		//	stmt->accept(&sema);
+		// --------------------------------------------------------------------
 
 
 		// --------------------------------------------------------------------

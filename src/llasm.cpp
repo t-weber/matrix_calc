@@ -345,6 +345,27 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 }
 
 
+bool LLAsm::check_sym_compat(
+	SymbolType ty1, std::size_t dim1_1, std::size_t dim1_2,
+	SymbolType ty2, std::size_t dim2_1, std::size_t dim2_2)
+{
+	// allow assignments of the form: mat 2 2 A = [1, 2, 3, 4];
+	if(ty1==SymbolType::MATRIX && ty2==SymbolType::VECTOR)
+		return dim1_1*dim1_2 == dim2_1 && (dim2_2==0 || dim2_2==1);
+
+	if(ty1==SymbolType::MATRIX && ty2==SymbolType::MATRIX)
+		return dim1_1==dim2_1 && dim1_2==dim2_2;
+	if(ty1==SymbolType::VECTOR && ty2==SymbolType::VECTOR)
+		return dim1_1==dim2_1;
+	if(ty1==SymbolType::MATRIX && ty2==SymbolType::VECTOR)
+		return false;
+	if(ty1==SymbolType::VECTOR && ty2==SymbolType::MATRIX)
+		return false;
+
+	return true;
+}
+
+
 LLAsm::LLAsm(SymTab* syms, std::ostream* ostr) : m_syms{syms}, m_ostr{ostr}
 {}
 
@@ -1271,7 +1292,7 @@ t_astret LLAsm::visit(const ASTCall* ast)
 		// free heap return value (TODO: check if it really is on the heap)
 		(*m_ostr) << "call void @free(i8* %" << memcast->name << ")\n";
 	}
-	
+
 	// multiple return values
 	else if(func->retty == SymbolType::COMP)
 	{
@@ -1346,6 +1367,7 @@ t_astret LLAsm::visit(const ASTVarDecl* ast)
 
 t_astret LLAsm::visit(const ASTFunc* ast)
 {
+	m_funcstack.push(ast);
 	m_curscope.push_back(ast->GetIdent());
 
 	std::string rettype = LLAsm::get_type_name(std::get<0>(ast->GetRetType()));
@@ -1442,6 +1464,8 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 
 	(*m_ostr) << "}\n";
 	m_curscope.pop_back();
+	m_funcstack.pop();
+
 	return nullptr;
 }
 
@@ -1531,7 +1555,7 @@ t_astret LLAsm::cp_mem_comp(t_astret mem, t_astret sym)
 
 	(*m_ostr) << "call i8* @memcpy(i8* %" << sym->name << ", i8* %" << mem->name
 		<< ", i64 " << len << ")\n";
-	
+
 	return sym;
 }
 
@@ -1561,7 +1585,7 @@ t_astret LLAsm::cp_mem_vec(t_astret mem, t_astret sym, bool alloc_sym)
 
 	(*m_ostr) << "call i8* @memcpy(i8* %" << arrptr_cast->name << ", i8* %" << mem->name
 		<< ", i64 " << argdim*sizeof(double) << ")\n";
-	
+
 	return sym;
 }
 
@@ -1588,29 +1612,52 @@ t_astret LLAsm::cp_mem_str(t_astret mem, t_astret sym, bool alloc_sym)
 
 t_astret LLAsm::visit(const ASTReturn* ast)
 {
+	const ASTFunc* thisfunc = m_funcstack.top();
+
 	const auto& retvals = ast->GetRets()->GetList();
 	std::size_t numRets = retvals.size();
 
 	// multiple return values
 	if(numRets > 1)
 	{
+		const auto& thisfuncrets = thisfunc->GetRets();
+
 		// evaluate all symbols and get total size
 		std::size_t retsize = 0;
 		std::vector<t_astret> retsyms;
 		std::vector<std::size_t> elemindices;
+		auto funcretiter = thisfuncrets.begin();
 		for(const auto& retast : retvals)
 		{
-			const t_astret retsym = retast->accept(this);
+			t_astret retsym = retast->accept(this);
+
+			if(!check_sym_compat(
+				retsym->ty, std::get<0>(retsym->dims), std::get<1>(retsym->dims),
+				std::get<1>(*funcretiter), std::get<2>(*funcretiter), std::get<3>(*funcretiter)))
+			{
+				std::ostringstream ostrErr;
+				ostrErr << "ASTReturn: Multi-return type or dimension is incompatible with declared function return type: ";
+				ostrErr << Symbol::get_type_name(retsym->ty) << "["
+					<< std::get<0>(retsym->dims) << ", " << std::get<1>(retsym->dims)
+					<< "] != " << Symbol::get_type_name(std::get<1>(*funcretiter)) << "["
+					<< std::get<2>(*funcretiter) << ", " << std::get<3>(*funcretiter)
+					<< "].";
+				throw std::runtime_error(ostrErr.str());
+			}
+			// implicitly convert to declared function return type
+			retsym = convert_sym(retsym, std::get<1>(*funcretiter));
 			retsyms.push_back(retsym);
+
 			elemindices.push_back(retsize);
 			retsize += get_bytesize(retsym);
+			std::advance(funcretiter, 1);
 		}
-		
+
 		std::array<std::size_t, 2> memsize{{retsize, 0}};
 		t_astret memblock = get_tmp_var(SymbolType::STRING, &memsize, nullptr, true);
 		(*m_ostr) << "%" << memblock->name << " = call i8* @calloc(i64 " 
 			<< retsize << ", i64 1" << ")\n";
-		
+
 		// write memory block
 		for(std::size_t retsymidx=0; retsymidx<retsyms.size(); ++retsymidx)
 		{
@@ -1638,7 +1685,7 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 			{
 				cp_str_mem(retsym, varmemptr);
 			}
-			
+
 			// write double array to memory block
 			else if(retsym->ty == SymbolType::VECTOR || retsym->ty == SymbolType::MATRIX)
 			{
@@ -1661,11 +1708,28 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 		(*m_ostr) << "ret i8* %" << memblock->name << "\n";
 		return memblock;
 	}
-	
+
 	// one return value
 	else if(numRets == 1)
 	{
 		t_astret retsym = (*retvals.begin())->accept(this);
+
+		if(!check_sym_compat(
+			retsym->ty, std::get<0>(retsym->dims), std::get<1>(retsym->dims),
+			std::get<0>(thisfunc->GetRetType()), std::get<1>(thisfunc->GetRetType()), std::get<2>(thisfunc->GetRetType())))
+		{
+			std::ostringstream ostrErr;
+			ostrErr << "ASTReturn: Return type or dimension is incompatible with declared function return type: ";
+			ostrErr << Symbol::get_type_name(retsym->ty) << "["
+				<< std::get<0>(retsym->dims) << ", " << std::get<1>(retsym->dims)
+				<< "] != " << Symbol::get_type_name(std::get<0>(thisfunc->GetRetType())) << "["
+				<< std::get<1>(thisfunc->GetRetType()) << ", " << std::get<2>(thisfunc->GetRetType())
+				<< "].";
+			throw std::runtime_error(ostrErr.str());
+		}
+
+		// implicitly convert to declared function return type
+		retsym = convert_sym(retsym, std::get<0>(thisfunc->GetRetType()));
 
 		if(retsym->ty == SymbolType::SCALAR || retsym->ty == SymbolType::INT)
 		{
@@ -1730,10 +1794,12 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 				<< expr->elems.size() << " symbols.";
 			throw std::runtime_error(ostrerr.str());
 		}
-		
+
 		std::size_t elemidx = 0;
 		for(std::size_t idx=0; idx<vars.size(); ++idx)
 		{
+			const SymbolPtr retsym = expr->elems[idx];
+
 			const std::string& var = vars[idx];
 			t_astret sym = get_sym(var);
 
@@ -1741,12 +1807,12 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 			t_astret varmemptr = get_tmp_var(SymbolType::STRING);
 			(*m_ostr) << "%" << varmemptr->name << " = getelementptr i8, i8* %"
 				<< expr->name << ", i64 " << elemidx << "\n";
-			
+
 			// directly read scalar value from memory block
 			if(sym->ty == SymbolType::SCALAR || sym->ty == SymbolType::INT)
 			{
 				std::string symty = LLAsm::get_type_name(sym->ty);
-				std::string retty = LLAsm::get_type_name(expr->elems[idx]->ty);
+				std::string retty = LLAsm::get_type_name(retsym->ty);
 
 				t_astret varptr = get_tmp_var(sym->ty);
 				(*m_ostr) << "%" << varptr->name << " = bitcast i8* %" << varmemptr->name 
@@ -1755,13 +1821,27 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 				t_astret _varval = get_tmp_var(sym->ty);
 				(*m_ostr) << "%" << _varval->name << " = load " <<
 					retty << ", " << retty << "* %" << varptr->name << "\n";
-				
+
+				if(!check_sym_compat(
+					sym->ty, std::get<0>(sym->dims), std::get<1>(sym->dims),
+					retsym->ty, std::get<0>(retsym->dims), std::get<1>(retsym->dims)))
+				{
+					std::ostringstream ostrErr;
+					ostrErr << "ASTAssign: Multi-assignment type or dimension mismatch: ";
+					ostrErr << Symbol::get_type_name(sym->ty) << "["
+						<< std::get<0>(sym->dims) << ", " << std::get<1>(sym->dims)
+						<< "] != " << Symbol::get_type_name(retsym->ty) << "["
+						<< std::get<0>(retsym->dims) << ", " << std::get<1>(retsym->dims)
+						<< "].";
+					throw std::runtime_error(ostrErr.str());
+				}
+
 				// cast if needed
 				_varval = convert_sym(_varval, sym->ty);
 
 				(*m_ostr) << "store " << symty << " %" << _varval->name << ", "<< symty << "* %" << var << "\n";
 			}
-			
+
 			// read double array from memory block
 			else if(sym->ty == SymbolType::VECTOR || sym->ty == SymbolType::MATRIX)
 			{
@@ -1779,19 +1859,33 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 			{
 				cp_mem_comp(varmemptr, sym);
 			}
-			
+
 			elemidx += get_bytesize(sym);
 		}
-		
+
 		// free heap return value (TODO: check if it really is on the heap)
 		(*m_ostr) << "call void @free(i8* %" << expr->name << ")\n";
 	}
-	
+
 	// single assignment
 	else
 	{
 		std::string var = ast->GetIdent();
 		t_astret sym = get_sym(var);
+
+		if(!check_sym_compat(
+			sym->ty, std::get<0>(sym->dims), std::get<1>(sym->dims),
+			expr->ty, std::get<0>(expr->dims), std::get<1>(expr->dims)))
+		{
+			std::ostringstream ostrErr;
+			ostrErr << "ASTAssign: Assignment type or dimension mismatch: ";
+			ostrErr << Symbol::get_type_name(sym->ty) << "["
+				<< std::get<0>(sym->dims) << ", " << std::get<1>(sym->dims)
+				<< "] != " << Symbol::get_type_name(expr->ty) << "["
+				<< std::get<0>(expr->dims) << ", " << std::get<1>(expr->dims)
+				<< "].";
+			throw std::runtime_error(ostrErr.str());
+		}
 
 		// cast if needed
 		expr = convert_sym(expr, sym->ty);
@@ -1871,7 +1965,7 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 
 		return expr;
 	}
-	
+
 	return nullptr;
 }
 
@@ -2315,6 +2409,45 @@ t_astret LLAsm::visit(const ASTLoop* ast)
 }
 
 
+t_astret LLAsm::safe_array_index(t_astret idx, std::size_t size)
+{
+	// modidx = idx % size
+	t_astret modidx = get_tmp_var(SymbolType::INT);
+	(*m_ostr) << "%" << modidx->name << " = srem i64 %" 
+		<< idx->name << ", " << size << "\n";
+
+	// if(modidx < 0) modidx2 = size - modidx
+	t_astret modidx2 = get_tmp_var(SymbolType::INT);
+	(*m_ostr) << "%" << modidx2->name << " = alloca i64\n";
+
+	generate_cond(
+	[this, modidx]() -> t_astret
+	{
+		t_astret _cond = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << _cond->name << " = icmp slt i64 %"
+			<< modidx->name << ", 0\n";
+		return _cond;
+	}, [this, modidx, modidx2, size]
+	{
+		t_astret diff = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << diff->name << " = sub i64 " << size
+			<< ", %" << modidx->name << "\n";
+
+		(*m_ostr) << "store i64 %" << diff->name 
+			<< ", i64* %" << modidx2->name << "\n";
+	}, [this, modidx, modidx2]
+	{
+		(*m_ostr) << "store i64 %" << modidx->name 
+			<< ", i64* %" << modidx2->name << "\n";
+	}, true);
+
+	// write result back to an i64 variable
+	t_astret modidx3 = get_tmp_var(SymbolType::INT);
+	(*m_ostr) << "%" << modidx3->name 
+		<< " = load i64, i64* %" << modidx2->name << "\n";
+	return modidx3;
+}
+
 
 t_astret LLAsm::visit(const ASTArrayAccess* ast)
 {
@@ -2336,6 +2469,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 			throw std::runtime_error("ASTArrayAccess: Invalid access operator for vector \"" + term->name + "\".");
 
 		std::size_t dim = std::get<0>(term->dims);
+		num1 = safe_array_index(num1, dim);
 
 		// vector element pointer
 		t_astret elemptr = get_tmp_var();
@@ -2356,6 +2490,8 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 
 		std::size_t dim1 = std::get<0>(term->dims);
 		std::size_t dim2 = std::get<1>(term->dims);
+		num1 = safe_array_index(num1, dim1);
+		num2 = safe_array_index(num2, dim2);
 
 		// idx = num1*dim2 + num2
 		t_astret idx1 = get_tmp_var();
@@ -2380,6 +2516,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 			throw std::runtime_error("ASTArrayAccess: Invalid access operator for string \"" + term->name + "\".");
 
 		std::size_t dim = std::get<0>(term->dims);
+		num1 = safe_array_index(num1, dim);
 
 		// string element pointer
 		t_astret elemptr = get_tmp_var();
@@ -2448,6 +2585,7 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 			throw std::runtime_error("ASTArrayAssign: Invalid element assignment for vector \"" + sym->name + "\".");
 
 		std::size_t dim = std::get<0>(sym->dims);
+		num1 = safe_array_index(num1, dim);
 
 		// vector element pointer
 		t_astret elemptr = get_tmp_var();
@@ -2468,6 +2606,8 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 
 		std::size_t dim1 = std::get<0>(sym->dims);
 		std::size_t dim2 = std::get<1>(sym->dims);
+		num1 = safe_array_index(num1, dim1);
+		num2 = safe_array_index(num2, dim2);
 
 		// idx = num1*dim2 + num2
 		t_astret idx1 = get_tmp_var();
@@ -2496,6 +2636,8 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 		std::size_t dim = std::get<0>(sym->dims);
 		// source string dimensions
 		std::size_t dim_src = std::get<0>(expr->dims);
+
+		num1 = safe_array_index(num1, dim);
 
 		// source string element pointer
 		t_astret elemptr_src = get_tmp_var();

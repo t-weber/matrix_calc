@@ -15,6 +15,7 @@
 
 #include "ast.h"
 #include "sym.h"
+#include <stack>
 
 
 class LLAsm : public ASTVisitor
@@ -22,7 +23,6 @@ class LLAsm : public ASTVisitor
 public:
 	LLAsm(SymTab* syms, std::ostream* ostr=&std::cout);
 	virtual ~LLAsm() = default;
-
 
 	virtual t_astret visit(const ASTUMinus* ast) override;
 	virtual t_astret visit(const ASTPlus* ast) override;
@@ -48,7 +48,6 @@ public:
 	virtual t_astret visit(const ASTExprList* ast) override;
 	virtual t_astret visit(const ASTNumConst<double>* ast) override;
 	virtual t_astret visit(const ASTNumConst<std::int64_t>* ast) override;
-
 
 	// ------------------------------------------------------------------------
 	// internally handled dummy nodes
@@ -88,6 +87,17 @@ protected:
 	 */
 	t_astret convert_sym(t_astret sym, SymbolType ty_to);
 
+	/**
+	 * check if two symbols can be converted to one another
+	 */
+	static bool check_sym_compat(
+		SymbolType ty1, std::size_t dim1_1, std::size_t dim1_2,
+		SymbolType ty2, std::size_t dim2_1, std::size_t dim2_2);
+
+	/**
+	 * limits the array index to the [0, size[ range
+	 */
+	t_astret safe_array_index(t_astret idx, std::size_t size);
 
 	/**
 	 * generates if-then-else code
@@ -129,6 +139,9 @@ private:
 
 	// helper functions to reduce code redundancy
 	t_astret scalar_matrix_prod(t_astret scalar, t_astret matrix, bool mul_or_div=1);
+
+	// stack only needed for (future) nested functions
+	std::stack<const ASTFunc*> m_funcstack;
 };
 
 

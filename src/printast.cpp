@@ -186,7 +186,7 @@ t_astret ASTPrinter::visit(const ASTReturn* ast)
 {
 	const auto& retvals = ast->GetRets()->GetList();
 	std::size_t numRets = retvals.size();
-	
+
 	if(numRets == 0)
 	{
 		(*m_ostr) << "<Return />\n";
@@ -232,14 +232,14 @@ t_astret ASTPrinter::visit(const ASTAssign* ast)
 			(*m_ostr) << "</ident_" << identidx << ">\n";
 			++identidx;
 		}
-		
+
 		(*m_ostr) << "<rhs>\n";
 		ast->GetExpr()->accept(this);
 		(*m_ostr) << "</rhs>\n";
 
 		(*m_ostr) << "</MultiAssign>\n";
 	}
-	
+
 	// single assignment
 	else
 	{

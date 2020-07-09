@@ -473,7 +473,7 @@ public:
 	{
 		return exprs;
 	}
-	
+
 	/**
 	 * specialised use as an array of scalars
 	 */
@@ -481,7 +481,7 @@ public:
 	{
 		m_scalararray = b;
 	}
-	
+
 	bool IsScalarArray() const
 	{
 		return m_scalararray;

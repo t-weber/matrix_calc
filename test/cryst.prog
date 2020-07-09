@@ -1,7 +1,7 @@
 #
 # crystallographic A & B matrices, B = 2pi * A^(-T)
+# @author Tobias Weber
 # see: https://en.wikipedia.org/wiki/Fractional_coordinates
-# @author tw
 #
 
 
