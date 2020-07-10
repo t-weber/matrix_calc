@@ -138,21 +138,21 @@ statements[res]
 variables[res]
 	// several variables
 	: IDENT[name] ',' variables[lst] {
-			std::string symName = context.AddSymbol($name);
+			std::string symName = context.AddScopedSymbol($name)->scoped_name;
 			$lst->AddVariable(symName);
 			$res = $lst;
 		}
-	
+
 	// a variable
 	| IDENT[name] {
-			std::string symName = context.AddSymbol($name);
+			std::string symName = context.AddScopedSymbol($name)->scoped_name;
 			$res = std::make_shared<ASTVarDecl>();
 			$res->AddVariable(symName);
 		}
-	
+
 	// a variable with an assignment
 	| IDENT[name] '=' expr[term] {
-			std::string symName = context.AddSymbol($name);
+			std::string symName = context.AddScopedSymbol($name)->scoped_name;
 			$res = std::make_shared<ASTVarDecl>(std::make_shared<ASTAssign>($name, $term));
 			$res->AddVariable(symName);
 		}
@@ -239,39 +239,75 @@ function[res]
 	: FUNC typedecl[rettype] IDENT[ident] {
 			context.EnterScope($ident);
 		}
-		'(' full_argumentlist[args] ')' block[blk] {
+		'(' full_argumentlist[args] ')' {
+			// register argument variables
+			for(const auto& arg : $args->GetArgs())
+			{
+				Symbol* sym = context.AddScopedSymbol(std::get<0>(arg));
+				sym->ty = std::get<1>(arg);
+				std::get<0>(sym->dims) = std::get<2>(arg);
+				std::get<1>(sym->dims) = std::get<3>(arg);
+			}
+		}
+			block[blk] {
 			$res = std::make_shared<ASTFunc>($ident, $rettype, $args, $blk);
 
 			context.LeaveScope($ident);
 			std::array<std::size_t, 2> retdims{{$rettype->GetDim(0), $rettype->GetDim(1)}};
-			context.AddFunc($ident, $rettype->GetType(), $args->GetArgTypes(), &retdims);
+			context.GetSymbols().AddFunc(
+				context.GetScopeName(), $ident, 
+				$rettype->GetType(), $args->GetArgTypes(), &retdims);
 		}
 
 	// no return value
 	| FUNC IDENT[ident] {
 			context.EnterScope($ident);
 		}
-		'(' full_argumentlist[args] ')' block[blk] {
+		'(' full_argumentlist[args] ')' {
+			// register argument variables
+			for(const auto& arg : $args->GetArgs())
+			{
+				Symbol* sym = context.AddScopedSymbol(std::get<0>(arg));
+				sym->ty = std::get<1>(arg);
+				std::get<0>(sym->dims) = std::get<2>(arg);
+				std::get<1>(sym->dims) = std::get<3>(arg);
+			}
+		}
+		block[blk] {
 			auto rettype = std::make_shared<ASTTypeDecl>(SymbolType::VOID);
 			$res = std::make_shared<ASTFunc>($ident, rettype, $args, $blk);
 
 			context.LeaveScope($ident);
-			context.AddFunc($ident, SymbolType::VOID, $args->GetArgTypes());
+			context.GetSymbols().AddFunc(
+				context.GetScopeName(), $ident, 
+				SymbolType::VOID, $args->GetArgTypes());
 		}
 
 	// multiple return values
 	| FUNC '(' typelist[retargs] ')' IDENT[ident] {
 			context.EnterScope($ident);
 		}
-		'(' full_argumentlist[args] ')' block[blk] {
+		'(' full_argumentlist[args] ')' {
+			// register argument variables
+			for(const auto& arg : $args->GetArgs())
+			{
+				Symbol* sym = context.AddScopedSymbol(std::get<0>(arg));
+				sym->ty = std::get<1>(arg);
+				std::get<0>(sym->dims) = std::get<2>(arg);
+				std::get<1>(sym->dims) = std::get<3>(arg);
+			}
+		}
+		block[blk] {
 			auto rettype = std::make_shared<ASTTypeDecl>(SymbolType::COMP);
 			$res = std::make_shared<ASTFunc>($ident, rettype, $args, $blk, $retargs);
-
+			
 			context.LeaveScope($ident);
 			
 			std::vector<SymbolType> multirettypes = $retargs->GetArgTypes();
-			context.AddFunc($ident, SymbolType::COMP, $args->GetArgTypes(), 
-				nullptr, true, &multirettypes);
+			context.GetSymbols().AddFunc(
+				context.GetScopeName(), $ident, 
+				SymbolType::COMP, $args->GetArgTypes(), 
+				nullptr, &multirettypes);
 		}
 	;
 
@@ -450,6 +486,12 @@ expr[res]
 			// identifier names a variable
 			else
 			{
+				const Symbol* sym = context.FindScopedSymbol($ident);
+				if(sym)
+					++sym->refcnt;
+				else
+					error("Cannot find symbol \"" + $ident + "\".");
+
 				$res = std::make_shared<ASTVar>($ident);
 			}
 		}
@@ -497,6 +539,11 @@ expr[res]
 	// function calls
 	| IDENT[ident] '(' ')'	{ $res = std::make_shared<ASTCall>($ident); }
 	| IDENT[ident] '(' exprlist[args] ')' {
+		const Symbol* sym = context.GetSymbols().FindSymbol($ident);
+		if(sym && sym->ty == SymbolType::FUNC)
+			++sym->refcnt;
+		else
+			error("Cannot find function \"" + $ident + "\".");
 		$res = std::make_shared<ASTCall>($ident, $args);
 	}
 

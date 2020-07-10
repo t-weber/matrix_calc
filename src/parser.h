@@ -120,26 +120,16 @@ namespace yy
 
 
 		// --------------------------------------------------------------------
-		std::string AddSymbol(const std::string& name, bool bUseScope=true)
+		Symbol* AddScopedSymbol(const std::string& name)
 		{
-			std::string symbol_with_scope = bUseScope ? GetScopeName() + name : name;
-			//std::cout << "symbol " << name << " -> " << symbol_with_scope << std::endl;
-
-			m_symbols.AddSymbol(symbol_with_scope, name, m_symtype, m_symdims);
-			return symbol_with_scope;
+			const std::string& scope = GetScopeName();
+			return m_symbols.AddSymbol(scope, name, m_symtype, m_symdims);
 		}
-
-		std::string AddFunc(const std::string& name, SymbolType rettype,
-			const std::vector<SymbolType>& argtypes,
-			const std::array<std::size_t, 2>* retdims = nullptr,
-			bool bUseScope = true, const std::vector<SymbolType>* multirettypes = nullptr)
+		
+		const Symbol* FindScopedSymbol(const std::string& name) const
 		{
-			std::string symbol_with_scope = bUseScope ? GetScopeName() + name : name;
-			//std::cout << "func " << name << " -> " << symbol_with_scope << std::endl;
-
-			m_symbols.AddFunc(
-				symbol_with_scope, name, rettype, argtypes, retdims, multirettypes);
-			return symbol_with_scope;
+			const std::string& scope = GetScopeName();
+			return m_symbols.FindSymbol(scope + name);
 		}
 
 		const SymTab& GetSymbols() const { return m_symbols; }

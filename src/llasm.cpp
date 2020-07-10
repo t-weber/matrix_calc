@@ -29,11 +29,25 @@ t_astret LLAsm::get_tmp_var(SymbolType ty,
 		var += std::to_string(m_varCount);
 		++m_varCount;
 	}
+	
+	// if the symbol is already known (e.g. for parameters), update and use it
+	if(name)
+	{
+		Symbol *sym = const_cast<Symbol*>(get_sym(*name));
+		if(sym)
+		{
+			sym->ty = ty;
+			sym->on_heap = on_heap;
+			if(dims)
+				sym->dims = *dims;
+			return sym;
+		}
+	}
 
 	if(dims)
-		return m_syms->AddSymbol(var, var, ty, *dims, true, on_heap);
+		return m_syms->AddSymbol("", var, ty, *dims, true, on_heap);
 	else
-		return m_syms->AddSymbol(var, var, ty, {0,0}, true, on_heap);
+		return m_syms->AddSymbol("", var, ty, {0,0}, true, on_heap);
 }
 
 
@@ -125,6 +139,8 @@ t_astret LLAsm::get_sym(const std::string& name) const
 
 	if(sym==nullptr)
 		throw std::runtime_error("get_sym: \"" + scoped_name + "\" does not have an associated symbol.");
+	
+	//++sym->refcnt;	// increment symbol's reference counter
 	return sym;
 }
 
@@ -387,7 +403,7 @@ t_astret LLAsm::visit(const ASTUMinus* ast)
 		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x double]\n";
 
 		// copy array elements in a loop
-		generate_loop(0, dim, [this, ast, term, vec_mem, dim](t_astret ctrval)
+		generate_loop(0, dim, [this, term, vec_mem, dim](t_astret ctrval)
 		{
 			t_astret elemptr_src = get_tmp_var();
 			t_astret elem_src = get_tmp_var();
@@ -1392,22 +1408,24 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 		const std::string arg = std::string{"__arg_"} + argname;
 		std::array<std::size_t, 2> argdims{{dim1, dim2}};
 
-		t_astret symcpy = get_tmp_var(argtype, &argdims, &argname);
+		// create a local variable for each function parameter
+		//t_astret symparam = get_tmp_var(argtype, &argdims, &argname);
+		t_astret symparam = get_sym(argname);
 
 		if(argtype == SymbolType::SCALAR || argtype == SymbolType::INT)
 		{
 			std::string ty = LLAsm::get_type_name(argtype);
-			(*m_ostr) << "%" << symcpy->name << " = alloca " << ty << "\n";
-			(*m_ostr) << "store " << ty << " %" << arg << ", " << ty << "* %" << symcpy->name << "\n";
+			(*m_ostr) << "%" << symparam->name << " = alloca " << ty << "\n";
+			(*m_ostr) << "store " << ty << " %" << arg << ", " << ty << "* %" << symparam->name << "\n";
 		}
 		else if(argtype == SymbolType::STRING)
 		{
 			// allocate memory for local string copy
-			(*m_ostr) << "%" << symcpy->name << " = alloca [" << std::get<0>(argdims) << " x i8]\n";
+			(*m_ostr) << "%" << symparam->name << " = alloca [" << std::get<0>(argdims) << " x i8]\n";
 
 			t_astret strptr = get_tmp_var();
 			(*m_ostr) << "%" << strptr->name << " = getelementptr [" << std::get<0>(argdims) << " x i8], ["
-				<< std::get<0>(argdims) << " x i8]* %" << symcpy->name << ", i64 0, i64 0\n";
+				<< std::get<0>(argdims) << " x i8]* %" << symparam->name << ", i64 0, i64 0\n";
 
 			// copy string
 			(*m_ostr) << "call i8* @strncpy(i8* %" << strptr->name << ", i8* %" << arg
@@ -1420,11 +1438,11 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 				argdim *= std::get<1>(argdims);
 
 			// allocate memory for local array copy
-			(*m_ostr) << "%" << symcpy->name << " = alloca [" << argdim << " x double]\n";
+			(*m_ostr) << "%" << symparam->name << " = alloca [" << argdim << " x double]\n";
 
 			t_astret arrptr = get_tmp_var();
 			(*m_ostr) << "%" << arrptr->name << " = getelementptr [" << argdim << " x double], ["
-				<< argdim << " x double]* %" << symcpy->name << ", i64 0, i64 0\n";
+				<< argdim << " x double]* %" << symparam->name << ", i64 0, i64 0\n";
 
 			// copy array
 			t_astret arrptr_cast = get_tmp_var();

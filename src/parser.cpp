@@ -158,25 +158,25 @@ int main(int argc, char** argv)
 		yy::ParserContext ctx{ifstr};
 
 		// register runtime functions
-		ctx.AddFunc("pow", SymbolType::SCALAR, {SymbolType::SCALAR, SymbolType::SCALAR});
-		ctx.AddFunc("sin", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.AddFunc("cos", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.AddFunc("sqrt", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.AddFunc("exp", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.AddFunc("fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.AddFunc("labs", SymbolType::INT, {SymbolType::INT});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "pow", SymbolType::SCALAR, {SymbolType::SCALAR, SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "sin", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "cos", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "sqrt", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "exp", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "labs", SymbolType::INT, {SymbolType::INT});
 
-		ctx.AddFunc("strlen", SymbolType::INT, {SymbolType::STRING});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "strlen", SymbolType::INT, {SymbolType::STRING});
 
-		ctx.AddFunc("putstr", SymbolType::VOID, {SymbolType::STRING});
-		ctx.AddFunc("putflt", SymbolType::VOID, {SymbolType::SCALAR});
-		ctx.AddFunc("putint", SymbolType::VOID, {SymbolType::INT});
-		ctx.AddFunc("getflt", SymbolType::SCALAR, {SymbolType::STRING});
-		ctx.AddFunc("getint", SymbolType::INT, {SymbolType::STRING});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr", SymbolType::VOID, {SymbolType::STRING});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putflt", SymbolType::VOID, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putint", SymbolType::VOID, {SymbolType::INT});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getflt", SymbolType::SCALAR, {SymbolType::STRING});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getint", SymbolType::INT, {SymbolType::STRING});
 
 
-		ctx.AddFunc("flt_to_str", SymbolType::VOID, {SymbolType::SCALAR, SymbolType::STRING, SymbolType::INT});
-		ctx.AddFunc("int_to_str", SymbolType::VOID, {SymbolType::INT, SymbolType::STRING, SymbolType::INT});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "flt_to_str", SymbolType::VOID, {SymbolType::SCALAR, SymbolType::STRING, SymbolType::INT});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "int_to_str", SymbolType::VOID, {SymbolType::INT, SymbolType::STRING, SymbolType::INT});
 
 
 		yy::Parser parser(ctx);

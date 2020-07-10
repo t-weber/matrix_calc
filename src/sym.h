@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <array>
 #include <iostream>
+#include <iomanip>
 
 
 struct Symbol;
@@ -37,7 +38,9 @@ enum class SymbolType
 
 struct Symbol
 {
-	std::string name;
+	std::string name{};
+	std::string scoped_name{};
+
 	SymbolType ty = SymbolType::VOID;
 	std::array<std::size_t, 2> dims{{0,0}};
 
@@ -52,6 +55,8 @@ struct Symbol
 
 	bool tmp = false;		// temporary or declared variable?
 	bool on_heap = false;	// heap or stack variable?
+	
+	mutable std::size_t refcnt = 0;	// number of reference to this symbol
 
 
 	/**
@@ -81,26 +86,29 @@ struct Symbol
 class SymTab
 {
 public:
-	const Symbol* AddSymbol(const std::string& name_with_scope,
+	Symbol* AddSymbol(const std::string& scope,
 		const std::string& name, SymbolType ty,
 		const std::array<std::size_t, 2>& dims,
 		bool is_temp = false, bool on_heap = false)
 	{
-		Symbol sym{.name = name, .ty = ty, .dims = dims,
+		Symbol sym{.name = name, .scoped_name = scope+name, 
+			.ty = ty, .dims = dims,
 			/*.memblock = nullptr,*/ .elems = {}, 
-			.tmp = is_temp, .on_heap = on_heap};
-		auto pair = m_syms.insert_or_assign(name_with_scope, sym);
+			.tmp = is_temp, .on_heap = on_heap, .refcnt = 0};
+		auto pair = m_syms.insert_or_assign(scope+name, sym);
 		return &pair.first->second;
 	}
 
 
-	const Symbol* AddFunc(const std::string& name_with_scope,
+	Symbol* AddFunc(const std::string& scope,
 		const std::string& name, SymbolType retty,
 		const std::vector<SymbolType>& argtypes,
 		const std::array<std::size_t, 2>* retdims = nullptr,
 		const std::vector<SymbolType>* multirettypes = nullptr)
 	{
-		Symbol sym{.name = name, .ty = SymbolType::FUNC, .argty = argtypes, .retty = retty};
+		Symbol sym{.name = name, .scoped_name = scope+name,
+			.ty = SymbolType::FUNC, 
+			.argty = argtypes, .retty = retty, .refcnt = 0};
 		if(retdims)
 			sym.retdims = *retdims;
 		if(multirettypes)
@@ -112,7 +120,7 @@ public:
 				sym.elems.emplace_back(retsym);
 			}
 		}
-		auto pair = m_syms.insert_or_assign(name_with_scope, sym);
+		auto pair = m_syms.insert_or_assign(scope+name, sym);
 		return &pair.first->second;
 	}
 
@@ -128,8 +136,16 @@ public:
 
 	friend std::ostream& operator<<(std::ostream& ostr, const SymTab& tab)
 	{
+		ostr << std::left << std::setw(32) << "full name" 
+			<< std::left << std::setw(16) << "type" 
+			<< std::left << std::setw(8) << "refs" 
+			<< "\n";
+		ostr << "--------------------------------------------------------------------------------\n";
 		for(const auto& pair : tab.m_syms)
-			ostr << pair.first << " -> " << pair.second.name << "\n";
+			ostr << std::left << std::setw(32) << pair.first 
+				<< std::left << std::setw(16) << Symbol::get_type_name(pair.second.ty) 
+				<< std::left << std::setw(8) << pair.second.refcnt 
+				<< "\n";
 
 		return ostr;
 	}
