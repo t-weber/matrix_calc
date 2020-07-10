@@ -69,6 +69,7 @@
 %token LOOP DO
 %token EQU NEQ GT LT GEQ LEQ
 %token AND XOR OR NOT
+%token RANGE
 
 
 // nonterminals
@@ -496,11 +497,11 @@ expr[res]
 			}
 		}
 
-	// array access and assignment
-	| expr[term] '[' expr[num] ']' opt_assign[opt_term] {
+	// vector access and assignment
+	| expr[term] '[' expr[idx] ']' opt_assign[opt_term] {
 			if(!$opt_term)
 			{	// array access into any vector expression
-				$res = std::make_shared<ASTArrayAccess>($term, $num);
+				$res = std::make_shared<ASTArrayAccess>($term, $idx);
 			}
 			else
 			{	// assignment of a vector element
@@ -512,14 +513,40 @@ expr[res]
 				else
 				{
 					auto var = std::static_pointer_cast<ASTVar>($term);
-					$res = std::make_shared<ASTArrayAssign>(var->GetIdent(), $opt_term, $num);
+					$res = std::make_shared<ASTArrayAssign>(
+						var->GetIdent(), $opt_term, $idx);
 				}
 			}
 		}
-	| expr[term] '[' expr[num1] ',' expr[num2] ']' opt_assign[opt_term]	{
+
+	// vector ranged access and assignment
+	| expr[term] '[' expr[idx1] RANGE expr[idx2] ']' opt_assign[opt_term] {
+			if(!$opt_term)
+			{	// array access into any vector expression
+				$res = std::make_shared<ASTArrayAccess>(
+					$term, $idx1, $idx2, nullptr, nullptr, true);
+			}
+			else
+			{	// assignment of a vector element
+				if($term->type() != ASTType::Var)
+				{
+					error("Can only assign to an l-value symbol.");
+					$res = nullptr;
+				}
+				else
+				{
+					auto var = std::static_pointer_cast<ASTVar>($term);
+					$res = std::make_shared<ASTArrayAssign>(
+						var->GetIdent(), $opt_term, $idx1, $idx2, nullptr, nullptr, true);
+				}
+			}
+		}
+
+	// matrix access and assignment
+	| expr[term] '[' expr[idx1] ',' expr[idx2] ']' opt_assign[opt_term] {
 			if(!$opt_term)
 			{	// array access into any matrix expression
-				$res = std::make_shared<ASTArrayAccess>($term, $num1, $num2);
+				$res = std::make_shared<ASTArrayAccess>($term, $idx1, $idx2);
 			}
 			else
 			{	// assignment of a matrix element
@@ -531,19 +558,52 @@ expr[res]
 				else
 				{
 					auto var = std::static_pointer_cast<ASTVar>($term);
-					$res = std::make_shared<ASTArrayAssign>(var->GetIdent(), $opt_term, $num1, $num2);
+					$res = std::make_shared<ASTArrayAssign>(
+						var->GetIdent(), $opt_term, $idx1, $idx2);
+				}
+			}
+		}
+
+	// matrix ranged access and assignment
+	| expr[term] '[' expr[idx1] RANGE expr[idx2] ',' expr[idx3] RANGE expr[idx4] ']' opt_assign[opt_term] {
+			if(!$opt_term)
+			{	// array access into any matrix expression
+				$res = std::make_shared<ASTArrayAccess>(
+					$term, $idx1, $idx2, $idx3, $idx4, true, true);
+			}
+			else
+			{	// assignment of a matrix element
+				if($term->type() != ASTType::Var)
+				{
+					error("Can only assign to an l-value symbol.");
+					$res = nullptr;
+				}
+				else
+				{
+					auto var = std::static_pointer_cast<ASTVar>($term);
+					$res = std::make_shared<ASTArrayAssign>(
+						var->GetIdent(), $opt_term, $idx1, $idx2, $idx3, $idx4, true, true);
 				}
 			}
 		}
 
 	// function calls
-	| IDENT[ident] '(' ')'	{ $res = std::make_shared<ASTCall>($ident); }
+	| IDENT[ident] '(' ')' {
+		const Symbol* sym = context.GetSymbols().FindSymbol($ident);
+		if(sym && sym->ty == SymbolType::FUNC)
+			++sym->refcnt;
+		else
+			error("Cannot find function \"" + $ident + "\".");
+
+		$res = std::make_shared<ASTCall>($ident);
+	}
 	| IDENT[ident] '(' exprlist[args] ')' {
 		const Symbol* sym = context.GetSymbols().FindSymbol($ident);
 		if(sym && sym->ty == SymbolType::FUNC)
 			++sym->refcnt;
 		else
 			error("Cannot find function \"" + $ident + "\".");
+
 		$res = std::make_shared<ASTCall>($ident, $args);
 	}
 

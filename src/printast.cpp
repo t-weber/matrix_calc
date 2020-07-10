@@ -254,7 +254,10 @@ t_astret ASTPrinter::visit(const ASTAssign* ast)
 
 t_astret ASTPrinter::visit(const ASTArrayAccess* ast)
 {
-	(*m_ostr) << "<ArrayAccess>\n";
+	(*m_ostr) << "<ArrayAccess"
+		<< " is_range_12=\"" << ast->IsRanged12() << "\"" 
+		<< " is_range_34=\"" << ast->IsRanged34() << "\""
+		<< ">\n";
 
 	(*m_ostr) << "<idx1>\n";
 	ast->GetNum1()->accept(this);
@@ -265,6 +268,20 @@ t_astret ASTPrinter::visit(const ASTArrayAccess* ast)
 		(*m_ostr) << "<idx2>\n";
 		ast->GetNum2()->accept(this);
 		(*m_ostr) << "</idx2>\n";
+	}
+
+	if(ast->GetNum3())
+	{
+		(*m_ostr) << "<idx3>\n";
+		ast->GetNum3()->accept(this);
+		(*m_ostr) << "</idx3>\n";
+	}
+
+	if(ast->GetNum4())
+	{
+		(*m_ostr) << "<idx4>\n";
+		ast->GetNum4()->accept(this);
+		(*m_ostr) << "</idx4>\n";
 	}
 
 	(*m_ostr) << "<term>\n";
@@ -279,7 +296,10 @@ t_astret ASTPrinter::visit(const ASTArrayAccess* ast)
 
 t_astret ASTPrinter::visit(const ASTArrayAssign* ast)
 {
-	(*m_ostr) << "<ArrayAssign ident=\"" << ast->GetIdent() << "\">\n";
+	(*m_ostr) << "<ArrayAssign ident=\"" << ast->GetIdent() << "\"" 
+		<< " is_range_12=\"" << ast->IsRanged12() << "\"" 
+		<< " is_range_34=\"" << ast->IsRanged34() << "\""
+		<< ">\n";
 
 	(*m_ostr) << "<idx1>\n";
 	ast->GetNum1()->accept(this);
@@ -290,6 +310,20 @@ t_astret ASTPrinter::visit(const ASTArrayAssign* ast)
 		(*m_ostr) << "<idx2>\n";
 		ast->GetNum2()->accept(this);
 		(*m_ostr) << "</idx2>\n";
+	}
+
+	if(ast->GetNum3())
+	{
+		(*m_ostr) << "<idx3>\n";
+		ast->GetNum3()->accept(this);
+		(*m_ostr) << "</idx3>\n";
+	}
+
+	if(ast->GetNum4())
+	{
+		(*m_ostr) << "<idx4>\n";
+		ast->GetNum2()->accept(this);
+		(*m_ostr) << "</idx4>\n";
 	}
 
 	(*m_ostr) << "<expr>\n";

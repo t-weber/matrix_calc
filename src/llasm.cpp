@@ -29,7 +29,7 @@ t_astret LLAsm::get_tmp_var(SymbolType ty,
 		var += std::to_string(m_varCount);
 		++m_varCount;
 	}
-	
+
 	// if the symbol is already known (e.g. for parameters), update and use it
 	if(name)
 	{
@@ -139,7 +139,7 @@ t_astret LLAsm::get_sym(const std::string& name) const
 
 	if(sym==nullptr)
 		throw std::runtime_error("get_sym: \"" + scoped_name + "\" does not have an associated symbol.");
-	
+
 	//++sym->refcnt;	// increment symbol's reference counter
 	return sym;
 }

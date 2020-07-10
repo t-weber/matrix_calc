@@ -653,20 +653,33 @@ class ASTArrayAccess : public AST
 {
 public:
 	ASTArrayAccess(ASTPtr term,
-		ASTPtr num1, ASTPtr num2 = nullptr)
-	: term{term}, num1{num1}, num2{num2}
+		ASTPtr num1, ASTPtr num2 = nullptr,
+		ASTPtr num3 = nullptr, ASTPtr num4 = nullptr,
+		bool ranged12 = false, bool ranged34 = false)
+		: term{term}, num1{num1}, num2{num2}, num3{num3}, num4{num4},
+			ranged12{ranged12}, ranged34{ranged34}
 	{}
 
 	const ASTPtr GetTerm() const { return term; }
+
 	const ASTPtr GetNum1() const { return num1; }
 	const ASTPtr GetNum2() const { return num2; }
+	const ASTPtr GetNum3() const { return num3; }
+	const ASTPtr GetNum4() const { return num4; }
+
+	bool IsRanged12() const { return ranged12; }
+	bool IsRanged34() const { return ranged34; }
 
 	virtual ASTType type() override { return ASTType::ArrayAccess; }
 	ASTVISITOR_ACCEPT
 
 private:
 	ASTPtr term;
+
 	ASTPtr num1, num2;
+	ASTPtr num3, num4;
+	bool ranged12 = false;
+	bool ranged34 = false;
 };
 
 
@@ -674,15 +687,23 @@ class ASTArrayAssign : public AST
 {
 public:
 	ASTArrayAssign(const std::string& ident, ASTPtr expr,
-		ASTPtr num1, ASTPtr num2 = nullptr
-	)
-		: ident{ident}, expr{expr}, num1{num1}, num2{num2}
+		ASTPtr num1, ASTPtr num2 = nullptr,
+		ASTPtr num3 = nullptr, ASTPtr num4 = nullptr,
+		bool ranged12 = false, bool ranged34 = false)
+		: ident{ident}, expr{expr}, num1{num1}, num2{num2}, 
+			num3{num3}, num4{num4}, ranged12{ranged12}, ranged34{ranged34}
 	{}
 
 	const std::string& GetIdent() const { return ident; }
 	const ASTPtr GetExpr() const { return expr; }
+
 	const ASTPtr GetNum1() const { return num1; }
 	const ASTPtr GetNum2() const { return num2; }
+	const ASTPtr GetNum3() const { return num4; }
+	const ASTPtr GetNum4() const { return num4; }
+
+	bool IsRanged12() const { return ranged12; }
+	bool IsRanged34() const { return ranged34; }
 
 	virtual ASTType type() override { return ASTType::ArrayAssign; }
 	ASTVISITOR_ACCEPT
@@ -690,7 +711,11 @@ public:
 private:
 	std::string ident;
 	ASTPtr expr;
+
 	ASTPtr num1, num2;
+	ASTPtr num3, num4;
+	bool ranged12 = false;
+	bool ranged34 = false;
 };
 
 

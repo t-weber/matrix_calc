@@ -271,7 +271,7 @@ declare void @free(i8*)
 
 
 ; -----------------------------------------------------------------------------
-; external runtime functions from runtime.cpp
+; external runtime functions from runtime.c
 declare void @ext_set_eps(double)
 declare double @ext_get_eps()
 
@@ -520,7 +520,8 @@ define i32 @main()
 
 			if(optimise)
 			{
-				std::cout << "Stripping debug symbols from \"" << outprog << "\"..." << std::endl;
+				std::cout << "Stripping debug symbols from \"" 
+					<< outprog << "\"..." << std::endl;
 
 				std::string cmd_strip = tool_strip + " " + outprog;
 				if(std::system(cmd_strip.c_str()) != 0)
