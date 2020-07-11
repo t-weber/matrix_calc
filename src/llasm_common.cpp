@@ -365,16 +365,17 @@ bool LLAsm::check_sym_compat(
 	SymbolType ty1, std::size_t dim1_1, std::size_t dim1_2,
 	SymbolType ty2, std::size_t dim2_1, std::size_t dim2_2)
 {
-	// allow assignments of the form: mat 2 2 A = [1, 2, 3, 4];
-	if(ty1==SymbolType::MATRIX && ty2==SymbolType::VECTOR)
-		return dim1_1*dim1_2 == dim2_1 && (dim2_2==0 || dim2_2==1);
-	
 	// allow truncating assignments of the form: vec 2 v = [1, 2, 3, 4];
 	// needed for ranged array access
 	// TODO: remove as soon as ranged access uses dynamic array size
 	if(ty1==SymbolType::VECTOR && ty2==SymbolType::VECTOR)
 		return dim1_1 <= dim2_1 && (dim2_2==0 || dim2_2==1);
 
+	// allow assignments of the form: mat 2 2 A = [1, 2, 3, 4];
+	// also allow truncated assignments ("<="), TODO: remove in the future
+	if(ty1==SymbolType::MATRIX && ty2==SymbolType::VECTOR)
+		return dim1_1*dim1_2 <= dim2_1 && (dim2_2==0 || dim2_2==1);
+	
 	if(ty1==SymbolType::MATRIX && ty2==SymbolType::MATRIX)
 		return dim1_1==dim2_1 && dim1_2==dim2_2;
 	if(ty1==SymbolType::VECTOR && ty2==SymbolType::VECTOR)
