@@ -2,10 +2,10 @@ func start()
 {
 	vec 4 v = [1, 2, 3, 4];
 
-	vec 2 w = v[1 .. 2];
+	vec 2 w = v[1~2];
 	putstr(w);
 
-	w = v[2 .. 1];
+	w = v[2~1];
 	putstr(w);
 
 
@@ -15,9 +15,9 @@ func start()
 		9,  10, 11, 12, 
 		13, 14, 15, 16 ];
 
-	mat 2 2 N = M[1 ..2, 2 .. 3];
+	mat 2 2 N = M[1~2, 2~3];
 	putstr(N);
 
-	N = M[2 ..1, 2 .. 3];
+	N = M[2~1, 2~3];
 	putstr(N);
 }

@@ -44,7 +44,7 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 "|"|"|"		{ return yytext[0]; }
 ","			{ return yytext[0]; }
 
-".."		{ return yy::Parser::make_RANGE(); }
+"~"			{ return yy::Parser::make_RANGE(); }
 "=="		{ return yy::Parser::make_EQU(); }
 "<>"		{ return yy::Parser::make_NEQ(); }
 ">="		{ return yy::Parser::make_GEQ(); }
