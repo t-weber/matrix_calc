@@ -1,0 +1,7 @@
+func start()
+{
+	vec 4 v = [1, 2, 3, 4];
+	vec 2 w = v[1 .. 2];
+
+	putstr(w);
+}
