@@ -1,7 +1,10 @@
 func start()
 {
 	vec 4 v = [1, 2, 3, 4];
-	vec 2 w = v[1 .. 2];
 
+	vec 2 w = v[1 .. 2];
+	putstr(w);
+
+	w = v[2 .. 1];
 	putstr(w);
 }
