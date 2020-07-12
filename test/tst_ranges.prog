@@ -33,4 +33,10 @@ func start()
 	putstr("old: " + s);
 	s[3~5] = "XYZ";
 	putstr("new: " + s);
+
+
+	putstr("old: " + M);
+	M[0, 0] = 999;
+	M[1~2, 2~3] = [500, 501, 502, 503];
+	putstr("new: " + M);
 }

@@ -105,7 +105,7 @@ std::size_t LLAsm::get_bytesize(t_astret sym)
 		case SymbolType::COMP:
 		{
 			std::size_t size = 0;
-			for(const SymbolPtr thesym : sym->elems)
+			for(const SymbolPtr& thesym : sym->elems)
 				size += get_bytesize(thesym.get());
 			return size;
 		}
@@ -186,7 +186,7 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 		if(sym->ty == SymbolType::INT)
 		{
 			std::size_t len = 32;
-			std::array<std::size_t, 2> dims{{len, 0}};
+			std::array<std::size_t, 2> dims{{len, 1}};
 			t_astret str_mem = get_tmp_var(SymbolType::STRING, &dims);
 			t_astret strptr = get_tmp_var(SymbolType::STRING, &dims);
 
@@ -204,7 +204,7 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 		else if(sym->ty == SymbolType::SCALAR)
 		{
 			std::size_t len = 32;
-			std::array<std::size_t, 2> dims{{len, 0}};
+			std::array<std::size_t, 2> dims{{len, 1}};
 			t_astret str_mem = get_tmp_var(SymbolType::STRING, &dims);
 			t_astret strptr = get_tmp_var(SymbolType::STRING, &dims);
 
@@ -226,7 +226,7 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 				num_floats *= std::get<1>(sym->dims);
 
 			std::size_t len = 32 * num_floats;
-			std::array<std::size_t, 2> dims{{len, 0}};
+			std::array<std::size_t, 2> dims{{len, 1}};
 			t_astret str_mem = get_tmp_var(SymbolType::STRING, &dims);
 			t_astret strptr = get_tmp_var(SymbolType::STRING, &dims);
 
@@ -271,7 +271,7 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 
 				// convert vector/matrix component to string
 				std::size_t lenComp = 32;
-				std::array<std::size_t, 2> dimsComp{{lenComp, 0}};
+				std::array<std::size_t, 2> dimsComp{{lenComp, 1}};
 				t_astret strComp_mem = get_tmp_var(SymbolType::STRING, &dimsComp);
 				t_astret strCompptr = get_tmp_var(SymbolType::STRING, &dimsComp);
 
@@ -375,7 +375,7 @@ bool LLAsm::check_sym_compat(
 	// also allow truncated assignments ("<="), TODO: remove in the future
 	if(ty1==SymbolType::MATRIX && ty2==SymbolType::VECTOR)
 		return dim1_1*dim1_2 <= dim2_1 && (dim2_2==0 || dim2_2==1);
-	
+
 	if(ty1==SymbolType::MATRIX && ty2==SymbolType::MATRIX)
 		return dim1_1==dim2_1 && dim1_2==dim2_2;
 	if(ty1==SymbolType::VECTOR && ty2==SymbolType::VECTOR)

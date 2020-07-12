@@ -699,7 +699,7 @@ public:
 
 	const ASTPtr GetNum1() const { return num1; }
 	const ASTPtr GetNum2() const { return num2; }
-	const ASTPtr GetNum3() const { return num4; }
+	const ASTPtr GetNum3() const { return num3; }
 	const ASTPtr GetNum4() const { return num4; }
 
 	bool IsRanged12() const { return ranged12; }

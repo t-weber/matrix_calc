@@ -275,7 +275,7 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 			std::advance(funcretiter, 1);
 		}
 
-		std::array<std::size_t, 2> memsize{{retsize, 0}};
+		std::array<std::size_t, 2> memsize{{retsize, 1}};
 		t_astret memblock = get_tmp_var(SymbolType::STRING, &memsize, nullptr, true);
 		(*m_ostr) << "%" << memblock->name << " = call i8* @calloc(i64 " 
 			<< retsize << ", i64 1" << ")\n";

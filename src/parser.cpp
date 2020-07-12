@@ -166,6 +166,9 @@ int main(int argc, char** argv)
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "labs", SymbolType::INT, {SymbolType::INT});
 
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "set_eps", SymbolType::VOID, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "get_eps", SymbolType::SCALAR, {});
+
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "strlen", SymbolType::INT, {SymbolType::STRING});
 
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr", SymbolType::VOID, {SymbolType::STRING});
@@ -173,7 +176,6 @@ int main(int argc, char** argv)
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putint", SymbolType::VOID, {SymbolType::INT});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getflt", SymbolType::SCALAR, {SymbolType::STRING});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getint", SymbolType::INT, {SymbolType::STRING});
-
 
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "flt_to_str", SymbolType::VOID, {SymbolType::SCALAR, SymbolType::STRING, SymbolType::INT});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "int_to_str", SymbolType::VOID, {SymbolType::INT, SymbolType::STRING, SymbolType::INT});
@@ -296,11 +298,40 @@ declare i64 @ext_transpose(double*, double*, i64, i64)
 ; -----------------------------------------------------------------------------
 ; runtime functions
 
+; get the user epsilon
+define double @get_eps()
+{
+	%eps = call double @ext_get_eps()
+	ret double %eps
+}
+
+; set the user epsilon
+define void @set_eps(double %eps)
+{
+	call void (double) @ext_set_eps(double %eps)
+	ret void
+}
+
+; returns 0 if flt <= eps
+define double @zero_eps(double %flt)
+{
+	%eps = call double @get_eps()
+	%fltabs = call double (double) @fabs(double %flt)
+
+	%cond = fcmp ole double %fltabs, %eps
+	br i1 %cond, label %labelIf, label %labelEnd
+labelIf:
+	ret double 0.
+labelEnd:
+	ret double %flt
+}
+
 ; double -> string
 define void @flt_to_str(double %flt, i8* %strptr, i64 %len)
 {
 	%fmtptr = bitcast [4 x i8]* @__strfmt_lg to i8*
-	call i32 (i8*, i64, i8*, ...) @snprintf(i8* %strptr, i64 %len, i8* %fmtptr, double %flt)
+	%theflt = call double (double) @zero_eps(double %flt)
+	call i32 (i8*, i64, i8*, ...) @snprintf(i8* %strptr, i64 %len, i8* %fmtptr, double %theflt)
 	ret void
 }
 

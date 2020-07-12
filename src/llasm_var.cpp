@@ -349,7 +349,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		(*m_ostr) << "%" << elem->name << " = load i8, i8* %" << elemptr->name << "\n";
 
 		// return string
-		std::array<std::size_t, 2> retdims{{2, 0}};	// one char and a 0
+		std::array<std::size_t, 2> retdims{{2, 1}};	// one char and a 0
 		t_astret str_mem = get_tmp_var(SymbolType::STRING, &retdims);
 
 		// allocate the return string's memory
@@ -388,7 +388,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		std::size_t dim = std::get<0>(term->dims);
 		num1 = safe_array_index(num1, dim);
 		num2 = safe_array_index(num2, dim);
-		
+
 		// if num1 > num2, the loop has to be in the reversed order
 		t_astret num2larger_ptr = get_tmp_var(SymbolType::INT);
 		(*m_ostr) << "%" << num2larger_ptr->name << " = alloca i1\n";
@@ -416,7 +416,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		// TODO
 		t_astret vec_mem = get_tmp_var(term->ty, &term->dims);
 		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x " << strty << "]\n";
-		
+
 		// assign elements in a loop
 		// source vector index counter
 		t_astret ctrsrc = get_tmp_var(SymbolType::INT);
@@ -462,7 +462,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 				(*m_ostr) << "store i1 %" << _cond->name 
 					<< ", i1* %" << condptr->name << "\n";
 			}, true);
-		
+
 			t_astret condval = get_tmp_var(SymbolType::INT);
 			(*m_ostr) << "%" << condval->name << " = load i1, i1* %" << condptr->name << "\n";
 			return condval;
@@ -566,8 +566,8 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 	}
 
 	// ranged matrix access
-	// TODO: allow mixed forms of the type mat[1, 2 .. 3]
-	else if(term->ty == SymbolType::MATRIX && (ast->IsRanged12() || ast->IsRanged34()))
+	// TODO: allow mixed forms of the type mat[1, 2~3]
+	else if(term->ty == SymbolType::MATRIX && (ast->IsRanged12() && ast->IsRanged34()))
 	{
 		std::size_t dim1 = std::get<0>(term->dims);
 		std::size_t dim2 = std::get<1>(term->dims);
@@ -576,7 +576,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		num2 = safe_array_index(num2, dim1);
 		num3 = safe_array_index(num3, dim2);
 		num4 = safe_array_index(num4, dim2);
-		
+
 		// if num1 > num2, the loop has to be in the reversed order
 		t_astret num2larger_ptr = get_tmp_var(SymbolType::INT);
 		(*m_ostr) << "%" << num2larger_ptr->name << " = alloca i1\n";
@@ -624,10 +624,10 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		// create a new vector for the results 
 		// for the moment with full static size, which will be truncated on assignment
 		// TODO
-		std::array<std::size_t, 2> vecdims{{dim1*dim2, 0}};
+		std::array<std::size_t, 2> vecdims{{dim1*dim2, 1}};
 		t_astret vec_mem = get_tmp_var(SymbolType::VECTOR, &vecdims);
 		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim1*dim2 << " x double]\n";
-		
+
 		// assign elements in a loop
 		// source vector index counter
 		t_astret ctrsrc1 = get_tmp_var(SymbolType::INT);
@@ -674,7 +674,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 				(*m_ostr) << "store i1 %" << _cond->name 
 					<< ", i1* %" << cond1ptr->name << "\n";
 			}, true);
-		
+
 			t_astret cond1val = get_tmp_var(SymbolType::INT);
 			(*m_ostr) << "%" << cond1val->name << " = load i1, i1* %" 
 				<< cond1ptr->name << "\n";
@@ -721,7 +721,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 					(*m_ostr) << "store i1 %" << _cond->name 
 						<< ", i1* %" << cond3ptr->name << "\n";
 				}, true);
-			
+
 				t_astret cond3val = get_tmp_var(SymbolType::INT);
 				(*m_ostr) << "%" << cond3val->name << " = load i1, i1* %" 
 					<< cond3ptr->name << "\n";
@@ -788,7 +788,7 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 					<< ctrdst->name << "\n";
 			});
 			// -----------------------------------------------------------------
-	
+
 			// increment counters
 			// if num1 > num2, the loop has to be in the reversed order
 			generate_cond([num2larger]() -> t_astret
@@ -938,8 +938,8 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 		// assign matrix element
 		(*m_ostr) << "store double %" << expr->name << ", double* %" << elemptr->name << "\n";
 	}
-	
-	// ranged vector and assignment
+
+	// ranged vector and string assignment
 	else if((sym->ty == SymbolType::VECTOR || sym->ty == SymbolType::STRING) && ast->IsRanged12())
 	{
 		if(num3 || num4)	// no further arguments needed
@@ -956,7 +956,7 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 		std::size_t exprdim = std::get<0>(expr->dims);
 		num1 = safe_array_index(num1, dim);
 		num2 = safe_array_index(num2, dim);
-		
+
 		// if num1 > num2, the loop has to be in the reversed order
 		t_astret num2larger_ptr = get_tmp_var(SymbolType::INT);
 		(*m_ostr) << "%" << num2larger_ptr->name << " = alloca i1\n";
@@ -1024,7 +1024,7 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 				(*m_ostr) << "store i1 %" << _cond->name 
 					<< ", i1* %" << condptr->name << "\n";
 			}, true);
-		
+
 			t_astret condval = get_tmp_var(SymbolType::INT);
 			(*m_ostr) << "%" << condval->name << " = load i1, i1* %" << condptr->name << "\n";
 			return condval;
@@ -1082,6 +1082,250 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 				<< ctrexpr->name << "\n";
 		});
 	}
+	
+	// ranged matrix assignment
+	// TODO: allow mixed forms of the type mat[1, 2~3] = ...
+	else if(sym->ty == SymbolType::MATRIX && (ast->IsRanged12() && ast->IsRanged34()))
+	{
+		std::size_t dim1 = std::get<0>(sym->dims);
+		std::size_t dim2 = std::get<1>(sym->dims);
+		std::size_t exprdim1 = std::get<0>(expr->dims);
+		std::size_t exprdim2 = std::get<1>(expr->dims);
+
+		num1 = safe_array_index(num1, dim1);
+		num2 = safe_array_index(num2, dim1);
+		num3 = safe_array_index(num3, dim2);
+		num4 = safe_array_index(num4, dim2);
+
+		// if num1 > num2, the loop has to be in the reversed order
+		t_astret num2larger_ptr = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << num2larger_ptr->name << " = alloca i1\n";
+
+		generate_cond([this, num1, num2]() -> t_astret
+		{
+			t_astret cond = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << cond->name << " = icmp sle i64 %" << num1->name 
+				<< ", %" << num2->name << "\n";
+			return cond;
+		}, [this, num2larger_ptr]
+		{
+			(*m_ostr) << "store i1 1, i1* %" << num2larger_ptr->name << "\n";
+		}, [this, num2larger_ptr]
+		{
+			(*m_ostr) << "store i1 0, i1* %" << num2larger_ptr->name << "\n";
+		}, true);
+
+		t_astret num2larger = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << num2larger->name << " = load i1, i1* %" 
+			<< num2larger_ptr->name << "\n";
+
+		// if num3 > num4, the loop has to be in the reversed order
+		t_astret num4larger_ptr = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << num4larger_ptr->name << " = alloca i1\n";
+
+		generate_cond([this, num3, num4]() -> t_astret
+		{
+			t_astret cond = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << cond->name << " = icmp sle i64 %" << num3->name 
+				<< ", %" << num4->name << "\n";
+			return cond;
+		}, [this, num4larger_ptr]
+		{
+			(*m_ostr) << "store i1 1, i1* %" << num4larger_ptr->name << "\n";
+		}, [this, num4larger_ptr]
+		{
+			(*m_ostr) << "store i1 0, i1* %" << num4larger_ptr->name << "\n";
+		}, true);
+
+		t_astret num4larger = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << num4larger->name << " = load i1, i1* %" 
+			<< num4larger_ptr->name << "\n";
+
+		// assign elements in a loop
+		// symbol vector index counter
+		t_astret ctrsym1 = get_tmp_var(SymbolType::INT);
+		t_astret ctrsym1val = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctrsym1->name << " = alloca i64\n";
+		(*m_ostr) << "store i64 %" << num1->name << ", i64* %" << ctrsym1->name << "\n";
+
+		t_astret ctrsym3 = get_tmp_var(SymbolType::INT);
+		t_astret ctrsym3val = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctrsym3->name << " = alloca i64\n";
+
+		// expression vector index counter
+		t_astret ctrexpr = get_tmp_var(SymbolType::INT);
+		t_astret ctrexprval = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctrexpr->name << " = alloca i64\n";
+		(*m_ostr) << "store i64 0, i64* %" << ctrexpr->name << "\n";
+
+		generate_loop([this, ctrsym1, ctrsym1val, num2, num2larger]() -> t_astret
+		{
+			(*m_ostr) << "%" << ctrsym1val->name << " = load i64, i64* %" 
+				<< ctrsym1->name << "\n";
+
+			t_astret cond1ptr = get_tmp_var();
+			(*m_ostr) << "%" << cond1ptr->name << " = alloca i1\n";
+
+			// if num1 > num2, the loop has to be in the reversed order
+			generate_cond([num2larger]() -> t_astret
+			{
+				return num2larger;
+			}, [this, cond1ptr, num2, ctrsym1val]
+			{
+				// ctrsym1val <= num2
+				t_astret _cond = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << _cond->name << " = icmp sle i64 %" 
+					<< ctrsym1val->name <<  ", %" << num2->name << "\n";
+				(*m_ostr) << "store i1 %" << _cond->name 
+					<< ", i1* %" << cond1ptr->name << "\n";
+			}, [this, cond1ptr, num2, ctrsym1val]
+			{
+				// ctrsym1val >= num2
+				t_astret _cond = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << _cond->name << " = icmp sge i64 %" 
+					<< ctrsym1val->name <<  ", %" << num2->name << "\n";
+				(*m_ostr) << "store i1 %" << _cond->name 
+					<< ", i1* %" << cond1ptr->name << "\n";
+			}, true);
+
+			t_astret cond1val = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << cond1val->name << " = load i1, i1* %" 
+				<< cond1ptr->name << "\n";
+			return cond1val;
+		}, [this, ctrsym1, ctrsym1val, ctrexpr, ctrexprval, expr, 
+			dim1, dim2, exprdim1, exprdim2, sym, num2larger, 
+			num3, ctrsym3, ctrsym3val, num4larger, num4]
+		{
+			// -----------------------------------------------------------------
+			// inner loop
+			// -----------------------------------------------------------------
+			(*m_ostr) << "store i64 %" << num3->name << ", i64* %" << ctrsym3->name << "\n";
+
+			generate_loop([this, ctrsym3, ctrsym3val, ctrexpr, ctrexprval, 
+				num4, num4larger]() -> t_astret
+			{
+				(*m_ostr) << "%" << ctrsym3val->name << " = load i64, i64* %" 
+					<< ctrsym3->name << "\n";
+
+				(*m_ostr) << "%" << ctrexprval->name << " = load i64, i64* %" 
+					<< ctrexpr->name << "\n";
+
+				t_astret cond3ptr = get_tmp_var();
+				(*m_ostr) << "%" << cond3ptr->name << " = alloca i1\n";
+
+				// if num3 > num4, the loop has to be in the reversed order
+				generate_cond([num4larger]() -> t_astret
+				{
+					return num4larger;
+				}, [this, cond3ptr, num4, ctrsym3val]
+				{
+					// ctrsym3val <= num4
+					t_astret _cond = get_tmp_var(SymbolType::INT);
+					(*m_ostr) << "%" << _cond->name << " = icmp sle i64 %" 
+						<< ctrsym3val->name <<  ", %" << num4->name << "\n";
+					(*m_ostr) << "store i1 %" << _cond->name 
+						<< ", i1* %" << cond3ptr->name << "\n";
+				}, [this, cond3ptr, num4, ctrsym3val]
+				{
+					// ctrsym3val >= num4
+					t_astret _cond = get_tmp_var(SymbolType::INT);
+					(*m_ostr) << "%" << _cond->name << " = icmp sge i64 %" 
+						<< ctrsym3val->name <<  ", %" << num4->name << "\n";
+					(*m_ostr) << "store i1 %" << _cond->name 
+						<< ", i1* %" << cond3ptr->name << "\n";
+				}, true);
+
+				t_astret cond3val = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << cond3val->name << " = load i1, i1* %" 
+					<< cond3ptr->name << "\n";
+				return cond3val;
+			}, [this, ctrsym1val, ctrsym3, ctrsym3val, ctrexpr, ctrexprval, 
+				expr, dim1, dim2, exprdim1, exprdim2, sym, num4larger]
+			{
+				// idx = num1*dim2 + num2
+				t_astret idx1 = get_tmp_var();
+				t_astret idx = get_tmp_var();
+				(*m_ostr) << "%" << idx1->name << " = mul i64 %" 
+					<< ctrsym1val->name << ", " << dim2 << "\n";
+				(*m_ostr) << "%" << idx->name << " = add i64 %" 
+					<< idx1->name << ", %" << ctrsym3val->name << "\n";
+
+				// source matrix element pointer
+				t_astret srcelemptr = get_tmp_var();
+				(*m_ostr) << "%" << srcelemptr->name << " = getelementptr [" 
+					<< exprdim1*exprdim2 << " x double], [" << exprdim1*exprdim2 << " x double]* %" 
+					<< expr->name << ", i64 0, i64 %" << ctrexprval->name << "\n";
+
+				// destination matrix element pointer
+				t_astret dstelemptr = get_tmp_var();
+				(*m_ostr) << "%" << dstelemptr->name << " = getelementptr [" 
+					<< dim1*dim2 << " x double], [" << dim1*dim2 << " x double]* %" 
+					<< sym->name << ", i64 0, i64 %" << idx->name << "\n";
+
+				// source matrix element
+				t_astret srcelem = get_tmp_var(SymbolType::SCALAR);
+				(*m_ostr) << "%" << srcelem->name << " = load double, double* %" 
+					<< srcelemptr->name << "\n";
+
+				// store to destination matrix element pointer
+				(*m_ostr) << "store double %" << srcelem->name << ", double* %" 
+					<< dstelemptr->name << "\n";
+
+				// increment counters
+				// if num3 > num4, the loop has to be in the reversed order
+				generate_cond([num4larger]() -> t_astret
+				{
+					return num4larger;
+				}, [this, ctrsym3val, ctrsym3]
+				{
+					// ++ctrsym3
+					t_astret newctrsym3val = get_tmp_var(SymbolType::INT);
+					(*m_ostr) << "%" << newctrsym3val->name << " = add i64 %" 
+						<< ctrsym3val->name << ", 1\n";
+					(*m_ostr) << "store i64 %" << newctrsym3val->name << ", i64* %" 
+						<< ctrsym3->name << "\n";
+				}, [this, ctrsym3val, ctrsym3]
+				{
+					// --ctrsym3
+					t_astret newctrsym3val = get_tmp_var(SymbolType::INT);
+					(*m_ostr) << "%" << newctrsym3val->name << " = sub i64 %" 
+						<< ctrsym3val->name << ", 1\n";
+					(*m_ostr) << "store i64 %" << newctrsym3val->name << ", i64* %" 
+						<< ctrsym3->name << "\n";
+				}, true);
+
+				t_astret newctrexprval = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << newctrexprval->name << " = add i64 %" 
+					<< ctrexprval->name << ", 1\n";
+				(*m_ostr) << "store i64 %" << newctrexprval->name << ", i64* %" 
+					<< ctrexpr->name << "\n";
+			});
+			// -----------------------------------------------------------------
+
+			// increment counters
+			// if num1 > num2, the loop has to be in the reversed order
+			generate_cond([num2larger]() -> t_astret
+			{
+				return num2larger;
+			}, [this, ctrsym1val, ctrsym1]
+			{
+				// ++ctrsym1
+				t_astret newctrsym1val = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << newctrsym1val->name << " = add i64 %" 
+					<< ctrsym1val->name << ", 1\n";
+				(*m_ostr) << "store i64 %" << newctrsym1val->name << ", i64* %" 
+					<< ctrsym1->name << "\n";
+			}, [this, ctrsym1val, ctrsym1]
+			{
+				// --ctrsym1
+				t_astret newctrsym1val = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << newctrsym1val->name << " = sub i64 %" 
+					<< ctrsym1val->name << ", 1\n";
+				(*m_ostr) << "store i64 %" << newctrsym1val->name << ", i64* %" 
+					<< ctrsym1->name << "\n";
+			}, true);
+		});
+	}
 
 	return expr;
 }
@@ -1120,7 +1364,7 @@ t_astret LLAsm::visit(const ASTStrConst* ast)
 	const std::string& str = ast->GetVal();
 	std::size_t dim = str.length()+1;
 
-	std::array<std::size_t, 2> dims{{dim, 0}};
+	std::array<std::size_t, 2> dims{{dim, 1}};
 	t_astret str_mem = get_tmp_var(SymbolType::STRING, &dims);
 
 	// allocate the string's memory

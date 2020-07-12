@@ -159,7 +159,7 @@ t_astret LLAsm::visit(const ASTPlus* ast)
 			<< std::get<0>(term2->dims) << " x i8]* %" << term2->name << ", i64 0, i64 0\n";
 
 		// allocate memory for concatenated string
-		std::array<std::size_t, 2> dim{{ std::get<0>(term1->dims)+std::get<0>(term2->dims)-1, 0 }};
+		std::array<std::size_t, 2> dim{{ std::get<0>(term1->dims)+std::get<0>(term2->dims)-1, 1 }};
 		t_astret res = get_tmp_var(SymbolType::STRING, &dim);
 
 		// allocate the concatenated string's memory
@@ -294,7 +294,7 @@ t_astret LLAsm::visit(const ASTMult* ast)
 		std::size_t dim_j = std::get<1>(term1->dims);
 
 		// result vector w
-		std::array<std::size_t, 2> w_dims{{dim_i, 0}};
+		std::array<std::size_t, 2> w_dims{{dim_i, 1}};
 		t_astret w_mem = get_tmp_var(SymbolType::VECTOR, &w_dims);
 		(*m_ostr) << "%" << w_mem->name << " = alloca [" << dim_i << " x double]\n";
 

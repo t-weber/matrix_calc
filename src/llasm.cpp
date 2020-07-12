@@ -72,7 +72,7 @@ t_astret LLAsm::visit(const ASTExprList* ast)
 	// array values and size
 	const auto& lst = ast->GetList();
 	std::size_t len = lst.size();
-	std::array<std::size_t, 2> dims{{len, 0}};
+	std::array<std::size_t, 2> dims{{len, 1}};
 
 	// allocate double array
 	t_astret vec_mem = get_tmp_var(SymbolType::VECTOR, &dims);
