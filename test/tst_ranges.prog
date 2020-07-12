@@ -8,6 +8,10 @@ func start()
 	w = v[2~1];
 	putstr(w);
 
+	putstr("old: " + v);
+	v[2~1] = [9,8];
+	putstr("new: " + v);
+
 
 	mat 4 4 M = [
 		1,   2,  3,  4, 
@@ -25,4 +29,8 @@ func start()
 	str s = "abcdef12345";
 	putstr(s[3~5]);
 	putstr(s[5~3]);
+
+	putstr("old: " + s);
+	s[3~5] = "XYZ";
+	putstr("new: " + s);
 }

@@ -832,14 +832,30 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 	num1 = convert_sym(num1, SymbolType::INT);
 
 	t_astret num2 = nullptr;
+	t_astret num3 = nullptr;
+	t_astret num4 = nullptr;
+
 	if(ast->GetNum2())
 	{
 		num2 = ast->GetNum2()->accept(this);
 		num2 = convert_sym(num2, SymbolType::INT);
 	}
 
+	if(ast->GetNum3())
+	{
+		num3 = ast->GetNum3()->accept(this);
+		num3 = convert_sym(num3, SymbolType::INT);
+	}
 
-	if(sym->ty == SymbolType::VECTOR)
+	if(ast->GetNum4())
+	{
+		num4 = ast->GetNum4()->accept(this);
+		num4 = convert_sym(num4, SymbolType::INT);
+	}
+
+
+	// single-element vector assignment
+	if(sym->ty == SymbolType::VECTOR && !ast->IsRanged12())
 	{
 		// cast if needed
 		if(expr->ty != SymbolType::SCALAR)
@@ -860,35 +876,8 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 		(*m_ostr) << "store double %" << expr->name << ", double* %" << elemptr->name << "\n";
 	}
 
-	else if(sym->ty == SymbolType::MATRIX)
-	{
-		// cast if needed
-		expr = convert_sym(expr, SymbolType::SCALAR);
-
-		if(!num2)	// second argument needed
-			throw std::runtime_error("ASTArrayAssign: Invalid element assignment for matrix \"" + sym->name + "\".");
-
-		std::size_t dim1 = std::get<0>(sym->dims);
-		std::size_t dim2 = std::get<1>(sym->dims);
-		num1 = safe_array_index(num1, dim1);
-		num2 = safe_array_index(num2, dim2);
-
-		// idx = num1*dim2 + num2
-		t_astret idx1 = get_tmp_var();
-		t_astret idx = get_tmp_var();
-		(*m_ostr) << "%" << idx1->name << " = mul i64 %" << num1->name << ", " << dim2 << "\n";
-		(*m_ostr) << "%" << idx->name << " = add i64 %" << idx1->name << ", %" << num2->name << "\n";
-
-		// matrix element pointer
-		t_astret elemptr = get_tmp_var();
-		(*m_ostr) << "%" << elemptr->name << " = getelementptr [" << dim1*dim2 << " x double], ["
-			<< dim1*dim2 << " x double]* %" << sym->name << ", i64 0, i64 %" << idx->name << "\n";
-
-		// assign matrix element
-		(*m_ostr) << "store double %" << expr->name << ", double* %" << elemptr->name << "\n";
-	}
-
-	else if(sym->ty == SymbolType::STRING)
+	// single-element string assignment
+	else if(sym->ty == SymbolType::STRING && !ast->IsRanged12())
 	{
 		// cast if needed
 		expr = convert_sym(expr, SymbolType::STRING);
@@ -919,6 +908,179 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 
 		// assign string element
 		(*m_ostr) << "store i8 %" << elem_src->name << ", i8* %" << elemptr->name << "\n";
+	}
+
+	// single-element matrix assignment
+	else if(sym->ty == SymbolType::MATRIX && !ast->IsRanged12() && !ast->IsRanged34())
+	{
+		// cast if needed
+		expr = convert_sym(expr, SymbolType::SCALAR);
+
+		if(!num2)	// second argument needed
+			throw std::runtime_error("ASTArrayAssign: Invalid element assignment for matrix \"" + sym->name + "\".");
+
+		std::size_t dim1 = std::get<0>(sym->dims);
+		std::size_t dim2 = std::get<1>(sym->dims);
+		num1 = safe_array_index(num1, dim1);
+		num2 = safe_array_index(num2, dim2);
+
+		// idx = num1*dim2 + num2
+		t_astret idx1 = get_tmp_var();
+		t_astret idx = get_tmp_var();
+		(*m_ostr) << "%" << idx1->name << " = mul i64 %" << num1->name << ", " << dim2 << "\n";
+		(*m_ostr) << "%" << idx->name << " = add i64 %" << idx1->name << ", %" << num2->name << "\n";
+
+		// matrix element pointer
+		t_astret elemptr = get_tmp_var();
+		(*m_ostr) << "%" << elemptr->name << " = getelementptr [" << dim1*dim2 << " x double], ["
+			<< dim1*dim2 << " x double]* %" << sym->name << ", i64 0, i64 %" << idx->name << "\n";
+
+		// assign matrix element
+		(*m_ostr) << "store double %" << expr->name << ", double* %" << elemptr->name << "\n";
+	}
+	
+	// ranged vector and assignment
+	else if((sym->ty == SymbolType::VECTOR || sym->ty == SymbolType::STRING) && ast->IsRanged12())
+	{
+		if(num3 || num4)	// no further arguments needed
+			throw std::runtime_error("ASTArrayAssign: Invalid access operator for \"" + sym->name + "\".");
+
+		std::string strty, strptrty;
+		if(sym->ty == SymbolType::VECTOR)
+			strty = "double";
+		else if(sym->ty == SymbolType::STRING)
+			strty = "i8";
+		strptrty = strty + "*";
+
+		std::size_t dim = std::get<0>(sym->dims);
+		std::size_t exprdim = std::get<0>(expr->dims);
+		num1 = safe_array_index(num1, dim);
+		num2 = safe_array_index(num2, dim);
+		
+		// if num1 > num2, the loop has to be in the reversed order
+		t_astret num2larger_ptr = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << num2larger_ptr->name << " = alloca i1\n";
+
+		generate_cond([this, num1, num2]() -> t_astret
+		{
+			t_astret cond = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << cond->name << " = icmp sle i64 %" << num1->name 
+				<< ", %" << num2->name << "\n";
+			return cond;
+		}, [this, num2larger_ptr]
+		{
+			(*m_ostr) << "store i1 1, i1* %" << num2larger_ptr->name << "\n";
+		}, [this, num2larger_ptr]
+		{
+			(*m_ostr) << "store i1 0, i1* %" << num2larger_ptr->name << "\n";
+		}, true);
+
+		t_astret num2larger = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << num2larger->name << " = load i1, i1* %" 
+			<< num2larger_ptr->name << "\n";
+
+		// assign elements in a loop
+		// source vector index counter
+		t_astret ctrsym = get_tmp_var(SymbolType::INT);
+		t_astret ctrsymval = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctrsym->name << " = alloca i64\n";
+		(*m_ostr) << "store i64 %" << num1->name << ", i64* %" << ctrsym->name << "\n";
+
+		// destination vector index counter
+		t_astret ctrexpr = get_tmp_var(SymbolType::INT);
+		t_astret ctrexprval = get_tmp_var(SymbolType::INT);
+		(*m_ostr) << "%" << ctrexpr->name << " = alloca i64\n";
+		(*m_ostr) << "store i64 0, i64* %" << ctrexpr->name << "\n";
+
+		generate_loop([this, ctrsym, ctrsymval, ctrexpr, ctrexprval, num2, num2larger]() -> t_astret
+		{
+			(*m_ostr) << "%" << ctrsymval->name << " = load i64, i64* %" 
+				<< ctrsym->name << "\n";
+
+			(*m_ostr) << "%" << ctrexprval->name << " = load i64, i64* %" 
+				<< ctrexpr->name << "\n";
+
+			t_astret condptr = get_tmp_var();
+			(*m_ostr) << "%" << condptr->name << " = alloca i1\n";
+
+			// if num1 > num2, the loop has to be in the reversed order
+			generate_cond([num2larger]() -> t_astret
+			{
+				return num2larger;
+			}, [this, condptr, num2, ctrsymval]
+			{
+				// ctrsymval <= num2
+				t_astret _cond = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << _cond->name << " = icmp sle i64 %" 
+					<< ctrsymval->name <<  ", %" << num2->name << "\n";
+				(*m_ostr) << "store i1 %" << _cond->name 
+					<< ", i1* %" << condptr->name << "\n";
+			}, [this, condptr, num2, ctrsymval]
+			{
+				// ctrsymval >= num2
+				t_astret _cond = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << _cond->name << " = icmp sge i64 %" 
+					<< ctrsymval->name <<  ", %" << num2->name << "\n";
+				(*m_ostr) << "store i1 %" << _cond->name 
+					<< ", i1* %" << condptr->name << "\n";
+			}, true);
+		
+			t_astret condval = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << condval->name << " = load i1, i1* %" << condptr->name << "\n";
+			return condval;
+		}, [this, &strty, &strptrty, ctrsym, ctrsymval, ctrexpr, ctrexprval, 
+			expr, dim, exprdim, sym, num2larger]
+		{
+			// source vector element pointer
+			t_astret srcelemptr = get_tmp_var();
+			(*m_ostr) << "%" << srcelemptr->name << " = getelementptr [" 
+				<< exprdim << " x "<< strty << "], [" << exprdim << " x " << strty << "]* %" 
+				<< expr->name << ", i64 0, i64 %" << ctrexprval->name << "\n";
+
+			// destination vector element pointer
+			t_astret dstelemptr = get_tmp_var();
+			(*m_ostr) << "%" << dstelemptr->name << " = getelementptr [" 
+				<< dim << " x " << strty << "], [" << dim << " x " << strty << "]* %" 
+				<< sym->name << ", i64 0, i64 %" << ctrsymval->name << "\n";
+
+			// source vector element
+			t_astret srcelem = get_tmp_var();
+			(*m_ostr) << "%" << srcelem->name << " = load " << strty 
+				<< ", " << strptrty << " %" << srcelemptr->name << "\n";
+
+			// store to destination vector element pointer
+			(*m_ostr) << "store " << strty << " %" << srcelem->name 
+				<< ", " << strptrty << " %" << dstelemptr->name << "\n";
+
+			// increment counters
+			// if num1 > num2, the loop has to be in the reversed order
+			generate_cond([num2larger]() -> t_astret
+			{
+				return num2larger;
+			}, [this, ctrsymval, ctrsym]
+			{
+				// ++ctrsymval
+				t_astret newctrsymval = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << newctrsymval->name << " = add i64 %" 
+					<< ctrsymval->name << ", 1\n";
+				(*m_ostr) << "store i64 %" << newctrsymval->name << ", i64* %" 
+					<< ctrsym->name << "\n";
+			}, [this, ctrsymval, ctrsym]
+			{
+				// --ctrsymval
+				t_astret newctrsymval = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << newctrsymval->name << " = sub i64 %" 
+					<< ctrsymval->name << ", 1\n";
+				(*m_ostr) << "store i64 %" << newctrsymval->name << ", i64* %" 
+					<< ctrsym->name << "\n";
+			}, true);
+
+			t_astret newctrexprval = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << newctrexprval->name << " = add i64 %" 
+				<< ctrexprval->name << ", 1\n";
+			(*m_ostr) << "store i64 %" << newctrexprval->name << ", i64* %" 
+				<< ctrexpr->name << "\n";
+		});
 	}
 
 	return expr;
