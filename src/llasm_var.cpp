@@ -330,11 +330,60 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		return elem;
 	}
 
-	// ranged vector access
-	if(term->ty == SymbolType::VECTOR && ast->IsRanged12())
+	// single-element string access
+	else if(term->ty == SymbolType::STRING && !ast->IsRanged12())
+	{
+		if(num2 || num3 || num4)	// no further arguments needed
+			throw std::runtime_error("ASTArrayAccess: Invalid access operator for string \"" + term->name + "\".");
+
+		std::size_t dim = std::get<0>(term->dims);
+		num1 = safe_array_index(num1, dim);
+
+		// string element pointer
+		t_astret elemptr = get_tmp_var();
+		(*m_ostr) << "%" << elemptr->name << " = getelementptr [" << dim << " x i8], ["
+			<< dim << " x i8]* %" << term->name << ", i64 0, i64 %" << num1->name << "\n";
+
+		// char at that pointer position
+		t_astret elem = get_tmp_var();
+		(*m_ostr) << "%" << elem->name << " = load i8, i8* %" << elemptr->name << "\n";
+
+		// return string
+		std::array<std::size_t, 2> retdims{{2, 0}};	// one char and a 0
+		t_astret str_mem = get_tmp_var(SymbolType::STRING, &retdims);
+
+		// allocate the return string's memory
+		(*m_ostr) << "%" << str_mem->name << " = alloca [" << std::get<0>(retdims) << " x i8]\n";
+
+		// store the char
+		t_astret ptr0 = get_tmp_var();
+		(*m_ostr) << "%" << ptr0->name << " = getelementptr [" << std::get<0>(retdims) << " x i8], ["
+			<< std::get<0>(retdims) << " x i8]* %" << str_mem->name << ", i64 0, i64 0\n";
+
+		(*m_ostr) << "store i8 %" << elem->name << ", i8* %" << ptr0->name << "\n";
+
+		// add zero termination
+		t_astret ptr1 = get_tmp_var();
+		(*m_ostr) << "%" << ptr1->name << " = getelementptr [" << std::get<0>(retdims) << " x i8], ["
+			<< std::get<0>(retdims) << " x i8]* %" << str_mem->name << ", i64 0, i64 1\n";
+
+		(*m_ostr) << "store i8 0, i8* %" << ptr1->name << "\n";
+
+		return str_mem;
+	}
+
+	// ranged vector and string access
+	else if((term->ty == SymbolType::VECTOR || term->ty == SymbolType::STRING) && ast->IsRanged12())
 	{
 		if(num3 || num4)	// no further arguments needed
-			throw std::runtime_error("ASTArrayAccess: Invalid access operator for vector \"" + term->name + "\".");
+			throw std::runtime_error("ASTArrayAccess: Invalid access operator for \"" + term->name + "\".");
+
+		std::string strty, strptrty;
+		if(term->ty == SymbolType::VECTOR)
+			strty = "double";
+		else if(term->ty == SymbolType::STRING)
+			strty = "i8";
+		strptrty = strty + "*";
 
 		std::size_t dim = std::get<0>(term->dims);
 		num1 = safe_array_index(num1, dim);
@@ -365,8 +414,8 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		// create a new vector for the results 
 		// for the moment with full static size, which will be truncated on assignment
 		// TODO
-		t_astret vec_mem = get_tmp_var(SymbolType::VECTOR, &term->dims);
-		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x double]\n";
+		t_astret vec_mem = get_tmp_var(term->ty, &term->dims);
+		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x " << strty << "]\n";
 		
 		// assign elements in a loop
 		// source vector index counter
@@ -417,27 +466,29 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 			t_astret condval = get_tmp_var(SymbolType::INT);
 			(*m_ostr) << "%" << condval->name << " = load i1, i1* %" << condptr->name << "\n";
 			return condval;
-		}, [this, ctrsrc, ctrsrcval, ctrdst, ctrdstval, term, dim, vec_mem, num2larger]
+		}, [this, &strty, &strptrty, ctrsrc, ctrsrcval, ctrdst, ctrdstval, 
+			term, dim, vec_mem, num2larger]
 		{
 			// source vector element pointer
 			t_astret srcelemptr = get_tmp_var();
 			(*m_ostr) << "%" << srcelemptr->name << " = getelementptr [" 
-				<< dim << " x double], [" << dim << " x double]* %" 
+				<< dim << " x "<< strty << "], [" << dim << " x " << strty << "]* %" 
 				<< term->name << ", i64 0, i64 %" << ctrsrcval->name << "\n";
 
 			// destination vector element pointer
 			t_astret dstelemptr = get_tmp_var();
 			(*m_ostr) << "%" << dstelemptr->name << " = getelementptr [" 
-				<< dim << " x double], [" << dim << " x double]* %" 
+				<< dim << " x " << strty << "], [" << dim << " x " << strty << "]* %" 
 				<< vec_mem->name << ", i64 0, i64 %" << ctrdstval->name << "\n";
 
 			// source vector element
-			t_astret srcelem = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << srcelem->name << " = load double, double* %" << srcelemptr->name << "\n";
+			t_astret srcelem = get_tmp_var();
+			(*m_ostr) << "%" << srcelem->name << " = load " << strty 
+				<< ", " << strptrty << " %" << srcelemptr->name << "\n";
 
 			// store to destination vector element pointer
-			(*m_ostr) << "store double %" << srcelem->name << ", double* %" 
-				<< dstelemptr->name << "\n";
+			(*m_ostr) << "store " << strty << " %" << srcelem->name 
+				<< ", " << strptrty << " %" << dstelemptr->name << "\n";
 
 			// increment counters
 			// if num1 > num2, the loop has to be in the reversed order
@@ -468,6 +519,20 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 			(*m_ostr) << "store i64 %" << newctrdstval->name << ", i64* %" 
 				<< ctrdst->name << "\n";
 		});
+
+		if(term->ty == SymbolType::STRING)
+		{
+			// add zero termination
+			t_astret _ctrdstval = get_tmp_var(SymbolType::INT);
+			(*m_ostr) << "%" << _ctrdstval->name << " = load i64, i64* %" 
+				<< ctrdst->name << "\n";
+			t_astret dstelemptr = get_tmp_var();
+			(*m_ostr) << "%" << dstelemptr->name << " = getelementptr [" 
+				<< dim << " x " << strty << "], [" << dim << " x " << strty << "]* %" 
+				<< vec_mem->name << ", i64 0, i64 %" << _ctrdstval->name << "\n";
+
+			(*m_ostr) << "store i8 0, i8* %" << dstelemptr->name << "\n";
+		}
 
 		return vec_mem;
 	}
@@ -749,59 +814,6 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		});
 
 		return vec_mem;
-	}
-
-	// single-element string access
-	else if(term->ty == SymbolType::STRING && !ast->IsRanged12())
-	{
-		if(num2 || num3 || num4)	// no further arguments needed
-			throw std::runtime_error("ASTArrayAccess: Invalid access operator for string \"" + term->name + "\".");
-
-		std::size_t dim = std::get<0>(term->dims);
-		num1 = safe_array_index(num1, dim);
-
-		// string element pointer
-		t_astret elemptr = get_tmp_var();
-		(*m_ostr) << "%" << elemptr->name << " = getelementptr [" << dim << " x i8], ["
-			<< dim << " x i8]* %" << term->name << ", i64 0, i64 %" << num1->name << "\n";
-
-		// char at that pointer position
-		t_astret elem = get_tmp_var();
-		(*m_ostr) << "%" << elem->name << " = load i8, i8* %" << elemptr->name << "\n";
-
-
-		// return string
-		std::array<std::size_t, 2> retdims{{2, 0}};	// one char and a 0
-		t_astret str_mem = get_tmp_var(SymbolType::STRING, &retdims);
-
-		// allocate the return string's memory
-		(*m_ostr) << "%" << str_mem->name << " = alloca [" << std::get<0>(retdims) << " x i8]\n";
-
-		// store the char
-		t_astret ptr0 = get_tmp_var();
-		(*m_ostr) << "%" << ptr0->name << " = getelementptr [" << std::get<0>(retdims) << " x i8], ["
-			<< std::get<0>(retdims) << " x i8]* %" << str_mem->name << ", i64 0, i64 0\n";
-
-		(*m_ostr) << "store i8 %" << elem->name << ", i8* %" << ptr0->name << "\n";
-
-		// add zero termination
-		t_astret ptr1 = get_tmp_var();
-		(*m_ostr) << "%" << ptr1->name << " = getelementptr [" << std::get<0>(retdims) << " x i8], ["
-			<< std::get<0>(retdims) << " x i8]* %" << str_mem->name << ", i64 0, i64 1\n";
-
-		(*m_ostr) << "store i8 0, i8* %" << ptr1->name << "\n";
-
-		return str_mem;
-	}
-
-	// ranged string access
-	else if(term->ty == SymbolType::STRING && ast->IsRanged12())
-	{
-		if(num3 || num4)	// no further arguments needed
-			throw std::runtime_error("ASTArrayAccess: Invalid access operator for string \"" + term->name + "\".");
-		
-		// TODO
-		throw std::runtime_error("ASTArrayAccess: Ranged string access not yet implemented.");
 	}
 
 	throw std::runtime_error("ASTArrayAccess: Invalid array access to \"" + term->name + "\".");

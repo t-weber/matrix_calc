@@ -20,4 +20,9 @@ func start()
 
 	N = M[2~1, 2~3];
 	putstr(N);
+
+
+	str s = "abcdef12345";
+	putstr(s[3~5]);
+	putstr(s[5~3]);
 }
