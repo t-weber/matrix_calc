@@ -681,12 +681,12 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 		if(num3 || num4)	// no further arguments needed
 			throw std::runtime_error("ASTArrayAssign: Invalid access operator for \"" + sym->name + "\".");
 
-		std::string strty, strptrty;
+		std::string symty, symptrty;
 		if(sym->ty == SymbolType::VECTOR)
-			strty = "double";
+			symty = "double";
 		else if(sym->ty == SymbolType::STRING)
-			strty = "i8";
-		strptrty = strty + "*";
+			symty = "i8";
+		symptrty = symty + "*";
 
 		std::size_t dim = std::get<0>(sym->dims);
 		std::size_t exprdim = std::get<0>(expr->dims);
@@ -764,7 +764,7 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 			t_astret condval = get_tmp_var(SymbolType::INT);
 			(*m_ostr) << "%" << condval->name << " = load i1, i1* %" << condptr->name << "\n";
 			return condval;
-		}, [this, &strty, &strptrty, ctrsym, ctrsymval, ctrexpr, ctrexprval, 
+		}, [this, &symty, &symptrty, ctrsym, ctrsymval, ctrexpr, ctrexprval, 
 			expr, dim, exprdim, expr_is_array, sym, num2larger]
 		{
 			t_astret srcelem = nullptr;
@@ -773,29 +773,32 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 				// source vector element pointer
 				t_astret srcelemptr = get_tmp_var();
 				(*m_ostr) << "%" << srcelemptr->name << " = getelementptr [" 
-					<< exprdim << " x "<< strty << "], [" << exprdim << " x " << strty << "]* %" 
+					<< exprdim << " x "<< symty << "], [" << exprdim << " x " << symty << "]* %" 
 					<< expr->name << ", i64 0, i64 %" << ctrexprval->name << "\n";
 
 				// source vector element
-				srcelem = get_tmp_var();
-				(*m_ostr) << "%" << srcelem->name << " = load " << strty 
-					<< ", " << strptrty << " %" << srcelemptr->name << "\n";
+				srcelem = get_tmp_var(get_element_type(expr->ty));
+				(*m_ostr) << "%" << srcelem->name << " = load " << symty 
+					<< ", " << symptrty << " %" << srcelemptr->name << "\n";
+
+				// conversion
+				srcelem = convert_sym(srcelem, get_element_type(sym->ty));
 			}
 			else
 			{
 				// single source value
-				srcelem = convert_sym(expr, SymbolType::SCALAR);
+				srcelem = convert_sym(expr, get_element_type(sym->ty));
 			}
 
 			// destination vector element pointer
 			t_astret dstelemptr = get_tmp_var();
 			(*m_ostr) << "%" << dstelemptr->name << " = getelementptr [" 
-				<< dim << " x " << strty << "], [" << dim << " x " << strty << "]* %" 
+				<< dim << " x " << symty << "], [" << dim << " x " << symty << "]* %" 
 				<< sym->name << ", i64 0, i64 %" << ctrsymval->name << "\n";
 
 			// store to destination vector element pointer
-			(*m_ostr) << "store " << strty << " %" << srcelem->name 
-				<< ", " << strptrty << " %" << dstelemptr->name << "\n";
+			(*m_ostr) << "store " << symty << " %" << srcelem->name 
+				<< ", " << symptrty << " %" << dstelemptr->name << "\n";
 
 			// increment counters
 			// if num1 > num2, the loop has to be in the reversed order
@@ -827,7 +830,7 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 				<< ctrexpr->name << "\n";
 		});
 	}
-	
+
 	// ranged matrix assignment
 	// TODO: allow mixed forms of the type mat[1, 2~3] = ...
 	else if(sym->ty == SymbolType::MATRIX && (ast->IsRanged12() && ast->IsRanged34()))
@@ -1005,9 +1008,12 @@ t_astret LLAsm::visit(const ASTArrayAssign* ast)
 						<< expr->name << ", i64 0, i64 %" << ctrexprval->name << "\n";
 
 					// source matrix element
-					srcelem = get_tmp_var(SymbolType::SCALAR);
+					srcelem = get_tmp_var(get_element_type(expr->ty));
 					(*m_ostr) << "%" << srcelem->name << " = load double, double* %" 
 						<< srcelemptr->name << "\n";
+
+					// conversion
+					srcelem = convert_sym(srcelem, get_element_type(sym->ty));
 				}
 				else
 				{

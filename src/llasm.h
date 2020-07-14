@@ -18,6 +18,27 @@
 #include <stack>
 
 
+/**
+ * multiply the elements of a container
+ */
+template<class t_cont, std::size_t ...seq>
+constexpr typename t_cont::value_type multiply_elements(
+	const t_cont& cont, const std::index_sequence<seq...>&)
+{
+	return (std::get<seq>(cont) * ...);
+}
+
+
+/**
+ * multiply all dimensions of an array type
+ */
+template<std::size_t NUM_DIMS=2>
+std::size_t get_arraydim(const std::array<std::size_t, NUM_DIMS>& dims)
+{
+	return multiply_elements(dims, std::make_index_sequence<NUM_DIMS>());
+}
+
+
 class LLAsm : public ASTVisitor
 {
 public:
@@ -73,9 +94,19 @@ protected:
 	static std::string get_type_name(SymbolType ty);
 
 	/**
+	 * get the element type for an array type
+	 */
+	static SymbolType get_element_type(SymbolType ty);
+
+	/**
 	 * get the (static) byte size of a symbol
 	 */
 	static std::size_t get_bytesize(t_astret sym);
+
+	/**
+	 * get the dimensions of an array type
+	 */
+	static std::size_t get_arraydim(t_astret sym);
 
 	/**
 	 * find the symbol with a specific name in the symbol table

@@ -26,7 +26,8 @@ t_astret LLAsm::visit(const ASTVar* ast)
 	{
 		t_astret retvar = get_tmp_var(sym->ty, &sym->dims);
 		std::string ty = LLAsm::get_type_name(sym->ty);
-		(*m_ostr) << "%" << retvar->name << " = load " << ty  << ", " << ty << "* " << var << "\n";
+		(*m_ostr) << "%" << retvar->name << " = load " 
+			<< ty  << ", " << ty << "* " << var << "\n";
 		return retvar;
 	}
 	else if(sym->ty == SymbolType::VECTOR || sym->ty == SymbolType::MATRIX)
@@ -59,9 +60,7 @@ t_astret LLAsm::visit(const ASTVarDecl* ast)
 		}
 		else if(sym->ty == SymbolType::VECTOR || sym->ty == SymbolType::MATRIX)
 		{
-			std::size_t dim = std::get<0>(sym->dims);
-			if(sym->ty == SymbolType::MATRIX)
-				dim *= std::get<1>(sym->dims);
+			std::size_t dim = get_arraydim(sym);
 
 			// allocate the array's memory
 			(*m_ostr) << "%" << sym->name << " = alloca [" << dim << " x double]\n";
@@ -74,7 +73,7 @@ t_astret LLAsm::visit(const ASTVarDecl* ast)
 			(*m_ostr) << "%" << sym->name << " = alloca [" << dim << " x i8]\n";
 
 			// get a pointer to the string
-			t_astret strptr = get_tmp_var();
+			t_astret strptr = get_tmp_var(sym->ty);
 			(*m_ostr) << "%" << strptr->name << " = getelementptr [" << dim << " x i8], ["
 				<< dim << " x i8]* %" << sym->name << ", i64 0, i64 0\n";
 
@@ -222,13 +221,8 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 
 		else if(sym->ty == SymbolType::VECTOR || sym->ty == SymbolType::MATRIX)
 		{
-			std::size_t dimDst = std::get<0>(sym->dims);
-			std::size_t dimSrc = std::get<0>(expr->dims);
-
-			if(expr->ty == SymbolType::MATRIX)
-				dimSrc *= std::get<1>(expr->dims);
-			if(sym->ty == SymbolType::MATRIX)
-				dimDst *= std::get<1>(sym->dims);
+			std::size_t dimDst = get_arraydim(sym);
+			std::size_t dimSrc = get_arraydim(expr);
 
 			// copy elements in a loop
 			generate_loop(0, dimDst, [this, expr, sym, dimDst, dimSrc](t_astret ctrval)
@@ -331,4 +325,40 @@ t_astret LLAsm::visit(const ASTStrConst* ast)
 	}
 
 	return str_mem;
+}
+
+
+t_astret LLAsm::visit(const ASTExprList* ast)
+{
+	// only double arrays are handled here
+	if(!ast->IsScalarArray())
+	{
+		throw std::runtime_error("ASTExprList: General expression list should not be directly evaluated.");
+	}
+
+	// array values and size
+	const auto& lst = ast->GetList();
+	std::size_t len = lst.size();
+	std::array<std::size_t, 2> dims{{len, 1}};
+
+	// allocate double array
+	t_astret vec_mem = get_tmp_var(SymbolType::VECTOR, &dims);
+	(*m_ostr) << "%" << vec_mem->name << " = alloca [" << len << " x double]\n";
+
+	// set the individual array elements
+	auto iter = lst.begin();
+	for(std::size_t idx=0; idx<len; ++idx)
+	{
+		t_astret ptr = get_tmp_var();
+		(*m_ostr) << "%" << ptr->name << " = getelementptr [" << len << " x double], ["
+			<< len << " x double]* %" << vec_mem->name << ", i64 0, i64 " << idx << "\n";
+
+		t_astret val = (*iter)->accept(this);
+		val = convert_sym(val, SymbolType::SCALAR);
+
+		(*m_ostr) << "store double %" << val->name << ", double* %"  << ptr->name << "\n";
+		++iter;
+	}
+
+	return vec_mem;
 }

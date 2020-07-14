@@ -42,12 +42,12 @@ struct Symbol
 	std::string scoped_name{};
 
 	SymbolType ty = SymbolType::VOID;
-	std::array<std::size_t, 2> dims{{0,0}};
+	std::array<std::size_t, 2> dims{{1,1}};
 
 	// for functions
 	std::vector<SymbolType> argty{{}};
 	SymbolType retty = SymbolType::VOID;
-	std::array<std::size_t, 2> retdims{{0,0}};
+	std::array<std::size_t, 2> retdims{{1,1}};
 
 	// for compound type
 	//const Symbol *memblock = nullptr;
@@ -55,7 +55,7 @@ struct Symbol
 
 	bool tmp = false;		// temporary or declared variable?
 	bool on_heap = false;	// heap or stack variable?
-	
+
 	mutable std::size_t refcnt = 0;	// number of reference to this symbol
 
 
@@ -139,12 +139,16 @@ public:
 		ostr << std::left << std::setw(32) << "full name" 
 			<< std::left << std::setw(16) << "type" 
 			<< std::left << std::setw(8) << "refs" 
+			<< std::left << std::setw(8) << "dim1"
+			<< std::left << std::setw(8) << "dim2"
 			<< "\n";
 		ostr << "--------------------------------------------------------------------------------\n";
 		for(const auto& pair : tab.m_syms)
 			ostr << std::left << std::setw(32) << pair.first 
 				<< std::left << std::setw(16) << Symbol::get_type_name(pair.second.ty) 
 				<< std::left << std::setw(8) << pair.second.refcnt 
+				<< std::left << std::setw(8) << std::get<0>(pair.second.dims) 
+				<< std::left << std::setw(8) << std::get<1>(pair.second.dims)
 				<< "\n";
 
 		return ostr;

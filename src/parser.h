@@ -76,7 +76,7 @@ namespace yy
 		// information about currently parsed symbol
 		std::vector<std::string> m_curscope;
 		SymbolType m_symtype = SymbolType::SCALAR;
-		std::array<std::size_t, 2> m_symdims = {0, 0};
+		std::array<std::size_t, 2> m_symdims = {1, 1};
 
 	public:
 		ParserContext(std::istream& istr = std::cin) : m_lex{this, istr}, m_statements{}
@@ -125,7 +125,7 @@ namespace yy
 			const std::string& scope = GetScopeName();
 			return m_symbols.AddSymbol(scope, name, m_symtype, m_symdims);
 		}
-		
+
 		const Symbol* FindScopedSymbol(const std::string& name) const
 		{
 			const std::string& scope = GetScopeName();
@@ -139,7 +139,7 @@ namespace yy
 		void SetSymType(SymbolType ty) { m_symtype = ty; }
 
 		// dimensions of vector and matrix symbols
-		void SetSymDims(std::size_t dim1, std::size_t dim2=0)
+		void SetSymDims(std::size_t dim1, std::size_t dim2=1)
 		{
 			m_symdims[0] = dim1;
 			m_symdims[1] = dim2;

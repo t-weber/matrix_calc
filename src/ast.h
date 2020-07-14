@@ -337,7 +337,7 @@ public:
 
 	void AddArg(const std::string& argname,
 		SymbolType ty=SymbolType::UNKNOWN, 
-		std::size_t dim1=0, std::size_t dim2=0)
+		std::size_t dim1=1, std::size_t dim2=1)
 	{
 		argnames.push_front(std::make_tuple(argname, ty, dim1, dim2));
 	}
@@ -374,7 +374,7 @@ private:
 class ASTTypeDecl : public AST
 {
 public:
-	ASTTypeDecl(SymbolType ty, std::size_t dim1=0, std::size_t dim2=0)
+	ASTTypeDecl(SymbolType ty, std::size_t dim1=1, std::size_t dim2=1)
 		: ty{ty}, dim1{dim1}, dim2{dim2}
 	{}
 
@@ -397,7 +397,7 @@ public:
 
 private:
 	SymbolType ty;
-	std::size_t dim1=0, dim2=0;
+	std::size_t dim1=1, dim2=1;
 };
 
 

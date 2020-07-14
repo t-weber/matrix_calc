@@ -51,10 +51,7 @@ t_astret LLAsm::visit(const ASTCall* ast)
 		{
 			// array arguments are of type double*, so use a pointer to the array
 			t_astret arrptr = get_tmp_var(arg_casted->ty, &arg_casted->dims);
-
-			std::size_t dim = std::get<0>(arg_casted->dims);
-			if(arg_casted->ty == SymbolType::MATRIX)
-				dim *= std::get<1>(arg_casted->dims);
+			std::size_t dim = get_arraydim(arg_casted);
 
 			(*m_ostr) << "%" << arrptr->name << " = getelementptr ["
 				<< dim << " x double], ["
@@ -177,9 +174,7 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 		}
 		else if(argtype == SymbolType::VECTOR || argtype == SymbolType::MATRIX)
 		{
-			std::size_t argdim = std::get<0>(argdims);
-			if(argtype == SymbolType::MATRIX)
-				argdim *= std::get<1>(argdims);
+			std::size_t argdim = ::get_arraydim(argdims);
 
 			// allocate memory for local array copy
 			(*m_ostr) << "%" << symparam->name << " = alloca [" << argdim << " x double]\n";
