@@ -12,6 +12,7 @@
 #include "semantics.h"
 
 #include <fstream>
+#include <locale>
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
 
@@ -59,6 +60,14 @@ int main(int argc, char** argv)
 {
 	try
 	{
+		std::ios_base::sync_with_stdio(0);
+		std::locale loc{};
+		std::locale::global(loc);
+		//std::cout << "Locale: " << loc.name() << "." << std::endl;
+
+		std::cout << "Matrix expression compiler version 0.2"
+			<< " by Tobias Weber <tobias.weber@tum.de>, 2020." << std::endl;
+
 		// llvm toolchain
 		std::string tool_opt = "opt";
 		std::string tool_bc = "llvm-as";
@@ -85,8 +94,8 @@ int main(int argc, char** argv)
 			("out,o", args::value(&outprog), "compiled program output")
 			("optimise,O", args::bool_switch(&optimise), "optimise program")
 			("interpret,i", args::bool_switch(&interpret), "directly run program in interpreter")
-			("symbols,s", args::bool_switch(&show_symbols), "print symbol table")
-			("ast,a", args::bool_switch(&show_ast), "print syntax tree")
+			("symbols,s", args::bool_switch(&show_symbols), "output symbol table")
+			("ast,a", args::bool_switch(&show_ast), "output syntax tree")
 			("program", args::value<decltype(vecProgs)>(&vecProgs), "input program to compile");
 
 		args::positional_options_description posarg_descr;

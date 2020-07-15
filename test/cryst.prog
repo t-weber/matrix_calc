@@ -83,7 +83,7 @@ func mat 3 3 A_matrix(scalar a, scalar b, scalar c, scalar alpha, scalar beta, s
 
 func start()
 {
-	set_eps(0.00001);
+	set_eps(1e-5);
 	#putstr("eps = " + get_eps());
 
 	scalar a = getflt("a = ");

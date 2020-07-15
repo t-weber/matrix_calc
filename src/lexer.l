@@ -17,18 +17,32 @@
 
 %{
 	#include <string>
+	#include <sstream>
+	#include <iomanip>
+
 	#include "parser.h"
 %}
 
 
 white	[ \t\r]
-num		[0-9]
-real	{num}+(\.{num}*)?
-int		{num}+
+
+num_bin	[01]
+num_oct	[0-7]
+num_dec	[0-9]
+num_hex	[0-9a-fA-F]
+
+int_bin "0b"{num_bin}+
+int_dec {num_dec}+
+int_hex "0x"{num_hex}+
+
+real	{num_dec}+(\.{num_dec}*)?
+realeng	{real}([Ee][+-]?{num_dec}+)?
+
 ident	[A-Za-z_]+[A-Za-z0-9_]*
 
 
 %%
+
 
 "\n"		{ IncCurLine(); }
 {white}+	/* whitespace */
@@ -37,7 +51,7 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 ";"			{ return yytext[0]; }
 "+"|"-"		{ return yytext[0]; }
 "*"|"/"|"%"	{ return yytext[0]; }
-"^"|"'"			{ return yytext[0]; }
+"^"|"'"		{ return yytext[0]; }
 "("|")"		{ return yytext[0]; }
 "{"|"}"		{ return yytext[0]; }
 "["|"]"		{ return yytext[0]; }
@@ -74,12 +88,46 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 "loop"		{ return yy::Parser::make_LOOP(); }
 "do"		{ return yy::Parser::make_DO(); }
 
-{int}		{ return yy::Parser::make_INT(std::stol(yytext)); }
-{real}		{ return yy::Parser::make_REAL(std::stod(yytext)); }
-{ident}		{ return yy::Parser::make_IDENT(yytext); }
+
+{int_bin}	{
+	long dec = 0;
+
+	std::size_t pos = 0;
+	for(const char* pc=yytext+yyleng-1; pc>=yytext+2; --pc)
+	{
+		if(*pc != '0')
+			dec += (1<<pos);
+		++pos;
+	}
+
+	return yy::Parser::make_INT(dec);
+}
+
+{int_dec}	{
+	return yy::Parser::make_INT(std::stol(yytext));
+}
+
+{int_hex}	{
+	long l = 0;
+	std::istringstream{yytext} >> std::hex >> l;
+	return yy::Parser::make_INT(l);
+}
+
+{realeng}	{
+	return yy::Parser::make_REAL(std::stod(yytext));
+}
+
+
+{ident}		{
+	return yy::Parser::make_IDENT(yytext);
+}
+
+
 "\""[^\"]*"\""	{
+	// string
 	std::string str{yytext+1, yytext+yyleng-1};
 	return yy::Parser::make_STRING(str); }
+
 
 . {
 	std::string err = "Unknown token: \"";
@@ -88,4 +136,6 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 
 	LexerError(err.c_str());
 }
+
+
 %%
