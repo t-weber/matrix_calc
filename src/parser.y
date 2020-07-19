@@ -249,15 +249,17 @@ function[res]
 				std::get<0>(sym->dims) = std::get<2>(arg);
 				std::get<1>(sym->dims) = std::get<3>(arg);
 			}
+
+			// register the function in the symbol map
+			std::array<std::size_t, 2> retdims{{$rettype->GetDim(0), $rettype->GetDim(1)}};
+			context.GetSymbols().AddFunc(
+				context.GetScopeName(1), $ident, 
+				$rettype->GetType(), $args->GetArgTypes(), &retdims);
 		}
 			block[blk] {
 			$res = std::make_shared<ASTFunc>($ident, $rettype, $args, $blk);
 
 			context.LeaveScope($ident);
-			std::array<std::size_t, 2> retdims{{$rettype->GetDim(0), $rettype->GetDim(1)}};
-			context.GetSymbols().AddFunc(
-				context.GetScopeName(), $ident, 
-				$rettype->GetType(), $args->GetArgTypes(), &retdims);
 		}
 
 	// no return value
@@ -273,15 +275,17 @@ function[res]
 				std::get<0>(sym->dims) = std::get<2>(arg);
 				std::get<1>(sym->dims) = std::get<3>(arg);
 			}
+
+			// register the function in the symbol map
+			context.GetSymbols().AddFunc(
+				context.GetScopeName(1), $ident, 
+				SymbolType::VOID, $args->GetArgTypes());
 		}
 		block[blk] {
 			auto rettype = std::make_shared<ASTTypeDecl>(SymbolType::VOID);
 			$res = std::make_shared<ASTFunc>($ident, rettype, $args, $blk);
 
 			context.LeaveScope($ident);
-			context.GetSymbols().AddFunc(
-				context.GetScopeName(), $ident, 
-				SymbolType::VOID, $args->GetArgTypes());
 		}
 
 	// multiple return values
@@ -297,18 +301,19 @@ function[res]
 				std::get<0>(sym->dims) = std::get<2>(arg);
 				std::get<1>(sym->dims) = std::get<3>(arg);
 			}
+
+			// register the function in the symbol map
+			std::vector<SymbolType> multirettypes = $retargs->GetArgTypes();
+			context.GetSymbols().AddFunc(
+				context.GetScopeName(1), $ident, 
+				SymbolType::COMP, $args->GetArgTypes(), 
+				nullptr, &multirettypes);
 		}
 		block[blk] {
 			auto rettype = std::make_shared<ASTTypeDecl>(SymbolType::COMP);
 			$res = std::make_shared<ASTFunc>($ident, rettype, $args, $blk, $retargs);
 			
 			context.LeaveScope($ident);
-			
-			std::vector<SymbolType> multirettypes = $retargs->GetArgTypes();
-			context.GetSymbols().AddFunc(
-				context.GetScopeName(), $ident, 
-				SymbolType::COMP, $args->GetArgTypes(), 
-				nullptr, &multirettypes);
 		}
 	;
 
@@ -591,18 +596,30 @@ expr[res]
 	| IDENT[ident] '(' ')' {
 		const Symbol* sym = context.GetSymbols().FindSymbol($ident);
 		if(sym && sym->ty == SymbolType::FUNC)
+		{
 			++sym->refcnt;
+		}
 		else
+		{
+			// TODO: move this check into semantics.cpp, as only the functions
+			// that have already been parsed are registered at this point
 			error("Cannot find function \"" + $ident + "\".");
+		}
 
 		$res = std::make_shared<ASTCall>($ident);
 	}
 	| IDENT[ident] '(' exprlist[args] ')' {
 		const Symbol* sym = context.GetSymbols().FindSymbol($ident);
 		if(sym && sym->ty == SymbolType::FUNC)
+		{
 			++sym->refcnt;
+		}
 		else
+		{
+			// TODO: move this check into semantics.cpp, as only the functions
+			// that have already been parsed are registered at this point
 			error("Cannot find function \"" + $ident + "\".");
+		}
 
 		$res = std::make_shared<ASTCall>($ident, $args);
 	}

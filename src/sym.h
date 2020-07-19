@@ -80,6 +80,13 @@ struct Symbol
 
 		return "invalid";
 	}
+
+
+	static const std::string& get_scopenameseparator()
+	{
+		static const std::string sep{"::"};
+		return sep;
+	}
 };
 
 

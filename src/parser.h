@@ -92,17 +92,30 @@ namespace yy
 
 
 		// --------------------------------------------------------------------
-		// current function scope
-		const std::vector<std::string>& GetScope() const { return m_curscope; }
-		std::string GetScopeName() const
+		/**
+		 * current function scope
+		 */
+		const std::vector<std::string>& GetScope() const
+		{
+			return m_curscope;
+		}
+
+		/**
+		 * get the currently active scope name, ignoring the last "up" levels
+		 */
+		std::string GetScopeName(std::size_t up=0) const
 		{
 			std::string name;
-			for(const std::string& scope : m_curscope)
-				name += scope + "::";	// scope name separator
+			for(std::size_t level=0; level<m_curscope.size()-up; ++level)
+				name += m_curscope[level] + Symbol::get_scopenameseparator();
 			return name;
 		}
 
-		void EnterScope(const std::string& name) { m_curscope.push_back(name); }
+		void EnterScope(const std::string& name)
+		{
+			m_curscope.push_back(name);
+		}
+
 		void LeaveScope(const std::string& name)
 		{
 			const std::string& curscope = *m_curscope.rbegin();

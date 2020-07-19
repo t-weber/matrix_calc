@@ -199,7 +199,7 @@ t_astret LLAsm::get_sym(const std::string& name) const
 {
 	std::string scoped_name;
 	for(const std::string& scope : m_curscope)
-		scoped_name += scope + "::";	// scope name separator
+		scoped_name += scope + Symbol::get_scopenameseparator();
 	scoped_name += name;
 
 	const Symbol* sym = nullptr;
