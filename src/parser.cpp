@@ -164,28 +164,27 @@ int main(int argc, char** argv)
 			std::cerr << "Cannot open \"" << inprog << "\"." << std::endl;
 			return -1;
 		}
+
 		yy::ParserContext ctx{ifstr};
 
-		// register external runtime functions
+		// register external runtime functions which should be available to the compiler
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "pow", SymbolType::SCALAR, {SymbolType::SCALAR, SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "exp", SymbolType::SCALAR, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "sin", SymbolType::SCALAR, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "cos", SymbolType::SCALAR, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "sqrt", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "exp", SymbolType::SCALAR, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "labs", SymbolType::INT, {SymbolType::INT});
-
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "strlen", SymbolType::INT, {SymbolType::STRING});
 
+		// register internal runtime functions which should be available to the compiler
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "set_eps", SymbolType::VOID, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "get_eps", SymbolType::SCALAR, {});
-
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr", SymbolType::VOID, {SymbolType::STRING});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putflt", SymbolType::VOID, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putint", SymbolType::VOID, {SymbolType::INT});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getflt", SymbolType::SCALAR, {SymbolType::STRING});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getint", SymbolType::INT, {SymbolType::STRING});
-
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "flt_to_str", SymbolType::VOID, {SymbolType::SCALAR, SymbolType::STRING, SymbolType::INT});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "int_to_str", SymbolType::VOID, {SymbolType::INT, SymbolType::STRING, SymbolType::INT});
 
@@ -226,6 +225,7 @@ int main(int argc, char** argv)
 		// --------------------------------------------------------------------
 
 
+
 		// --------------------------------------------------------------------
 		// TODO: semantic analysis
 		// --------------------------------------------------------------------
@@ -235,6 +235,7 @@ int main(int argc, char** argv)
 		//for(const auto& stmt : ctx.GetStatements()->GetStatementList())
 		//	stmt->accept(&sema);
 		// --------------------------------------------------------------------
+
 
 
 		// --------------------------------------------------------------------
@@ -254,14 +255,14 @@ int main(int argc, char** argv)
 		}
 
 		(*ostr) << "; -----------------------------------------------------------------------------\n";
-		(*ostr) << "; registered external functions\n";
+		(*ostr) << "; external functions which are available to the compiler\n";
 		(*ostr) << LLAsm::get_function_declarations(ctx.GetSymbols()) << std::endl;
 		(*ostr) << "; -----------------------------------------------------------------------------\n";
 
 		// additional runtime/startup code
 		(*ostr) << "\n" << R"START(
 ; -----------------------------------------------------------------------------
-; non-exposed external functions
+; external functions which are not exposed to the compiler
 declare i8* @strncpy(i8*, i8*, i64)
 declare i8* @strncat(i8*, i8*, i64)
 declare i32 @strncmp(i8*, i8*, i64)
@@ -277,7 +278,7 @@ declare void @free(i8*)
 
 
 ; -----------------------------------------------------------------------------
-; external runtime functions from runtime.c
+; external functions from runtime.c which are not exposed to the compiler
 declare void @ext_set_eps(double)
 declare double @ext_get_eps()
 
@@ -300,7 +301,7 @@ declare i64 @ext_transpose(double*, double*, i64, i64)
 
 
 ; -----------------------------------------------------------------------------
-; runtime functions
+; internal runtime functions
 
 ; get the user epsilon
 define double @get_eps()
