@@ -136,12 +136,28 @@ public:
 	}
 
 
+	Symbol* AddExtFunc(const std::string& scope,
+		const std::string& name, SymbolType retty,
+		const std::vector<SymbolType>& argtypes,
+		const std::array<std::size_t, 2>* retdims = nullptr,
+		const std::vector<SymbolType>* multirettypes = nullptr)
+	{
+		return AddFunc(scope, name, retty, argtypes, retdims, multirettypes, true);
+	}
+
+
 	const Symbol* FindSymbol(const std::string& name) const
 	{
 		auto iter = m_syms.find(name);
 		if(iter == m_syms.end())
 			return nullptr;
 		return &iter->second;
+	}
+
+
+	const std::unordered_map<std::string, Symbol>& GetSymbols() const
+	{
+		return m_syms;
 	}
 
 

@@ -166,19 +166,19 @@ int main(int argc, char** argv)
 		}
 		yy::ParserContext ctx{ifstr};
 
-		// register runtime functions
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "pow", SymbolType::SCALAR, {SymbolType::SCALAR, SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "sin", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "cos", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "sqrt", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "exp", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "labs", SymbolType::INT, {SymbolType::INT});
+		// register external runtime functions
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "pow", SymbolType::SCALAR, {SymbolType::SCALAR, SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "sin", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "cos", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "sqrt", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "exp", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "labs", SymbolType::INT, {SymbolType::INT});
+
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "strlen", SymbolType::INT, {SymbolType::STRING});
 
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "set_eps", SymbolType::VOID, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "get_eps", SymbolType::SCALAR, {});
-
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "strlen", SymbolType::INT, {SymbolType::STRING});
 
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr", SymbolType::VOID, {SymbolType::STRING});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putflt", SymbolType::VOID, {SymbolType::SCALAR});
@@ -253,20 +253,15 @@ int main(int argc, char** argv)
 			(*ostr) << std::endl;
 		}
 
+		(*ostr) << "; -----------------------------------------------------------------------------\n";
+		(*ostr) << "; registered external functions\n";
+		(*ostr) << LLAsm::get_function_declarations(ctx.GetSymbols()) << std::endl;
+		(*ostr) << "; -----------------------------------------------------------------------------\n";
 
 		// additional runtime/startup code
 		(*ostr) << "\n" << R"START(
 ; -----------------------------------------------------------------------------
-; imported libc functions
-declare double @pow(double, double)
-declare double @sin(double)
-declare double @cos(double)
-declare double @sqrt(double)
-declare double @exp(double)
-declare double @fabs(double)
-declare i64 @labs(i64)
-
-declare i64 @strlen(i8*)
+; non-exposed external functions
 declare i8* @strncpy(i8*, i8*, i64)
 declare i8* @strncat(i8*, i8*, i64)
 declare i32 @strncmp(i8*, i8*, i64)

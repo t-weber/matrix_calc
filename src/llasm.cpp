@@ -111,6 +111,41 @@ std::string LLAsm::get_label()
 
 
 /**
+ * output declarations for registered functions
+ */
+std::string LLAsm::get_function_declarations(const SymTab& symtab, bool only_externals)
+{
+	std::ostringstream ostr;
+
+	for(const auto& _sym : symtab.GetSymbols())
+	{
+		const Symbol& sym = std::get<1>(_sym);
+
+		if(sym.ty != SymbolType::FUNC)
+			continue;
+
+		// consider only external runtime functions
+		if(only_externals && !sym.is_external)
+			continue;
+
+		ostr << "declare " << get_type_name(sym.retty)
+			<< " @" << sym.name << "(";
+
+		for(std::size_t arg=0; arg<sym.argty.size(); ++arg)
+		{
+			ostr << get_type_name(sym.argty[arg]);
+			if(arg < sym.argty.size()-1)
+				ostr << ", ";
+		}
+
+		ostr << ")\n";
+	}
+
+	return ostr.str();
+}
+
+
+/**
  * get the corresponding data type name
  */
 std::string LLAsm::get_type_name(SymbolType ty)
