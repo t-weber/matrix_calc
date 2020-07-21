@@ -59,6 +59,29 @@ t_astret LLAsm::visit(const ASTCall* ast)
 				<< arg_casted->name << ", i64 0, i64 0\n";
 
 			args.push_back(arrptr);
+
+			// add vector and matrix sizes as further arguments for external calls
+			if(func->is_external)
+			{
+				t_astret dim1var = get_tmp_var(SymbolType::INT);
+				t_astret dim1val = get_tmp_var(SymbolType::INT);
+				(*m_ostr) << "%" << dim1var->name << " = alloca i64\n";
+				(*m_ostr) << "store i64 " << std::get<0>(arg_casted->dims) << ", i64* %" << dim1var->name << "\n";
+				(*m_ostr) << "%" << dim1val->name << " = load i64, i64* %" << dim1var->name << "\n";
+
+				args.push_back(dim1val);
+
+				if(arg_casted->ty == SymbolType::MATRIX)
+				{
+					t_astret dim2var = get_tmp_var(SymbolType::INT);
+					t_astret dim2val = get_tmp_var(SymbolType::INT);
+					(*m_ostr) << "%" << dim2var->name << " = alloca i64\n";
+					(*m_ostr) << "store i64 " << std::get<1>(arg_casted->dims) << ", i64* %" << dim2var->name << "\n";
+					(*m_ostr) << "%" << dim2val->name << " = load i64, i64* %" << dim2var->name << "\n";
+
+					args.push_back(dim2val);
+				}
+			}
 		}
 
 		else

@@ -55,6 +55,7 @@ struct Symbol
 
 	bool tmp = false;		// temporary or declared variable?
 	bool on_heap = false;	// heap or stack variable?
+	bool is_external = false;	// link to external variable?
 
 	mutable std::size_t refcnt = 0;	// number of reference to this symbol
 
