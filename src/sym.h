@@ -112,11 +112,14 @@ public:
 		const std::string& name, SymbolType retty,
 		const std::vector<SymbolType>& argtypes,
 		const std::array<std::size_t, 2>* retdims = nullptr,
-		const std::vector<SymbolType>* multirettypes = nullptr)
+		const std::vector<SymbolType>* multirettypes = nullptr,
+		bool is_external = false)
 	{
 		Symbol sym{.name = name, .scoped_name = scope+name,
-			.ty = SymbolType::FUNC, 
-			.argty = argtypes, .retty = retty, .refcnt = 0};
+			.ty = SymbolType::FUNC,
+			.argty = argtypes, .retty = retty,
+			.is_external = is_external,
+			.refcnt = 0};
 		if(retdims)
 			sym.retdims = *retdims;
 		if(multirettypes)
