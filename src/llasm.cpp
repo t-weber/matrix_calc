@@ -133,7 +133,15 @@ std::string LLAsm::get_function_declarations(const SymTab& symtab, bool only_ext
 
 		for(std::size_t arg=0; arg<sym.argty.size(); ++arg)
 		{
-			ostr << get_type_name(sym.argty[arg]);
+			SymbolType ty = sym.argty[arg];
+			ostr << get_type_name(ty);
+
+			// add size arguments for array types
+			if(ty == SymbolType::VECTOR || ty == SymbolType::MATRIX)
+				ostr << ", i64";	// first dim
+			if(ty == SymbolType::MATRIX)
+				ostr << ", i64";	// second dim
+
 			if(arg < sym.argty.size()-1)
 				ostr << ", ";
 		}
