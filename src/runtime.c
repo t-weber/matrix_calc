@@ -17,6 +17,27 @@ typedef int64_t t_int;
 static t_real g_eps = DBL_EPSILON;
 
 
+
+// ----------------------------------------------------------------------------
+// TODO: heap management
+void* ext_heap_alloc(int64_t num, int64_t elemsize)
+{
+	return calloc(num, elemsize);
+}
+
+
+void ext_heap_free(void* mem)
+{
+	free(mem);
+}
+// ----------------------------------------------------------------------------
+
+
+
+// ----------------------------------------------------------------------------
+// mathematical functions
+// ----------------------------------------------------------------------------
+
 /**
  * set float epsilon
  */
@@ -109,7 +130,7 @@ t_real ext_determinant(const t_real* M, t_int N)
 	// recursively expand determiant along a row
 	t_real fullDet = 0.;
 
-	t_real *submat = (t_real*)malloc(sizeof(t_real)*(N-1)*(N-1));
+	t_real *submat = (t_real*)ext_heap_alloc((N-1)*(N-1), sizeof(t_real));
 	for(t_int col=0; col<N; ++col)
 	{
 		const t_real elem = M[row*N + col];
@@ -120,7 +141,7 @@ t_real ext_determinant(const t_real* M, t_int N)
 		const t_real sgn = ((row+col) % 2) == 0 ? 1. : -1.;
 		fullDet += elem * ext_determinant(submat, N-1) * sgn;
 	}
-	free(submat);
+	ext_heap_free(submat);
 
 	return fullDet;
 }
@@ -138,7 +159,7 @@ t_int ext_inverse(const t_real* M, t_real* I, t_int N)
 	if(ext_equals(fullDet, 0., g_eps))
 		return 0;
 
-	t_real *submat = (t_real*)malloc(sizeof(t_real)*(N-1)*(N-1));
+	t_real *submat = (t_real*)ext_heap_alloc((N-1)*(N-1), sizeof(t_real));
 	for(t_int i=0; i<N; ++i)
 	{
 		for(t_int j=0; j<N; ++j)
@@ -148,7 +169,7 @@ t_int ext_inverse(const t_real* M, t_real* I, t_int N)
 			I[j*N + i] = ext_determinant(submat, N-1) * sgn / fullDet;
 		}
 	}
-	free(submat);
+	ext_heap_free(submat);
 
 	return 1;
 }
@@ -181,8 +202,8 @@ t_int ext_power(const t_real* M, t_real* P, t_int N, t_int POW)
 	t_int status = 1;
 
 	// temporary matrices
-	t_real *Mtmp = (t_real*)malloc(sizeof(t_real)*N*N);
-	t_real *Mtmp2 = (t_real*)malloc(sizeof(t_real)*N*N);
+	t_real *Mtmp = (t_real*)ext_heap_alloc(N*N, sizeof(t_real));
+	t_real *Mtmp2 = (t_real*)ext_heap_alloc(N*N, sizeof(t_real));
 
 	// Mtmp = M
 	for(t_int i=0; i<N; ++i)
@@ -209,8 +230,8 @@ t_int ext_power(const t_real* M, t_real* P, t_int N, t_int POW)
 		for(t_int j=0; j<N; ++j)
 			P[i*N + j] = Mtmp2[i*N + j];
 
-	free(Mtmp);
-	free(Mtmp2);
+	ext_heap_free(Mtmp);
+	ext_heap_free(Mtmp2);
 	return status;
 }
 
@@ -228,3 +249,4 @@ void ext_transpose(const t_real* M, t_real* T, t_int rows, t_int cols)
 		T[j*rows + i] = M[i*cols + j];
 	}
 }
+// ----------------------------------------------------------------------------

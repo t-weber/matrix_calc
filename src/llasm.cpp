@@ -66,7 +66,7 @@ t_astret LLAsm::visit(const ASTLoop* ast)
 
 t_astret LLAsm::get_tmp_var(SymbolType ty,
 	const std::array<std::size_t, 2>* dims,
-	const std::string* name, bool on_heap)
+	const std::string* name)
 {
 	std::string var;
 	if(name)
@@ -87,7 +87,6 @@ t_astret LLAsm::get_tmp_var(SymbolType ty,
 		if(sym)
 		{
 			sym->ty = ty;
-			sym->on_heap = on_heap;
 			if(dims)
 				sym->dims = *dims;
 			return sym;
@@ -95,9 +94,9 @@ t_astret LLAsm::get_tmp_var(SymbolType ty,
 	}
 
 	if(dims)
-		return m_syms->AddSymbol("", var, ty, *dims, true, on_heap);
+		return m_syms->AddSymbol("", var, ty, *dims, true);
 	else
-		return m_syms->AddSymbol("", var, ty, {1,1}, true, on_heap);
+		return m_syms->AddSymbol("", var, ty, {1,1}, true);
 }
 
 
@@ -585,8 +584,8 @@ t_astret LLAsm::cp_vec_mem(t_astret sym, t_astret mem)
 	// if no memory block is given, allocate one
 	if(!mem)
 	{
-		mem = get_tmp_var(sym->ty, &sym->dims, nullptr, true);
-		(*m_ostr) << "%" << mem->name << " = call i8* @calloc(i64 " 
+		mem = get_tmp_var(sym->ty, &sym->dims, nullptr);
+		(*m_ostr) << "%" << mem->name << " = call i8* @ext_heap_alloc(i64 "
 			<< dim << ", i64 " << sizeof(double) << ")\n";
 	}
 
@@ -620,8 +619,8 @@ t_astret LLAsm::cp_str_mem(t_astret sym, t_astret mem)
 	// if no memory block is given, allocate one
 	if(!mem)
 	{
-		mem = get_tmp_var(SymbolType::STRING, &sym->dims, nullptr, true);
-		(*m_ostr) << "%" << mem->name << " = call i8* @calloc(i64 %" 
+		mem = get_tmp_var(SymbolType::STRING, &sym->dims, nullptr);
+		(*m_ostr) << "%" << mem->name << " = call i8* @ext_heap_alloc(i64 %"
 			<< strretlen_z->name << ", i64 1" << ")\n";
 	}
 

@@ -50,11 +50,9 @@ struct Symbol
 	std::array<std::size_t, 2> retdims{{1,1}};
 
 	// for compound type
-	//const Symbol *memblock = nullptr;
 	std::vector<SymbolPtr> elems{};
 
 	bool tmp = false;		// temporary or declared variable?
-	bool on_heap = false;	// heap or stack variable?
 	bool is_external = false;	// link to external variable?
 
 	mutable std::size_t refcnt = 0;	// number of reference to this symbol
@@ -97,12 +95,11 @@ public:
 	Symbol* AddSymbol(const std::string& scope,
 		const std::string& name, SymbolType ty,
 		const std::array<std::size_t, 2>& dims,
-		bool is_temp = false, bool on_heap = false)
+		bool is_temp = false)
 	{
-		Symbol sym{.name = name, .scoped_name = scope+name, 
-			.ty = ty, .dims = dims,
-			/*.memblock = nullptr,*/ .elems = {}, 
-			.tmp = is_temp, .on_heap = on_heap, .refcnt = 0};
+		Symbol sym{.name = name, .scoped_name = scope+name,
+			.ty = ty, .dims = dims, .elems = {},
+			.tmp = is_temp, .refcnt = 0};
 		auto pair = m_syms.insert_or_assign(scope+name, sym);
 		return &pair.first->second;
 	}

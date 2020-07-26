@@ -271,9 +271,8 @@ declare i32 @snprintf(i8*, i64, i8*, ...)
 declare i32 @printf(i8*, ...)
 declare i32 @scanf(i8*, ...)
 declare i8* @memcpy(i8*, i8*, i64)
-declare i8* @malloc(i64)
-declare i8* @calloc(i64, i64)
-declare void @free(i8*)
+declare i8* @ext_heap_alloc(i64, i64)
+declare void @ext_heap_free(i8*)
 ; -----------------------------------------------------------------------------
 
 
