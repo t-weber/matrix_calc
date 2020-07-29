@@ -87,6 +87,7 @@ int main(int argc, char** argv)
 		bool optimise = false;
 		bool show_symbols = false;
 		bool show_ast = false;
+		bool verbose = false;
 		std::string outprog;
 
 		args::options_description arg_descr("Compiler arguments");
@@ -96,6 +97,7 @@ int main(int argc, char** argv)
 			("interpret,i", args::bool_switch(&interpret), "directly run program in interpreter")
 			("symbols,s", args::bool_switch(&show_symbols), "output symbol table")
 			("ast,a", args::bool_switch(&show_ast), "output syntax tree")
+			("verbose,v", args::bool_switch(&verbose), "verbose output")
 			("program", args::value<decltype(vecProgs)>(&vecProgs), "input program to compile");
 
 		args::positional_options_description posarg_descr;
@@ -148,6 +150,8 @@ int main(int argc, char** argv)
 
 		std::string runtime_3ac = optimise ? "runtime_opt.asm" : "runtime.asm";
 		std::string runtime_bc = "runtime.bc";
+
+		std::string opt_verbose = verbose ? " -v " : "";
 		// --------------------------------------------------------------------
 
 
@@ -176,10 +180,11 @@ int main(int argc, char** argv)
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "labs", SymbolType::INT, {SymbolType::INT});
 		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "strlen", SymbolType::INT, {SymbolType::STRING});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "set_eps", SymbolType::VOID, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "get_eps", SymbolType::SCALAR, {});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "set_debug", SymbolType::VOID, {SymbolType::INT});
 
 		// register internal runtime functions which should be available to the compiler
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "set_eps", SymbolType::VOID, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "get_eps", SymbolType::SCALAR, {});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr", SymbolType::VOID, {SymbolType::STRING});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putflt", SymbolType::VOID, {SymbolType::SCALAR});
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putint", SymbolType::VOID, {SymbolType::INT});
@@ -273,14 +278,13 @@ declare i32 @scanf(i8*, ...)
 declare i8* @memcpy(i8*, i8*, i64)
 declare i8* @ext_heap_alloc(i64, i64)
 declare void @ext_heap_free(i8*)
+declare void @ext_init()
+declare void @ext_deinit()
 ; -----------------------------------------------------------------------------
 
 
 ; -----------------------------------------------------------------------------
 ; external functions from runtime.c which are not exposed to the compiler
-declare void @ext_set_eps(double)
-declare double @ext_get_eps()
-
 declare double @ext_determinant(double*, i64)
 declare i64 @ext_power(double*, double*, i64, i64)
 declare i64 @ext_transpose(double*, double*, i64, i64)
@@ -301,20 +305,6 @@ declare i64 @ext_transpose(double*, double*, i64, i64)
 
 ; -----------------------------------------------------------------------------
 ; internal runtime functions
-
-; get the user epsilon
-define double @get_eps()
-{
-	%eps = call double @ext_get_eps()
-	ret double %eps
-}
-
-; set the user epsilon
-define void @set_eps(double %eps)
-{
-	call void (double) @ext_set_eps(double %eps)
-	ret void
-}
 
 ; returns 0 if flt <= eps
 define double @zero_eps(double %flt)
@@ -423,8 +413,12 @@ define i64 @getint(i8* %str)
 ; main entry point for llvm
 define i32 @main()
 {
+	call void @ext_init()
+
 	; call entry function
 	call void @start()
+
+	call void @ext_deinit()
 
 	ret i32 0
 }
@@ -492,7 +486,8 @@ define i32 @main()
 			<< outprog_bc << "\" + \"" << runtime_bc  << "\" -> \""
 			<< outprog_linkedbc << "\"..." << std::endl;
 
-		std::string cmd_bclink = tool_bclink + " -o " + outprog_linkedbc + " " + outprog_bc + " " + runtime_bc;
+		std::string cmd_bclink = tool_bclink + opt_verbose + " -o " +
+			outprog_linkedbc + " " + outprog_bc + " " + runtime_bc;
 		if(std::system(cmd_bclink.c_str()) != 0)
 		{
 			std::cerr << "Failed." << std::endl;
@@ -521,7 +516,8 @@ define i32 @main()
 				<< outprog_linkedbc << "\" -> \"" << outprog_s << "\"..." << std::endl;
 
 			std::string opt_flag_s = optimise ? "-O2" : "";
-			std::string cmd_s = tool_s + " " + opt_flag_s + " -o " + outprog_s + " " + outprog_linkedbc;
+			std::string cmd_s = tool_s + " " +
+				opt_flag_s + " -o " + outprog_s + " " + outprog_linkedbc;
 			if(std::system(cmd_s.c_str()) != 0)
 			{
 				std::cerr << "Failed." << std::endl;
@@ -533,7 +529,8 @@ define i32 @main()
 				<< outprog_s << "\" -> \"" << outprog_o << "\"..." << std::endl;
 
 			std::string opt_flag_o = optimise ? "-O2" : "";
-			std::string cmd_o = tool_o + " " + opt_flag_o + " -c -o " + outprog_o + " " + outprog_s;
+			std::string cmd_o = tool_o + opt_verbose + " " +
+				opt_flag_o + " -c -o " + outprog_o + " " + outprog_s;
 			if(std::system(cmd_o.c_str()) != 0)
 			{
 				std::cerr << "Failed." << std::endl;
@@ -545,7 +542,8 @@ define i32 @main()
 				<< outprog_o << "\" -> \"" << outprog << "\"..." << std::endl;
 
 			std::string opt_flag_exec = optimise ? "-O2" : "";
-			std::string cmd_exec = tool_exec + " " + opt_flag_exec + " -o " + outprog + " " + outprog_o + " -lm -lc";
+			std::string cmd_exec = tool_exec + opt_verbose + " " +
+				opt_flag_exec + " -o " + outprog + " " + outprog_o + " -lm -lc";
 			if(std::system(cmd_exec.c_str()) != 0)
 			{
 				std::cerr << "Failed." << std::endl;
@@ -555,7 +553,7 @@ define i32 @main()
 
 			if(optimise)
 			{
-				std::cout << "Stripping debug symbols from \"" 
+				std::cout << "Stripping debug symbols from \""
 					<< outprog << "\"..." << std::endl;
 
 				std::string cmd_strip = tool_strip + " " + outprog;

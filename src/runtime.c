@@ -15,20 +15,112 @@ typedef double t_real;
 typedef int64_t t_int;
 
 static t_real g_eps = DBL_EPSILON;
+static int8_t g_debug = 0;
 
 
 
 // ----------------------------------------------------------------------------
-// TODO: heap management
-void* ext_heap_alloc(int64_t num, int64_t elemsize)
+// heap management
+// ----------------------------------------------------------------------------
+
+// TODO: use an actual heap data structure
+struct t_list
 {
-	return calloc(num, elemsize);
+	struct t_list *next;
+	void *elem;
+};
+
+
+struct t_list* lst_append(struct t_list *lst, void *elem)
+{
+	while(lst->next)
+		lst = lst->next;
+
+	lst->next = (struct t_list*)calloc(1, sizeof(struct t_list));
+	lst->next->elem = elem;
+	lst->next->next = 0;
+
+	return lst->next;
+}
+
+
+void lst_remove(struct t_list *lst, void *elem)
+{
+	struct t_list *lst_prev = 0;
+	while(lst)
+	{
+		if(lst->elem == elem)
+			break;
+		lst_prev = lst;
+		lst = lst->next;
+	}
+
+	// remove element
+	lst_prev->next = lst->next;
+	free(lst);
+}
+
+
+// list with allocated memory
+// (head node is not used!)
+static struct t_list lst_mem;
+
+
+void* ext_heap_alloc(uint64_t num, uint64_t elemsize)
+{
+	void *mem = calloc(num, elemsize);
+	lst_append(&lst_mem, mem);
+
+	if(g_debug)
+	{
+		printf("%s: count=%ld, elem_size=%ld, mem=%08lx.\n",
+			__func__, num, elemsize, (uint64_t)mem);
+	}
+
+	return mem;
 }
 
 
 void ext_heap_free(void* mem)
 {
+	if(!mem)
+		return;
+
 	free(mem);
+	lst_remove(&lst_mem, mem);
+
+	if(g_debug)
+		printf("%s: mem=%08lx.\n", __func__, (uint64_t)mem);
+}
+
+
+void ext_init()
+{
+	lst_mem.elem = 0;
+	lst_mem.next = 0;
+}
+
+
+void ext_deinit()
+{
+	// look for non-freed memory
+	struct t_list *lst = &lst_mem;
+
+	uint64_t leaks = 0;
+	while(lst->next)
+	{
+		lst = lst->next;
+		++leaks;
+	}
+
+	if(g_debug)
+		printf("%s: %ld memory leaks detected.\n", __func__, leaks);
+}
+
+
+void set_debug(t_int dbg)
+{
+	g_debug = (dbg!=0);
 }
 // ----------------------------------------------------------------------------
 
@@ -41,7 +133,7 @@ void ext_heap_free(void* mem)
 /**
  * set float epsilon
  */
-void ext_set_eps(t_real eps)
+void set_eps(t_real eps)
 {
 	g_eps = eps;
 }
@@ -50,7 +142,7 @@ void ext_set_eps(t_real eps)
 /**
  * get float epsilon
  */
-t_real ext_get_eps()
+t_real get_eps()
 {
 	return g_eps;
 }
