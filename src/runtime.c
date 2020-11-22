@@ -1,6 +1,6 @@
 /**
  * runtime library
- * @author Tobias Weber
+ * @author Tobias Weber (orcid: 0000-0002-7230-1932)
  * @date 17-apr-20
  * @license: see 'LICENSE.GPL' file
  */

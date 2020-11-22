@@ -1,6 +1,6 @@
 /**
  * outputs the syntax tree
- * @author Tobias Weber
+ * @author Tobias Weber (orcid: 0000-0002-7230-1932)
  * @date jun-20
  * @license: see 'LICENSE.GPL' file
  */

@@ -1,6 +1,6 @@
 /**
  * llvm three-address code generator -- functions
- * @author Tobias Weber
+ * @author Tobias Weber (orcid: 0000-0002-7230-1932)
  * @date apr/may-2020
  * @license: see 'LICENSE.GPL' file
  *
