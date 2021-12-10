@@ -522,8 +522,8 @@ private:
 class ASTAssign : public AST
 {
 public:
-	ASTAssign(const std::string& ident, ASTPtr expr)
-		: idents{{ident}}, expr{expr}
+	ASTAssign(const std::string& ident, ASTPtr _expr)
+		: idents{{ident}}, expr{_expr}
 	{}
 
 	ASTAssign(const std::vector<std::string>& idents, ASTPtr expr)

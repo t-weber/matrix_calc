@@ -167,6 +167,7 @@ std::string LLAsm::get_type_name(SymbolType ty)
 		case SymbolType::VOID: return "void";
 		case SymbolType::COMP: return "i8*";	// pointer to memory block
 		//case SymbolType::FUNC: return "func";	// TODO: function pointers
+		default: return "invalid";
 	}
 
 	return "invalid";
@@ -219,6 +220,8 @@ std::size_t LLAsm::get_bytesize(t_astret sym)
 		}
 		case SymbolType::FUNC:
 			return sizeof(void*);
+		default:
+			return 0;
 	}
 
 	return 0;

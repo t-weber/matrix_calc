@@ -33,6 +33,9 @@ struct t_list
 
 struct t_list* lst_append(struct t_list *lst, void *elem)
 {
+	if(!lst)
+		return 0;
+
 	while(lst->next)
 		lst = lst->next;
 
@@ -47,17 +50,25 @@ struct t_list* lst_append(struct t_list *lst, void *elem)
 void lst_remove(struct t_list *lst, void *elem)
 {
 	struct t_list *lst_prev = 0;
+
 	while(lst)
 	{
+		// find element
 		if(lst->elem == elem)
 			break;
+
 		lst_prev = lst;
 		lst = lst->next;
 	}
 
-	// remove element
-	lst_prev->next = lst->next;
-	free(lst);
+	// lst!=0 -> not beyond the list end, i.e. element was found
+	// lst_prev!=0 -> not at the list head
+	if(lst && lst_prev)
+	{
+		// remove list element
+		lst_prev->next = lst->next;
+		free(lst);
+	}
 }
 
 

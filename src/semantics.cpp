@@ -74,7 +74,7 @@ t_astret Semantics::visit(const ASTNorm* ast)
 }
 
 
-t_astret Semantics::visit(const ASTVar* ast)
+t_astret Semantics::visit([[maybe_unused]] const ASTVar* ast)
 {
 	return nullptr;
 }
@@ -217,7 +217,7 @@ t_astret Semantics::visit(const ASTLoop* ast)
 }
 
 
-t_astret Semantics::visit(const ASTStrConst* ast)
+t_astret Semantics::visit([[maybe_unused]] const ASTStrConst* ast)
 {
 	return nullptr;
 }
@@ -232,13 +232,13 @@ t_astret Semantics::visit(const ASTExprList* ast)
 }
 
 
-t_astret Semantics::visit(const ASTNumConst<double>* ast)
+t_astret Semantics::visit([[maybe_unused]] const ASTNumConst<double>* ast)
 {
 	return nullptr;
 }
 
 
-t_astret Semantics::visit(const ASTNumConst<std::int64_t>* ast)
+t_astret Semantics::visit([[maybe_unused]] const ASTNumConst<std::int64_t>* ast)
 {
 	return nullptr;
 }
