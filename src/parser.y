@@ -129,7 +129,7 @@ program
  */
 statements[res]
 	: statement[stmt] statements[lst]	{ $lst->AddStatement($stmt); $res = $lst; }
-	| /* epsilon */			{ $res = std::make_shared<ASTStmts>(); }
+	| %empty							{ $res = std::make_shared<ASTStmts>(); }
 	;
 
 
@@ -357,7 +357,7 @@ typedecl[res]
 
 full_argumentlist[res]
 	: argumentlist[args]	{ $res = $args; }
-	| /*epsilon*/		{ $res = std::make_shared<ASTArgNames>(); }
+	| %empty				{ $res = std::make_shared<ASTArgNames>(); }
 	;
 
 
@@ -639,7 +639,7 @@ expr[res]
  */
 opt_assign[res]
 	: '=' expr[term]	{ $res = $term; }
-	| /*epsilon*/		{ $res = nullptr; }
+	| %empty			{ $res = nullptr; }
 	;
 
 %%
