@@ -50,7 +50,11 @@ message("Bison output header: ${BISON_parser_impl_OUTPUT_HEADER}")
 
 
 
+# -----------------------------------------------------------------------------
+# 3-ac code generator
+# -----------------------------------------------------------------------------
 add_executable(mcalc
+	src/main_3ac.cpp
 	src/parser.cpp src/parser.h src/ast.h src/sym.h
 	src/llasm.cpp src/llasm_ops.cpp src/llasm_var.cpp 
 	src/llasm_arr.cpp src/llasm_func.cpp src/llasm.h
@@ -60,11 +64,31 @@ add_executable(mcalc
 	${BISON_parser_impl_OUTPUT_SOURCE} ${BISON_parser_impl_OUTPUT_HEADER}
 )
 
-#add_dependencies(parser parser_impl lexer_impl)
+#add_dependencies(mcalc parser_impl lexer_impl)
 target_link_libraries(mcalc ${Boost_LIBRARIES})
 
 
 
-# build runtime
+# build runtime for 3-ac code generator
 execute_process(COMMAND clang -O2 -S -emit-llvm -o runtime_opt.asm "${PROJECT_SOURCE_DIR}/src/runtime.c")
 execute_process(COMMAND clang -S -emit-llvm -o runtime.asm "${PROJECT_SOURCE_DIR}/src/runtime.c")
+# -----------------------------------------------------------------------------
+
+
+
+# -----------------------------------------------------------------------------
+# 0-ac code generator
+# -----------------------------------------------------------------------------
+#add_executable(mcalc_0ac
+#	src/main_0ac.cpp
+#	src/parser.cpp src/parser.h src/ast.h src/sym.h
+#	src/zeroacasm.cpp src/zeroacasm.h
+#	src/printast.cpp src/printast.h
+#	src/semantics.cpp src/semantics.h
+#	${FLEX_lexer_impl_OUTPUTS}
+#	${BISON_parser_impl_OUTPUT_SOURCE} ${BISON_parser_impl_OUTPUT_HEADER}
+#)
+
+##add_dependencies(mcalc_0ac parser_impl lexer_impl)
+#target_link_libraries(mcalc_0ac ${Boost_LIBRARIES})
+# -----------------------------------------------------------------------------

@@ -59,8 +59,8 @@ namespace yy
 
 
 	/**
- 	* holds parser state
- 	*/
+	 * holds parser state
+	 */
 	class ParserContext
 	{
 	private:
