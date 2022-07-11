@@ -59,10 +59,10 @@
 
 
 // terminal symbols
-%token<std::string> IDENT
-%token<double> REAL
-%token<std::int64_t> INT
-%token<std::string> STRING
+%token<t_str> IDENT
+%token<t_real> REAL
+%token<t_int> INT
+%token<t_str> STRING
 %token FUNC RET ASSIGN
 %token SCALARDECL VECTORDECL MATRIXDECL STRINGDECL INTDECL
 %token IF THEN ELSE
@@ -139,21 +139,21 @@ statements[res]
 variables[res]
 	// several variables
 	: IDENT[name] ',' variables[lst] {
-			std::string symName = context.AddScopedSymbol($name)->scoped_name;
+			t_str symName = context.AddScopedSymbol($name)->scoped_name;
 			$lst->AddVariable(symName);
 			$res = $lst;
 		}
 
 	// a variable
 	| IDENT[name] {
-			std::string symName = context.AddScopedSymbol($name)->scoped_name;
+			t_str symName = context.AddScopedSymbol($name)->scoped_name;
 			$res = std::make_shared<ASTVarDecl>();
 			$res->AddVariable(symName);
 		}
 
 	// a variable with an assignment
 	| IDENT[name] '=' expr[term] {
-			std::string symName = context.AddScopedSymbol($name)->scoped_name;
+			t_str symName = context.AddScopedSymbol($name)->scoped_name;
 			$res = std::make_shared<ASTVarDecl>(std::make_shared<ASTAssign>($name, $term));
 			$res->AddVariable(symName);
 		}
@@ -176,7 +176,7 @@ statement[res]
 		}
 
 	// variable declarations
-	// scalar / double
+	// scalar / t_real
 	| SCALARDECL {
 			context.SetSymType(SymbolType::SCALAR);
 		}
@@ -466,8 +466,8 @@ expr[res]
 	| expr[term1] LEQ expr[term2]	{ $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LEQ); }
 
 	// constants
-	| REAL[num]		{ $res = std::make_shared<ASTNumConst<double>>($num); }
-	| INT[num]		{ $res = std::make_shared<ASTNumConst<std::int64_t>>($num); }
+	| REAL[num]		{ $res = std::make_shared<ASTNumConst<t_real>>($num); }
+	| INT[num]		{ $res = std::make_shared<ASTNumConst<t_int>>($num); }
 	| STRING[str]	{ $res = std::make_shared<ASTStrConst>($str); }
 	| '[' exprlist[arr] ']'	{	// scalar array
 			$arr->SetScalarArray(true); 
@@ -481,12 +481,12 @@ expr[res]
 			if(std::get<0>(pair))
 			{
 				auto variant = std::get<1>(pair);
-				if(std::holds_alternative<double>(variant))
-					$res = std::make_shared<ASTNumConst<double>>(std::get<double>(variant));
-				else if(std::holds_alternative<std::int64_t>(variant))
-					$res = std::make_shared<ASTNumConst<std::int64_t>>(std::get<std::int64_t>(variant));
-				else if(std::holds_alternative<std::string>(variant))
-					$res = std::make_shared<ASTStrConst>(std::get<std::string>(variant));
+				if(std::holds_alternative<t_real>(variant))
+					$res = std::make_shared<ASTNumConst<t_real>>(std::get<t_real>(variant));
+				else if(std::holds_alternative<t_int>(variant))
+					$res = std::make_shared<ASTNumConst<t_int>>(std::get<t_int>(variant));
+				else if(std::holds_alternative<t_str>(variant))
+					$res = std::make_shared<ASTStrConst>(std::get<t_str>(variant));
 			}
 
 			// identifier names a variable

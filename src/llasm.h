@@ -14,8 +14,36 @@
 #define __LLASM_H__
 
 #include "ast.h"
-#include "sym.h"
 #include <stack>
+#include <type_traits>
+
+
+template<class t_type, class t_str = const char*>
+t_str get_lltype_name()
+{
+	if constexpr(std::is_same_v<std::decay_t<t_type>, double>)
+		return "double";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, float>)
+		return "float";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::int64_t>)
+		return "i64";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::int32_t>)
+		return "i32";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::int16_t>)
+		return "i16";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::int8_t>)
+		return "i8";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::uint64_t>)
+		return "u64";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::uint32_t>)
+		return "u32";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::uint16_t>)
+		return "u16";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::uint8_t>)
+		return "u8";
+	else
+		return "<unknown>";
+}
 
 
 /**
@@ -67,8 +95,8 @@ public:
 	virtual t_astret visit(const ASTLoop* ast) override;
 	virtual t_astret visit(const ASTStrConst* ast) override;
 	virtual t_astret visit(const ASTExprList* ast) override;
-	virtual t_astret visit(const ASTNumConst<double>* ast) override;
-	virtual t_astret visit(const ASTNumConst<std::int64_t>* ast) override;
+	virtual t_astret visit(const ASTNumConst<t_real>* ast) override;
+	virtual t_astret visit(const ASTNumConst<t_int>* ast) override;
 
 	// ------------------------------------------------------------------------
 	// internally handled dummy nodes
@@ -81,23 +109,23 @@ public:
 	/**
 	 * output declarations for registered functions
 	 */
-	static std::string get_function_declarations(const SymTab& symtab, bool only_externals=1);
+	static t_str get_function_declarations(const SymTab& symtab, bool only_externals=1);
 
 
 protected:
 	t_astret get_tmp_var(SymbolType ty = SymbolType::SCALAR,
 		const std::array<std::size_t, 2>* dims = nullptr,
-		const std::string* name = nullptr);
+		const t_str* name = nullptr);
 
 	/**
 	 * create a label for branch instructions
 	 */
-	std::string get_label();
+	t_str get_label();
 
 	/**
 	 * get the type name for a symbol
 	 */
-	static std::string get_type_name(SymbolType ty);
+	static t_str get_type_name(SymbolType ty);
 
 	/**
 	 * get the element type for an array type
@@ -117,7 +145,7 @@ protected:
 	/**
 	 * find the symbol with a specific name in the symbol table
 	 */
-	t_astret get_sym(const std::string& name) const;
+	t_astret get_sym(const t_str& name) const;
 
 	/**
 	 * convert symbol to another type
@@ -152,7 +180,7 @@ protected:
 	 * generates loop code with managed counter
 	 */
 	template<class t_funcBody>
-	void generate_loop(std::int64_t start, std::int64_t end, t_funcBody funcBody);
+	void generate_loop(t_int start, t_int end, t_funcBody funcBody);
 
 
 	t_astret cp_comp_mem(t_astret sym, t_astret mem);
@@ -168,7 +196,7 @@ private:
 	std::size_t m_varCount = 0;	// # of tmp vars
 	std::size_t m_labelCount = 0;	// # of labels
 
-	std::vector<std::string> m_curscope;
+	std::vector<t_str> m_curscope;
 
 	SymTab* m_syms = nullptr;
 
@@ -179,6 +207,12 @@ private:
 
 	// stack only needed for (future) nested functions
 	std::stack<const ASTFunc*> m_funcstack;
+
+	// type names
+	static const t_str m_real;
+	static const t_str m_int;
+	static const t_str m_realptr;
+	static const t_str m_intptr;
 };
 
 
@@ -195,9 +229,9 @@ void LLAsm::generate_cond(t_funcCond funcCond, t_funcBody funcBody, t_funcElseBo
 	t_astret cond = funcCond();
 	(*m_ostr) << ";-------------------------------------------------------------\n";
 
-	std::string labelIf = get_label();
-	std::string labelElse = hasElse ? get_label() : "";
-	std::string labelEnd = get_label();
+	t_str labelIf = get_label();
+	t_str labelElse = hasElse ? get_label() : "";
+	t_str labelEnd = get_label();
 
 	if(hasElse)
 		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelIf << ", label %" << labelElse << "\n";
@@ -236,9 +270,9 @@ void LLAsm::generate_cond(t_funcCond funcCond, t_funcBody funcBody, t_funcElseBo
 template<class t_funcCond, class t_funcBody>
 void LLAsm::generate_loop(t_funcCond funcCond, t_funcBody funcBody)
 {
-	std::string labelStart = get_label();
-	std::string labelBegin = get_label();
-	std::string labelEnd = get_label();
+	t_str labelStart = get_label();
+	t_str labelBegin = get_label();
+	t_str labelEnd = get_label();
 
 	(*m_ostr) << "\n;-------------------------------------------------------------\n";
 	(*m_ostr) << "; loop head\n";
@@ -266,23 +300,26 @@ void LLAsm::generate_loop(t_funcCond funcCond, t_funcBody funcBody)
  * generates loop code with managed counter
  */
 template<class t_funcBody>
-void LLAsm::generate_loop(std::int64_t start, std::int64_t end, t_funcBody funcBody)
+void LLAsm::generate_loop(t_int start, t_int end, t_funcBody funcBody)
 {
 	(*m_ostr) << "\n;-------------------------------------------------------------\n";
 	(*m_ostr) << "; loop counter\n";
 	(*m_ostr) << ";-------------------------------------------------------------\n";
 	t_astret ctr = get_tmp_var(SymbolType::INT);
 	t_astret ctrval = get_tmp_var(SymbolType::INT);
-	(*m_ostr) << "%" << ctr->name << " = alloca i64\n";
-	(*m_ostr) << "store i64 " << start << ", i64* %" << ctr->name << "\n";
+	(*m_ostr) << "%" << ctr->name << " = alloca " << m_int << "\n";
+	(*m_ostr) << "store " << m_int << " " << start << ", " << m_intptr
+		<< " %" << ctr->name << "\n";
 
 	generate_loop([this, ctr, ctrval, end]() -> t_astret
 	{
 		// loop condition: ctr < end
-		(*m_ostr) << "%" << ctrval->name << " = load i64, i64* %" << ctr->name << "\n";
+		(*m_ostr) << "%" << ctrval->name << " = load " << m_int << ", " << m_intptr
+			<< " %" << ctr->name << "\n";
 
 		t_astret _cond = get_tmp_var();
-		(*m_ostr) << "%" << _cond->name << " = icmp slt i64 %" << ctrval->name <<  ", " << end << "\n";
+		(*m_ostr) << "%" << _cond->name << " = icmp slt " << m_int
+			<< " %" << ctrval->name <<  ", " << end << "\n";
 
 		return _cond;
 	}, [this, &funcBody, ctr, ctrval]
@@ -293,8 +330,10 @@ void LLAsm::generate_loop(std::int64_t start, std::int64_t end, t_funcBody funcB
 		(*m_ostr) << "; increment loop counter\n";
 		(*m_ostr) << ";-------------------------------------------------------------\n";
 		t_astret newctrval = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << newctrval->name << " = add i64 %" << ctrval->name << ", 1\n";
-		(*m_ostr) << "store i64 %" << newctrval->name << ", i64* %" << ctr->name << "\n";
+		(*m_ostr) << "%" << newctrval->name << " = add " << m_int
+			<< " %" << ctrval->name << ", 1\n";
+		(*m_ostr) << "store " << m_int << " %" << newctrval->name << ", " << m_intptr
+			<< " %" << ctr->name << "\n";
 	});
 }
 

@@ -35,7 +35,7 @@ void yy::Lexer::LexerOutput(const char* str, int /*len*/)
 /**
  * Parser error output
  */
-void yy::Parser::error(const std::string& err)
+void yy::Parser::error(const t_str& err)
 {
 	std::cerr << "Parser error in line " << context.GetCurLine()
 		<< ": " << err << "." << std::endl;

@@ -14,6 +14,14 @@
 #include <sstream>
 
 
+// type names
+const t_str LLAsm::m_real = get_lltype_name<t_real>();
+const t_str LLAsm::m_int = get_lltype_name<t_int>();
+const t_str LLAsm::m_realptr = t_str(get_lltype_name<t_real>()) + "*";
+const t_str LLAsm::m_intptr = t_str(get_lltype_name<t_int>()) + "*";
+
+
+
 LLAsm::LLAsm(SymTab* syms, std::ostream* ostr) : m_syms{syms}, m_ostr{ostr}
 {}
 
@@ -66,9 +74,9 @@ t_astret LLAsm::visit(const ASTLoop* ast)
 
 t_astret LLAsm::get_tmp_var(SymbolType ty,
 	const std::array<std::size_t, 2>* dims,
-	const std::string* name)
+	const t_str* name)
 {
-	std::string var;
+	t_str var;
 	if(name)
 		var = *name;
 
@@ -100,9 +108,9 @@ t_astret LLAsm::get_tmp_var(SymbolType ty,
 }
 
 
-std::string LLAsm::get_label()
+t_str LLAsm::get_label()
 {
-	std::string lab{"__lab_"};
+	t_str lab{"__lab_"};
 	lab += std::to_string(m_labelCount);
 	++m_labelCount;
 	return lab;
@@ -112,7 +120,7 @@ std::string LLAsm::get_label()
 /**
  * output declarations for registered functions
  */
-std::string LLAsm::get_function_declarations(const SymTab& symtab, bool only_externals)
+t_str LLAsm::get_function_declarations(const SymTab& symtab, bool only_externals)
 {
 	std::ostringstream ostr;
 
@@ -155,15 +163,15 @@ std::string LLAsm::get_function_declarations(const SymTab& symtab, bool only_ext
 /**
  * get the corresponding data type name
  */
-std::string LLAsm::get_type_name(SymbolType ty)
+t_str LLAsm::get_type_name(SymbolType ty)
 {
 	switch(ty)
 	{
-		case SymbolType::SCALAR: return "double";
-		case SymbolType::VECTOR: return "double*";
-		case SymbolType::MATRIX: return "double*";
+		case SymbolType::SCALAR: return m_real;
+		case SymbolType::VECTOR: return m_realptr;
+		case SymbolType::MATRIX: return m_realptr;
 		case SymbolType::STRING: return "i8*";
-		case SymbolType::INT: return "i64";
+		case SymbolType::INT: return m_int;
 		case SymbolType::VOID: return "void";
 		case SymbolType::COMP: return "i8*";	// pointer to memory block
 		//case SymbolType::FUNC: return "func";	// TODO: function pointers
@@ -200,15 +208,15 @@ std::size_t LLAsm::get_bytesize(t_astret sym)
 	switch(ty)
 	{
 		case SymbolType::SCALAR:
-			return sizeof(double);
+			return sizeof(t_real);
 		case SymbolType::VECTOR:
-			return sizeof(double)*std::get<0>(sym->dims);
+			return sizeof(t_real)*std::get<0>(sym->dims);
 		case SymbolType::MATRIX:
-			return sizeof(double)*std::get<0>(sym->dims)*std::get<1>(sym->dims);
+			return sizeof(t_real)*std::get<0>(sym->dims)*std::get<1>(sym->dims);
 		case SymbolType::STRING:
 			return sizeof(char)*std::get<0>(sym->dims);
 		case SymbolType::INT:
-			return sizeof(std::int64_t);
+			return sizeof(t_int);
 		case SymbolType::VOID:
 			return 0;
 		case SymbolType::COMP:
@@ -240,10 +248,10 @@ std::size_t LLAsm::get_arraydim(t_astret sym)
 /**
  * find the symbol with a specific name in the symbol table
  */
-t_astret LLAsm::get_sym(const std::string& name) const
+t_astret LLAsm::get_sym(const t_str& name) const
 {
-	std::string scoped_name;
-	for(const std::string& scope : m_curscope)
+	t_str scoped_name;
+	for(const t_str& scope : m_curscope)
 		scoped_name += scope + Symbol::get_scopenameseparator();
 	scoped_name += name;
 
@@ -282,7 +290,7 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 	// scalar conversions
 	if(ty_to == SymbolType::SCALAR || ty_to == SymbolType::INT)
 	{
-		std::string op;
+		t_str op;
 		if(sym->ty == SymbolType::INT && ty_to == SymbolType::SCALAR)
 			op = "sitofp";
 		else if(sym->ty == SymbolType::SCALAR && ty_to == SymbolType::INT)
@@ -291,8 +299,8 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 		if(op == "")
 			throw std::runtime_error("Invalid scalar type conversion.");
 
-		std::string from = LLAsm::get_type_name(sym->ty);
-		std::string to = LLAsm::get_type_name(ty_to);
+		t_str from = LLAsm::get_type_name(sym->ty);
+		t_str to = LLAsm::get_type_name(ty_to);
 
 		t_astret var = get_tmp_var(ty_to, &sym->dims);
 		(*m_ostr) << "%" << var->name << " = " << op << " " << from << "%" << sym->name << " to " << to << "\n";
@@ -312,15 +320,17 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 
 			(*m_ostr) << "%" << str_mem->name << " = alloca [" << len << " x i8]\n";
 			(*m_ostr) << "%" << strptr->name << " = getelementptr ["
-				<< len << " x i8], [" << len << " x i8]* %"
-				<< str_mem->name << ", i64 0, i64 0\n";
+				<< len << " x i8], ["
+				<< len << " x i8]* %"
+				<< str_mem->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
-			(*m_ostr) << "call void @int_to_str(i64 %"  << sym->name
-				<< ", i8* %" << strptr->name << ", i64 " << len << ")\n";
+			(*m_ostr) << "call void @int_to_str(" << m_int
+				<< " %"  << sym->name << ", i8* %" << strptr->name
+				<< ", " << m_int << " " << len << ")\n";
 			return str_mem;
 		}
 
-		// ... from (double) scalar
+		// ... from (t_real) scalar
 		else if(sym->ty == SymbolType::SCALAR)
 		{
 			std::size_t len = 32;
@@ -330,11 +340,12 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 
 			(*m_ostr) << "%" << str_mem->name << " = alloca [" << len << " x i8]\n";
 			(*m_ostr) << "%" << strptr->name << " = getelementptr ["
-				<< len << " x i8], [" << len << " x i8]* %"
-				<< str_mem->name << ", i64 0, i64 0\n";
+				<< len << " x i8], ["
+				<< len << " x i8]* %"
+				<< str_mem->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
-			(*m_ostr) << "call void @flt_to_str(double %"  << sym->name
-				<< ", i8* %" << strptr->name << ", i64 " << len << ")\n";
+			(*m_ostr) << "call void @flt_to_str(" << m_real << " %"  << sym->name
+				<< ", i8* %" << strptr->name << ", " << m_int << " " << len << ")\n";
 			return str_mem;
 		}
 
@@ -350,8 +361,9 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 
 			(*m_ostr) << "%" << str_mem->name << " = alloca [" << len << " x i8]\n";
 			(*m_ostr) << "%" << strptr->name << " = getelementptr ["
-				<< len << " x i8], [" << len << " x i8]* %"
-				<< str_mem->name << ", i64 0, i64 0\n";
+				<< len << " x i8], ["
+				<< len << " x i8]* %"
+				<< str_mem->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 
 			// prepare "[ ", "] ", ", ", and "; " strings
@@ -372,7 +384,8 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 
 
 			// vector start: "[ "
-			(*m_ostr) << "call i8* @strncpy(i8* %" << strptr->name << ", i8* %" << vecbegin->name << ", i64 3)\n";
+			(*m_ostr) << "call i8* @strncpy(i8* %" << strptr->name << ", i8* %"
+				<< vecbegin->name << ", " << m_int << " 3)\n";
 
 
 			// output array elements in a loop
@@ -382,9 +395,14 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 				t_astret elemptr = get_tmp_var();
 				t_astret elem = get_tmp_var();
 
-				(*m_ostr) << "%" << elemptr->name << " = getelementptr [" << num_floats << " x double], ["
-					<< num_floats << " x double]* %" << sym->name << ", i64 0, i64 %" << ctrval->name << "\n";
-				(*m_ostr) << "%" << elem->name << " = load double, double* %" << elemptr->name << "\n";
+				(*m_ostr) << "%" << elemptr->name << " = getelementptr ["
+					<< num_floats << " x " << m_real << "], ["
+					<< num_floats << " x " << m_real << "]* %"
+					<< sym->name << ", " << m_int << " 0, " << m_int
+					<< " %" << ctrval->name << "\n";
+				(*m_ostr) << "%" << elem->name << " = load "
+					<< m_real << ", " << m_realptr
+					<< " %" << elemptr->name << "\n";
 
 
 				// convert vector/matrix component to string
@@ -395,14 +413,15 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 
 				(*m_ostr) << "%" << strComp_mem->name << " = alloca [" << lenComp << " x i8]\n";
 				(*m_ostr) << "%" << strCompptr->name << " = getelementptr ["
-					<< lenComp << " x i8], [" << lenComp << " x i8]* %"
-					<< strComp_mem->name << ", i64 0, i64 0\n";
+					<< lenComp << " x i8], ["
+					<< lenComp << " x i8]* %"
+					<< strComp_mem->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
-				(*m_ostr) << "call void @flt_to_str(double %"  << elem->name
-					<< ", i8* %" << strCompptr->name << ", i64 " << lenComp << ")\n";
+				(*m_ostr) << "call void @flt_to_str(" << m_real << " %"  << elem->name
+					<< ", i8* %" << strCompptr->name << ", " << m_int << " " << lenComp << ")\n";
 
 				(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name << ", i8* %"
-					<< strCompptr->name << ", i64 " << lenComp << ")\n";
+					<< strCompptr->name << ", " << m_int << " " << lenComp << ")\n";
 
 
 				// separator ", " or "; "
@@ -412,8 +431,8 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 					{
 						// don't output last "; " or ", ": i < num_floats-1
 						t_astret _cond = get_tmp_var(SymbolType::INT);
-						(*m_ostr) << "%" << _cond->name << " = icmp slt i64 %"
-							<< ctrval->name << ", " << num_floats-1 << "\n";
+						(*m_ostr) << "%" << _cond->name << " = icmp slt " << m_int
+							<< " %" << ctrval->name << ", " << num_floats-1 << "\n";
 						return _cond;
 					}, [this, sym, ctrval, strptr, matsep, vecsep]
 					{
@@ -424,22 +443,24 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 						{
 							//output ';' or ','?: ((i+1) % std::get<1>(sym->dims)) == 0
 							t_astret cond_M_or_v = get_tmp_var(SymbolType::INT);
-							(*m_ostr) << "%" << ctr_1->name << " = add i64 %" << ctrval->name << ", 1\n";
-							(*m_ostr) << "%" << ctr_mod_cols->name << " = srem i64 %" << ctr_1->name
+							(*m_ostr) << "%" << ctr_1->name << " = add " << m_int
+								<< " %" << ctrval->name << ", 1\n";
+							(*m_ostr) << "%" << ctr_mod_cols->name << " = srem " << m_int
+								<< " %" << ctr_1->name
 								<< ", " << std::get<0>(sym->dims) << "\n";
-							(*m_ostr) << "%" << cond_M_or_v->name << " = icmp eq i64 %"
-								<< ctr_mod_cols->name << ", 0\n";
+							(*m_ostr) << "%" << cond_M_or_v->name << " = icmp eq " << m_int
+								<< " %" << ctr_mod_cols->name << ", 0\n";
 							return cond_M_or_v;
 						}, [this, strptr, matsep]
 						{
 							// if: matrix separator case
 							(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name
-								<< ", i8* %" << matsep->name << ", i64 3)\n";
+								<< ", i8* %" << matsep->name << ", " << m_int << " 3)\n";
 						}, [this, strptr, vecsep]
 						{
 							// else: vector separator case
 							(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name
-								<< ", i8* %" << vecsep->name << ", i64 3)\n";
+								<< ", i8* %" << vecsep->name << ", " << m_int << " 3)\n";
 
 						}, true);
 					}, []{}, false);
@@ -451,19 +472,20 @@ t_astret LLAsm::convert_sym(t_astret sym, SymbolType ty_to)
 					{
 						// don't output last ", ": i < num_floats-1
 						t_astret _cond = get_tmp_var(SymbolType::INT);
-						(*m_ostr) << "%" << _cond->name << " = icmp slt i64 %"
+						(*m_ostr) << "%" << _cond->name << " = icmp slt " << m_int << " %"
 							<< ctrval->name << ", " << num_floats-1 << "\n";
 						return _cond;
 					}, [this, strptr, vecsep]
 					{
 						(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name
-							<< ", i8* %" << vecsep->name << ", i64 3)\n";
+							<< ", i8* %" << vecsep->name << ", " << m_int << " 3)\n";
 					}, []{}, false);
 				}
 			});
 
 			// vector end: " ]"
-			(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name << ", i8* %" << vecend->name << ", i64 3)\n";
+			(*m_ostr) << "call i8* @strncat(i8* %" << strptr->name << ", i8* %"
+				<< vecend->name << ", " << m_int << " 3)\n";
 
 			return str_mem;
 		}
@@ -518,9 +540,9 @@ t_astret LLAsm::scalar_matrix_prod(t_astret scalar, t_astret matrix, bool mul_or
 	if(matrix->ty == SymbolType::MATRIX)
 		dim *= std::get<1>(matrix->dims);
 
-	// allocate double array for result
+	// allocate real array for result
 	t_astret vec_mem = get_tmp_var(matrix->ty, &matrix->dims);
-	(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x double]\n";
+	(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x " << m_real << "]\n";
 
 	// copy matrix elements in a loop
 	generate_loop(0, dim, [this, dim, matrix, scalar, vec_mem, mul_or_div](t_astret ctrval)
@@ -528,30 +550,39 @@ t_astret LLAsm::scalar_matrix_prod(t_astret scalar, t_astret matrix, bool mul_or
 		// loop statements
 		t_astret elemptr_src = get_tmp_var();
 		t_astret elem_src = get_tmp_var();
-		(*m_ostr) << "%" << elemptr_src->name << " = getelementptr [" << dim << " x double], ["
-			<< dim << " x double]* %" << matrix->name << ", i64 0, i64 %" << ctrval->name << "\n";
-		(*m_ostr) << "%" << elem_src->name << " = load double, double* %" << elemptr_src->name << "\n";
+		(*m_ostr) << "%" << elemptr_src->name << " = getelementptr ["
+			<< dim << " x " << m_real << "], ["
+			<< dim << " x " << m_real << "]* %"
+			<< matrix->name << ", " << m_int << " 0, " << m_int
+			<< " %" << ctrval->name << "\n";
+		(*m_ostr) << "%" << elem_src->name << " = load "
+			<< m_real << ", " << m_realptr
+			<< " %" << elemptr_src->name << "\n";
 
 		t_astret elemptr_dst = get_tmp_var();
-		(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr [" << dim << " x double], ["
-			<< dim << " x double]* %" << vec_mem->name << ", i64 0, i64 %" << ctrval->name << "\n";
+		(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr ["
+			<< dim << " x " << m_real << "], ["
+			<< dim << " x " << m_real << "]* %"
+			<< vec_mem->name << ", " << m_int << " 0, " << m_int
+			<< " %" << ctrval->name << "\n";
 
 		// multiply element value with scalar
 		t_astret elem_dst = get_tmp_var(SymbolType::SCALAR);
 
 		if(mul_or_div)
 		{
-			(*m_ostr) << "%" << elem_dst->name << " = fmul double %"
+			(*m_ostr) << "%" << elem_dst->name << " = fmul " << m_real << " %"
 				<< elem_src->name << ", %" << scalar->name << "\n";
 		}
 		else
 		{
-			(*m_ostr) << "%" << elem_dst->name << " = fdiv double %"
+			(*m_ostr) << "%" << elem_dst->name << " = fdiv " << m_real << " %"
 				<< elem_src->name << ", %" << scalar->name << "\n";
 		}
 
 		// save result in array
-		(*m_ostr) << "store double %" << elem_dst->name << ", double* %" << elemptr_dst->name << "\n";
+		(*m_ostr) << "store " << m_real << " %" << elem_dst->name
+			<< ", " << m_realptr << " %" << elemptr_dst->name << "\n";
 	});
 
 	return vec_mem;
@@ -566,7 +597,7 @@ t_astret LLAsm::cp_comp_mem(t_astret sym, t_astret mem)
 	std::size_t len = get_bytesize(sym);
 
 	(*m_ostr) << "call i8* @memcpy(i8* %" << mem->name << ", i8* %" << sym->name
-		<< ", i64 " << len << ")\n";
+		<< ", " << m_int << " " << len << ")\n";
 
 	return mem;
 }
@@ -582,22 +613,24 @@ t_astret LLAsm::cp_vec_mem(t_astret sym, t_astret mem)
 		dim *= std::get<1>(sym->dims);
 
 	t_astret termptr = get_tmp_var(sym->ty);
-	(*m_ostr) << "%" << termptr->name << " = bitcast [" << dim << " x double]* %" << sym->name << " to i8*\n";
+	(*m_ostr) << "%" << termptr->name << " = bitcast [" << dim
+		<< " x " << m_real << "]* %" << sym->name << " to i8*\n";
 
 	// if no memory block is given, allocate one
 	if(!mem)
 	{
 		mem = get_tmp_var(sym->ty, &sym->dims, nullptr);
-		(*m_ostr) << "%" << mem->name << " = call i8* @ext_heap_alloc(i64 "
-			<< dim << ", i64 " << sizeof(double) << ")\n";
+		(*m_ostr) << "%" << mem->name << " = call i8* @ext_heap_alloc(" << m_int << " "
+			<< dim << ", " << m_int << " " << sizeof(t_real) << ")\n";
 	}
 
 	(*m_ostr) << "call i8* @memcpy(i8* %" << mem->name << ", i8* %" << termptr->name
-		<< ", i64 " << dim*sizeof(double) << ")\n";
+		<< ", " << m_int << " " << dim*sizeof(t_real) << ")\n";
 
-	// cast to the actual double*
+	// cast to the actual t_real*
 	t_astret mem_double = get_tmp_var(sym->ty, &sym->dims);
-	(*m_ostr) << "%" << mem_double->name << " = bitcast i8* %" << mem->name << " to double*\n";
+	(*m_ostr) << "%" << mem_double->name << " = bitcast i8* %"
+		<< mem->name << " to " << m_realptr << "\n";
 
 	return mem_double;
 }
@@ -614,21 +647,23 @@ t_astret LLAsm::cp_str_mem(t_astret sym, t_astret mem)
 	(*m_ostr) << "%" << termptr->name << " = bitcast [" << dim << " x i8]* %" << sym->name << " to i8*\n";
 
 	t_astret strretlen = get_tmp_var(SymbolType::INT);
-	(*m_ostr) << "%" << strretlen->name << " = call i64 @strlen(i8* %" << termptr->name << ")\n";
+	(*m_ostr) << "%" << strretlen->name << " = call " << m_int
+		<< " @strlen(i8* %" << termptr->name << ")\n";
 
 	t_astret strretlen_z = get_tmp_var(SymbolType::INT);
-	(*m_ostr) << "%" << strretlen_z->name << " = add i64 %" << strretlen->name << ", 1\n";
+	(*m_ostr) << "%" << strretlen_z->name << " = add " << m_int
+		<< " %" << strretlen->name << ", 1\n";
 
 	// if no memory block is given, allocate one
 	if(!mem)
 	{
 		mem = get_tmp_var(SymbolType::STRING, &sym->dims, nullptr);
-		(*m_ostr) << "%" << mem->name << " = call i8* @ext_heap_alloc(i64 %"
-			<< strretlen_z->name << ", i64 1" << ")\n";
+		(*m_ostr) << "%" << mem->name << " = call i8* @ext_heap_alloc(" << m_int
+			<< " %" << strretlen_z->name << ", " << m_int << " 1" << ")\n";
 	}
 
 	(*m_ostr) << "call i8* @strncpy(i8* %" << mem->name << ", i8* %" << termptr->name
-		<< ", i64 " << dim << ")\n";
+		<< ", " << m_int << " " << dim << ")\n";
 
 	return mem;
 }
@@ -641,8 +676,8 @@ t_astret LLAsm::cp_mem_comp(t_astret mem, t_astret sym)
 {
 	std::size_t len = get_bytesize(sym);
 
-	(*m_ostr) << "call i8* @memcpy(i8* %" << sym->name << ", i8* %" << mem->name
-		<< ", i64 " << len << ")\n";
+	(*m_ostr) << "call i8* @memcpy(i8* %" << sym->name << ", i8* %"
+		<< mem->name << ", " << m_int << " " << len << ")\n";
 
 	return sym;
 }
@@ -659,20 +694,23 @@ t_astret LLAsm::cp_mem_vec(t_astret mem, t_astret sym, bool alloc_sym)
 
 	// allocate memory for local array copy
 	if(alloc_sym)
-		(*m_ostr) << "%" << sym->name << " = alloca [" << argdim << " x double]\n";
+		(*m_ostr) << "%" << sym->name << " = alloca [" << argdim << " x " << m_real << "]\n";
 
 	t_astret arrptr = get_tmp_var();
-	(*m_ostr) << "%" << arrptr->name << " = getelementptr [" << argdim << " x double], ["
-		<< argdim << " x double]* %" << sym->name << ", i64 0, i64 0\n";
+	(*m_ostr) << "%" << arrptr->name << " = getelementptr ["
+		<< argdim << " x " << m_real << "], ["
+		<< argdim << " x " << m_real << "]* %"
+		<< sym->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 	// copy array
 	t_astret arrptr_cast = get_tmp_var();
 
 	// cast to memcpy argument pointer type
-	(*m_ostr) << "%" << arrptr_cast->name << " = bitcast double* %" << arrptr->name << " to i8*\n";
+	(*m_ostr) << "%" << arrptr_cast->name << " = bitcast " << m_realptr
+		<< " %" << arrptr->name << " to i8*\n";
 
 	(*m_ostr) << "call i8* @memcpy(i8* %" << arrptr_cast->name << ", i8* %" << mem->name
-		<< ", i64 " << argdim*sizeof(double) << ")\n";
+		<< ", " << m_int << " " << argdim*sizeof(t_real) << ")\n";
 
 	return sym;
 }
@@ -687,8 +725,10 @@ t_astret LLAsm::cp_mem_str(t_astret mem, t_astret sym, bool alloc_sym)
 		(*m_ostr) << "%" << sym->name << " = alloca [" << std::get<0>(sym->dims) << " x i8]\n";
 
 	t_astret strptr = get_tmp_var();
-	(*m_ostr) << "%" << strptr->name << " = getelementptr [" << std::get<0>(sym->dims) << " x i8], ["
-		<< std::get<0>(sym->dims) << " x i8]* %" << sym->name << ", i64 0, i64 0\n";
+	(*m_ostr) << "%" << strptr->name << " = getelementptr ["
+		<< std::get<0>(sym->dims) << " x i8], ["
+		<< std::get<0>(sym->dims) << " x i8]* %"
+		<< sym->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 	// copy string
 	(*m_ostr) << "call i8* @strncpy(i8* %" << strptr->name << ", i8* %" << mem->name

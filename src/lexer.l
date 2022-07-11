@@ -90,7 +90,7 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 
 
 {int_bin}	{
-	long dec = 0;
+	t_int dec = 0;
 
 	std::size_t pos = 0;
 	for(const char* pc=yytext+yyleng-1; pc>=yytext+2; --pc)
@@ -100,21 +100,21 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 		++pos;
 	}
 
-	return yy::Parser::make_INT(dec);
+	return yy::Parser::make_INT(static_cast<t_int>(dec));
 }
 
 {int_dec}	{
-	return yy::Parser::make_INT(std::stol(yytext));
+	return yy::Parser::make_INT(static_cast<t_int>(std::stol(yytext)));
 }
 
 {int_hex}	{
-	long l = 0;
+	t_int l = 0;
 	std::istringstream{yytext} >> std::hex >> l;
-	return yy::Parser::make_INT(l);
+	return yy::Parser::make_INT(static_cast<t_int>(l));
 }
 
 {realeng}	{
-	return yy::Parser::make_REAL(std::stod(yytext));
+	return yy::Parser::make_REAL(static_cast<t_real>(std::stod(yytext)));
 }
 
 
@@ -125,12 +125,12 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 
 "\""[^\"]*"\""	{
 	// string
-	std::string str{yytext+1, yytext+yyleng-1};
+	t_str str{yytext+1, yytext+yyleng-1};
 	return yy::Parser::make_STRING(str); }
 
 
 . {
-	std::string err = "Unknown token: \"";
+	t_str err = "Unknown token: \"";
 	err += yytext;
 	err += "\".";
 

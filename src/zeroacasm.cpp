@@ -14,6 +14,24 @@ ZeroACAsm::ZeroACAsm(SymTab* syms, std::ostream* ostr)
 {}
 
 
+t_astret ZeroACAsm::visit(const ASTNumConst<t_real>* ast)
+{
+	return nullptr;
+}
+
+
+t_astret ZeroACAsm::visit(const ASTNumConst<t_int>* ast)
+{
+	return nullptr;
+}
+
+
+t_astret ZeroACAsm::visit(const ASTStrConst* ast)
+{
+	return nullptr;
+}
+
+
 t_astret ZeroACAsm::visit(const ASTStmts* ast)
 {
 	t_astret lastres = nullptr;
@@ -140,31 +158,13 @@ t_astret ZeroACAsm::visit(const ASTComp* ast)
 }
 
 
-t_astret ZeroACAsm::visit(const ASTBool* ast)
-{
-	return nullptr;
-}
-
-
-t_astret ZeroACAsm::visit(const ASTStrConst* ast)
-{
-	return nullptr;
-}
-
-
 t_astret ZeroACAsm::visit(const ASTExprList* ast)
 {
 	return nullptr;
 }
 
 
-t_astret ZeroACAsm::visit(const ASTNumConst<double>* ast)
-{
-	return nullptr;
-}
-
-
-t_astret ZeroACAsm::visit(const ASTNumConst<std::int64_t>* ast)
+t_astret ZeroACAsm::visit(const ASTBool* ast)
 {
 	return nullptr;
 }

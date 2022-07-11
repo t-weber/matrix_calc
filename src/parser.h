@@ -20,7 +20,6 @@
 #include <FlexLexer.h>
 
 #include "ast.h"
-#include "sym.h"
 #include "parser_defs.h"
 
 
@@ -68,13 +67,13 @@ namespace yy
 		std::shared_ptr<ASTStmts> m_statements;
 
 		SymTab m_symbols;
-		std::unordered_map<std::string, std::variant<double, std::int64_t, std::string>> m_consts
+		std::unordered_map<t_str, std::variant<t_real, t_int, t_str>> m_consts
 		{{
-			{"pi", double(M_PI)},
+			{"pi", t_real(M_PI)},
 		}};
 
 		// information about currently parsed symbol
-		std::vector<std::string> m_curscope;
+		std::vector<t_str> m_curscope;
 		SymbolType m_symtype = SymbolType::SCALAR;
 		std::array<std::size_t, 2> m_symdims = {1, 1};
 
@@ -95,7 +94,7 @@ namespace yy
 		/**
 		 * current function scope
 		 */
-		const std::vector<std::string>& GetScope() const
+		const std::vector<t_str>& GetScope() const
 		{
 			return m_curscope;
 		}
@@ -103,22 +102,22 @@ namespace yy
 		/**
 		 * get the currently active scope name, ignoring the last "up" levels
 		 */
-		std::string GetScopeName(std::size_t up=0) const
+		t_str GetScopeName(std::size_t up=0) const
 		{
-			std::string name;
+			t_str name;
 			for(std::size_t level=0; level<m_curscope.size()-up; ++level)
 				name += m_curscope[level] + Symbol::get_scopenameseparator();
 			return name;
 		}
 
-		void EnterScope(const std::string& name)
+		void EnterScope(const t_str& name)
 		{
 			m_curscope.push_back(name);
 		}
 
-		void LeaveScope(const std::string& name)
+		void LeaveScope(const t_str& name)
 		{
-			const std::string& curscope = *m_curscope.rbegin();
+			const t_str& curscope = *m_curscope.rbegin();
 
 			if(curscope != name)
 			{
@@ -133,15 +132,15 @@ namespace yy
 
 
 		// --------------------------------------------------------------------
-		Symbol* AddScopedSymbol(const std::string& name)
+		Symbol* AddScopedSymbol(const t_str& name)
 		{
-			const std::string& scope = GetScopeName();
+			const t_str& scope = GetScopeName();
 			return m_symbols.AddSymbol(scope, name, m_symtype, m_symdims);
 		}
 
-		const Symbol* FindScopedSymbol(const std::string& name) const
+		const Symbol* FindScopedSymbol(const t_str& name) const
 		{
-			const std::string& scope = GetScopeName();
+			const t_str& scope = GetScopeName();
 			return m_symbols.FindSymbol(scope + name);
 		}
 
@@ -159,8 +158,8 @@ namespace yy
 		}
 
 
-		std::pair<bool, std::variant<double, std::int64_t, std::string>>
-		GetConst(const std::string& name) const
+		std::pair<bool, std::variant<t_real, t_int, t_str>>
+		GetConst(const t_str& name) const
 		{
 			auto iter = m_consts.find(name);
 			if(iter == m_consts.end())

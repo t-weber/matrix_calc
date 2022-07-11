@@ -26,9 +26,9 @@ t_astret LLAsm::visit(const ASTUMinus* ast)
 		if(term->ty == SymbolType::MATRIX)
 			dim *= std::get<1>(term->dims);
 
-		// allocate double array for result
+		// allocate real array for result
 		t_astret vec_mem = get_tmp_var(term->ty, &term->dims);
-		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x double]\n";
+		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x " << m_real << "]\n";
 
 		// copy array elements in a loop
 		generate_loop(0, dim, [this, term, vec_mem, dim](t_astret ctrval)
@@ -36,20 +36,29 @@ t_astret LLAsm::visit(const ASTUMinus* ast)
 			t_astret elemptr_src = get_tmp_var();
 			t_astret elem_src = get_tmp_var();
 
-			(*m_ostr) << "%" << elemptr_src->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << term->name << ", i64 0, i64 %" << ctrval->name << "\n";
-			(*m_ostr) << "%" << elem_src->name << " = load double, double* %" << elemptr_src->name << "\n";
+			(*m_ostr) << "%" << elemptr_src->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< term->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elem_src->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << elemptr_src->name << "\n";
 
 			t_astret elemptr_dst = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << vec_mem->name << ", i64 0, i64 %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< vec_mem->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
 
 			// unary minus
 			t_astret elem_dst = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << elem_dst->name << " = fsub double 0." << ", %" << elem_src->name << "\n";
+			(*m_ostr) << "%" << elem_dst->name << " = fsub " << m_real << " 0."
+				<< ", %" << elem_src->name << "\n";
 
 			// save result in array
-			(*m_ostr) << "store double %" << elem_dst->name << ", double* %" << elemptr_dst->name << "\n";
+			(*m_ostr) << "store " << m_real << " %" << elem_dst->name << ", " << m_realptr
+				<< " %" << elemptr_dst->name << "\n";
 		});
 
 		return vec_mem;
@@ -103,39 +112,51 @@ t_astret LLAsm::visit(const ASTPlus* ast)
 			dim *= std::get<1>(term1->dims);
 		}
 
-		// allocate double array for result
+		// allocate real array for result
 		t_astret vec_mem = get_tmp_var(term1->ty, &term1->dims);
-		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x double]\n";
+		(*m_ostr) << "%" << vec_mem->name << " = alloca [" << dim << " x " << m_real << "]\n";
 
-		std::string op = ast->IsInverted() ? "fsub" : "fadd";
+		t_str op = ast->IsInverted() ? "fsub" : "fadd";
 
 		// copy elements in a loop
 		generate_loop(0, dim, [this, term1, term2, dim, vec_mem, &op](t_astret ctrval)
 		{
 			// loop statements
 			t_astret elemptr_src1 = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_src1->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << term1->name << ", i64 0, i64 %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elemptr_src1->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< term1->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
 			t_astret elemptr_src2 = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_src2->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << term2->name << ", i64 0, i64 %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elemptr_src2->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< term2->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
 
 			t_astret elem_src1 = get_tmp_var();
-			(*m_ostr) << "%" << elem_src1->name << " = load double, double* %" << elemptr_src1->name << "\n";
+			(*m_ostr) << "%" << elem_src1->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << elemptr_src1->name << "\n";
 			t_astret elem_src2 = get_tmp_var();
-			(*m_ostr) << "%" << elem_src2->name << " = load double, double* %" << elemptr_src2->name << "\n";
+			(*m_ostr) << "%" << elem_src2->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << elemptr_src2->name << "\n";
 
 			t_astret elemptr_dst = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << vec_mem->name << ", i64 0, i64 %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< vec_mem->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
 
 			// add/subtract
 			t_astret elem_dst = get_tmp_var(SymbolType::SCALAR);
 			(*m_ostr) << "%" << elem_dst->name << " = " << op << " "
-				<< "double %" << elem_src1->name << ", %" << elem_src2->name << "\n";
+				<< m_real << " %" << elem_src1->name << ", %" << elem_src2->name << "\n";
 
 			// save result in array
-			(*m_ostr) << "store double %" << elem_dst->name << ", double* %" << elemptr_dst->name << "\n";
+			(*m_ostr) << "store " << m_real << " %" << elem_dst->name << ", " << m_realptr
+				<< " %" << elemptr_dst->name << "\n";
 		});
 
 		return vec_mem;
@@ -154,9 +175,9 @@ t_astret LLAsm::visit(const ASTPlus* ast)
 		t_astret strptr1 = get_tmp_var();
 		t_astret strptr2 = get_tmp_var();
 		(*m_ostr) << "%" << strptr1->name << " = getelementptr [" << std::get<0>(term1->dims) << " x i8], ["
-			<< std::get<0>(term1->dims) << " x i8]* %" << term1->name << ", i64 0, i64 0\n";
+			<< std::get<0>(term1->dims) << " x i8]* %" << term1->name << ", " << m_int << " 0, " << m_int << " 0\n";
 		(*m_ostr) << "%" << strptr2->name << " = getelementptr [" << std::get<0>(term2->dims) << " x i8], ["
-			<< std::get<0>(term2->dims) << " x i8]* %" << term2->name << ", i64 0, i64 0\n";
+			<< std::get<0>(term2->dims) << " x i8]* %" << term2->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 		// allocate memory for concatenated string
 		std::array<std::size_t, 2> dim{{ std::get<0>(term1->dims)+std::get<0>(term2->dims)-1, 1 }};
@@ -169,15 +190,15 @@ t_astret LLAsm::visit(const ASTPlus* ast)
 		// get a pointer to the concatenated string
 		t_astret resptr = get_tmp_var();
 		(*m_ostr) << "%" << resptr->name << " = getelementptr [" << std::get<0>(dim) << " x i8], ["
-			<< std::get<0>(dim) << " x i8]* %" << res->name << ", i64 0, i64 0\n";
+			<< std::get<0>(dim) << " x i8]* %" << res->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 		// copy first string
 		(*m_ostr) << "call i8* @strncpy(i8* %" << resptr->name << ", i8* %" << strptr1->name
-			<< ", i64 " << std::get<0>(term1->dims) << ")\n";
+			<< ", " << m_int << " " << std::get<0>(term1->dims) << ")\n";
 
 		// concatenate second string
 		(*m_ostr) << "call i8* @strncat(i8* %" << resptr->name << ", i8* %" << strptr2->name
-			<< ", i64 " << std::get<0>(term2->dims) << ")\n";
+			<< ", " << m_int << " " << std::get<0>(term2->dims) << ")\n";
 
 		return res;
 	}
@@ -194,7 +215,7 @@ t_astret LLAsm::visit(const ASTPlus* ast)
 		term1 = convert_sym(term1, ty);
 		term2 = convert_sym(term2, ty);
 
-		std::string op = ast->IsInverted() ? "sub" : "add";
+		t_str op = ast->IsInverted() ? "sub" : "add";
 		if(ty == SymbolType::SCALAR)
 			op = "f" + op;
 
@@ -235,8 +256,9 @@ t_astret LLAsm::visit(const ASTMult* ast)
 
 		// result variable
 		t_astret dotptr = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << dotptr->name << " = alloca double\n";
-		(*m_ostr) << "store double 0., double* %" << dotptr->name << "\n";
+		(*m_ostr) << "%" << dotptr->name << " = alloca " << m_real << "\n";
+		(*m_ostr) << "store " << m_real << " 0., " << m_realptr
+			<< " %" << dotptr->name << "\n";
 
 
 		// add elements in a loop
@@ -244,34 +266,45 @@ t_astret LLAsm::visit(const ASTMult* ast)
 		{
 			// loop statements
 			t_astret elemptr_src1 = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_src1->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << term1->name << ", i64 0, i64 %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elemptr_src1->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< term1->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
 			t_astret elemptr_src2 = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_src2->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << term2->name << ", i64 0, i64 %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elemptr_src2->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< term2->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
 
 			t_astret elem_src1 = get_tmp_var();
-			(*m_ostr) << "%" << elem_src1->name << " = load double, double* %" << elemptr_src1->name << "\n";
+			(*m_ostr) << "%" << elem_src1->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << elemptr_src1->name << "\n";
 			t_astret elem_src2 = get_tmp_var();
-			(*m_ostr) << "%" << elem_src2->name << " = load double, double* %" << elemptr_src2->name << "\n";
+			(*m_ostr) << "%" << elem_src2->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << elemptr_src2->name << "\n";
 
 			// multiply elements
 			t_astret mul_elems = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << mul_elems->name << " = fmul "
-				<< "double %" << elem_src1->name << ", %" << elem_src2->name << "\n";
+			(*m_ostr) << "%" << mul_elems->name << " = fmul " << m_real
+				<< " %" << elem_src1->name << ", %" << elem_src2->name << "\n";
 
 			// increment dot product variable
 			t_astret cur_dot = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << cur_dot->name << " = load double, double* %" << dotptr->name << "\n";
+			(*m_ostr) << "%" << cur_dot->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << dotptr->name << "\n";
 			t_astret sum_dot = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << sum_dot->name << " = fadd "
-				<< "double %" << cur_dot->name << ", %" << mul_elems->name << "\n";
-			(*m_ostr) << "store double %" << sum_dot->name << ", double* %" << dotptr->name << "\n";
+			(*m_ostr) << "%" << sum_dot->name << " = fadd " << m_real
+				<< " %" << cur_dot->name << ", %" << mul_elems->name << "\n";
+			(*m_ostr) << "store " << m_real << " %" << sum_dot->name << ", " << m_realptr
+				<< " %" << dotptr->name << "\n";
 		});
 
 
 		t_astret dot = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << dot->name << " = load double, double* %" << dotptr->name << "\n";
+		(*m_ostr) << "%" << dot->name << " = load " << m_real << ", " << m_realptr
+			<< " %" << dotptr->name << "\n";
 		return dot;
 	}
 
@@ -296,63 +329,80 @@ t_astret LLAsm::visit(const ASTMult* ast)
 		// result vector w
 		std::array<std::size_t, 2> w_dims{{dim_i, 1}};
 		t_astret w_mem = get_tmp_var(SymbolType::VECTOR, &w_dims);
-		(*m_ostr) << "%" << w_mem->name << " = alloca [" << dim_i << " x double]\n";
+		(*m_ostr) << "%" << w_mem->name << " = alloca [" << dim_i << " x " << m_real << "]\n";
 
 		// loop i
 		generate_loop(0, dim_i, [this, term1, term2, dim_i, dim_j, w_mem](t_astret ctr_i_val)
 		{
 			// w[i] pointer
 			t_astret elemptr_w_i = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_w_i->name << " = getelementptr [" << dim_i << " x double], ["
-				<< dim_i << " x double]* %" << w_mem->name << ", i64 0, i64 %" << ctr_i_val->name << "\n";
+			(*m_ostr) << "%" << elemptr_w_i->name << " = getelementptr ["
+				<< dim_i << " x " << m_real << "], ["
+				<< dim_i << " x " << m_real << "]* %"
+				<< w_mem->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctr_i_val->name << "\n";
 
 			// w[i] = 0
-			(*m_ostr) << "store double 0., double* %" << elemptr_w_i->name << "\n";
+			(*m_ostr) << "store " << m_real << " 0., " << m_realptr
+				<< " %" << elemptr_w_i->name << "\n";
 
 			// loop i index of M: i*dim_j
 			t_astret M_idx_i = get_tmp_var();
-			(*m_ostr) << "%" << M_idx_i->name << " = mul i64 %" << ctr_i_val->name << ", " << dim_j << "\n";
+			(*m_ostr) << "%" << M_idx_i->name << " = mul " << m_int
+				<< " %" << ctr_i_val->name << ", " << dim_j << "\n";
 
 			// loop j
 			generate_loop(0, dim_j, [this, term1, term2, dim_i, dim_j, M_idx_i, elemptr_w_i](t_astret ctr_j_val)
 			{
 				// v[j] pointer
 				t_astret elemptr_v_j = get_tmp_var();
-				(*m_ostr) << "%" << elemptr_v_j->name << " = getelementptr [" << dim_j << " x double], ["
-					<< dim_j << " x double]* %" << term2->name << ", i64 0, i64 %" << ctr_j_val->name << "\n";
+				(*m_ostr) << "%" << elemptr_v_j->name << " = getelementptr ["
+					<< dim_j << " x " << m_real << "], ["
+					<< dim_j << " x " << m_real << "]* %"
+					<< term2->name << ", " << m_int << " 0, " << m_int
+					<< " %" << ctr_j_val->name << "\n";
 
 				// M index: i*dim_j + j
 				t_astret M_idx = get_tmp_var();
-				(*m_ostr) << "%" << M_idx->name << " = add i64 %" << M_idx_i->name << ", %" << ctr_j_val->name << "\n";
+				(*m_ostr) << "%" << M_idx->name << " = add " << m_int
+					<< " %" << M_idx_i->name << ", %" << ctr_j_val->name << "\n";
 
 				// M[i,j] pointer
 				t_astret elemptr_M_ij = get_tmp_var();
-				(*m_ostr) << "%" << elemptr_M_ij->name << " = getelementptr [" << dim_i*dim_j << " x double], ["
-					<< dim_i*dim_j << " x double]* %" << term1->name << ", i64 0, i64 %"
-					<< M_idx->name << "\n";
+				(*m_ostr) << "%" << elemptr_M_ij->name << " = getelementptr ["
+					<< dim_i*dim_j << " x " << m_real << "], ["
+					<< dim_i*dim_j << " x " << m_real << "]* %"
+					<< term1->name << ", " << m_int << " 0, " << m_int
+					<< " %" << M_idx->name << "\n";
 
 				// v[j] value
 				t_astret elem_v_j = get_tmp_var();
-				(*m_ostr) << "%" << elem_v_j->name << " = load double, double* %" << elemptr_v_j->name << "\n";
+				(*m_ostr) << "%" << elem_v_j->name << " = load " << m_real << ", " << m_realptr
+					<< " %" << elemptr_v_j->name << "\n";
 
 				// M[i,j] value
 				t_astret elem_M_ij = get_tmp_var();
-				(*m_ostr) << "%" << elem_M_ij->name << " = load double, double* %" << elemptr_M_ij->name << "\n";
+				(*m_ostr) << "%" << elem_M_ij->name << " = load " << m_real << ", " << m_realptr
+					<< " %" << elemptr_M_ij->name << "\n";
 
 				// m = M[i,j]*v[j]
 				t_astret m = get_tmp_var();
-				(*m_ostr) << "%" << m->name << " = fmul double %" << elem_M_ij->name << ", %" << elem_v_j->name << "\n";
+				(*m_ostr) << "%" << m->name << " = fmul " << m_real
+					<< " %" << elem_M_ij->name << ", %" << elem_v_j->name << "\n";
 
 				// current w[i] value
 				t_astret elem_w_i = get_tmp_var();
-				(*m_ostr) << "%" << elem_w_i->name << " = load double, double* %" << elemptr_w_i->name << "\n";
+				(*m_ostr) << "%" << elem_w_i->name << " = load " << m_real << ", " << m_realptr
+					<< " %" << elemptr_w_i->name << "\n";
 
 				// d = w[i] + m
 				t_astret d = get_tmp_var();
-				(*m_ostr) << "%" << d->name << " = fadd double %" << elem_w_i->name << ", %" << m->name << "\n";
+				(*m_ostr) << "%" << d->name << " = fadd " << m_real
+					<< " %" << elem_w_i->name << ", %" << m->name << "\n";
 
 				// w[i] = d
-				(*m_ostr) << "store double %" << d->name << ", double* %" << elemptr_w_i->name << "\n";
+				(*m_ostr) << "store " << m_real << " %" << d->name << ", " << m_realptr
+					<< " %" << elemptr_w_i->name << "\n";
 			});
 		});
 
@@ -381,90 +431,111 @@ t_astret LLAsm::visit(const ASTMult* ast)
 		// result Matrix L
 		std::array<std::size_t, 2> L_dims{{dim_i, dim_j}};
 		t_astret L_mem = get_tmp_var(SymbolType::MATRIX, &L_dims);
-		(*m_ostr) << "%" << L_mem->name << " = alloca [" << dim_i*dim_j << " x double]\n";
+		(*m_ostr) << "%" << L_mem->name << " = alloca [" << dim_i*dim_j << " x " << m_real << "]\n";
 
 		// loop i
 		generate_loop(0, dim_i, [this, term1, term2, dim_i, dim_j, dim_k, L_mem](t_astret ctr_i_val)
 		{
 			// loop i index of L: i*dim_j
 			t_astret L_idx_i = get_tmp_var();
-			(*m_ostr) << "%" << L_idx_i->name << " = mul i64 %" << ctr_i_val->name << ", " << dim_j << "\n";
+			(*m_ostr) << "%" << L_idx_i->name << " = mul " << m_int
+				<< " %" << ctr_i_val->name << ", " << dim_j << "\n";
 
 			// loop i index of M: i*dim_k
 			t_astret M_idx_i = get_tmp_var();
-			(*m_ostr) << "%" << M_idx_i->name << " = mul i64 %" << ctr_i_val->name << ", " << dim_k << "\n";
+			(*m_ostr) << "%" << M_idx_i->name << " = mul " << m_int
+				<< " %" << ctr_i_val->name << ", " << dim_k << "\n";
 
 			// loop j
 			generate_loop(0, dim_j, [this, term1, term2, dim_i, dim_j, dim_k, L_idx_i, M_idx_i, L_mem](t_astret ctr_j_val)
 			{
 				// d = 0
 				t_astret d = get_tmp_var(SymbolType::SCALAR);
-				(*m_ostr) << "%" << d->name << " = alloca double\n";
-				(*m_ostr) << "store double 0., double* %" << d->name << "\n";
+				(*m_ostr) << "%" << d->name << " = alloca " << m_real << "\n";
+				(*m_ostr) << "store " << m_real << " 0., " << m_realptr
+					<< " %" << d->name << "\n";
 
 				// loop k
 				generate_loop(0, dim_k, [this, term1, term2, dim_i, dim_j, dim_k, M_idx_i, ctr_j_val, d](t_astret ctr_k_val)
 				{
 					// M index: i*dim_k + k
 					t_astret M_idx = get_tmp_var();
-					(*m_ostr) << "%" << M_idx->name << " = add i64 %" << M_idx_i->name << ", %" << ctr_k_val->name << "\n";
+					(*m_ostr) << "%" << M_idx->name << " = add " << m_int
+						<< " %" << M_idx_i->name << ", %" << ctr_k_val->name << "\n";
 
 					// M[i,k] pointer
 					t_astret elemptr_M_ik = get_tmp_var();
-					(*m_ostr) << "%" << elemptr_M_ik->name << " = getelementptr [" << dim_i*dim_k << " x double], ["
-						<< dim_i*dim_k << " x double]* %" << term1->name << ", i64 0, i64 %"
-						<< M_idx->name << "\n";
+					(*m_ostr) << "%" << elemptr_M_ik->name << " = getelementptr ["
+						<< dim_i*dim_k << " x " << m_real << "], ["
+						<< dim_i*dim_k << " x " << m_real << "]* %"
+						<< term1->name << ", " << m_int << " 0, " << m_int
+						<< " %" << M_idx->name << "\n";
 
 					// M[i,k] value
 					t_astret elem_M_ik = get_tmp_var();
-					(*m_ostr) << "%" << elem_M_ik->name << " = load double, double* %" << elemptr_M_ik->name << "\n";
+					(*m_ostr) << "%" << elem_M_ik->name << " = load " << m_real << ", " << m_realptr
+						<< " %" << elemptr_M_ik->name << "\n";
 
 
 					// loop k index of N: k*dim_j
 					t_astret N_idx_k = get_tmp_var();
-					(*m_ostr) << "%" << N_idx_k->name << " = mul i64 %" << ctr_k_val->name << ", " << dim_j << "\n";
+					(*m_ostr) << "%" << N_idx_k->name << " = mul " << m_int
+						<< " %" << ctr_k_val->name << ", " << dim_j << "\n";
 
 					// N index: k*dim_j + j
 					t_astret N_idx = get_tmp_var();
-					(*m_ostr) << "%" << N_idx->name << " = add i64 %" << N_idx_k->name << ", %" << ctr_j_val->name << "\n";
+					(*m_ostr) << "%" << N_idx->name << " = add " << m_int
+						<< " %" << N_idx_k->name << ", %" << ctr_j_val->name << "\n";
 
 					// N[k,j] pointer
 					t_astret elemptr_N_kj = get_tmp_var();
-					(*m_ostr) << "%" << elemptr_N_kj->name << " = getelementptr [" << dim_k*dim_j << " x double], ["
-						<< dim_k*dim_j << " x double]* %" << term2->name << ", i64 0, i64 %"
-						<< N_idx->name << "\n";
+					(*m_ostr) << "%" << elemptr_N_kj->name << " = getelementptr ["
+						<< dim_k*dim_j << " x " << m_real << "], ["
+						<< dim_k*dim_j << " x " << m_real << "]* %"
+						<< term2->name << ", " << m_int << " 0, " << m_int
+						<< " %" << N_idx->name << "\n";
 
 					// N[k,l] value
 					t_astret elem_N_kj = get_tmp_var();
-					(*m_ostr) << "%" << elem_N_kj->name << " = load double, double* %" << elemptr_N_kj->name << "\n";
+					(*m_ostr) << "%" << elem_N_kj->name << " = load " << m_real << ", " << m_realptr
+						<< " %" << elemptr_N_kj->name << "\n";
 
 
 					// val = M[i,k] * N[k,j]
 					t_astret val = get_tmp_var();
-					(*m_ostr) << "%" << val->name << " = fmul double %" << elem_M_ik->name << ", %" << elem_N_kj->name << "\n";
+					(*m_ostr) << "%" << val->name << " = fmul " << m_real
+						<< " %" << elem_M_ik->name << ", %" << elem_N_kj->name << "\n";
 
 					// d += val
 					t_astret d_val_old = get_tmp_var();
-					(*m_ostr) << "%" << d_val_old->name << " = load double, double* %" << d->name << "\n";
+					(*m_ostr) << "%" << d_val_old->name << " = load " << m_real << ", " << m_realptr
+						<< " %" << d->name << "\n";
 					t_astret d_val_new = get_tmp_var();
-					(*m_ostr) << "%" << d_val_new->name << " = fadd double %" << d_val_old->name << ", %" << val->name << "\n";
-					(*m_ostr) << "store double %" << d_val_new->name <<  ", double* %" << d->name << "\n";
+					(*m_ostr) << "%" << d_val_new->name << " = fadd " << m_real
+						<< " %" << d_val_old->name << ", %" << val->name << "\n";
+					(*m_ostr) << "store " << m_real << " %" << d_val_new->name <<  ", " << m_realptr
+						<< " %" << d->name << "\n";
 				});
 
 				// L index: i*dim_j + j
 				t_astret L_idx = get_tmp_var();
-				(*m_ostr) << "%" << L_idx->name << " = add i64 %" << L_idx_i->name << ", %" << ctr_j_val->name << "\n";
+				(*m_ostr) << "%" << L_idx->name << " = add " << m_int
+					<< " %" << L_idx_i->name << ", %" << ctr_j_val->name << "\n";
 
 				// L[i,j] pointer
 				t_astret elemptr_L_ij = get_tmp_var();
-				(*m_ostr) << "%" << elemptr_L_ij->name << " = getelementptr [" << dim_i*dim_j << " x double], ["
-					<< dim_i*dim_j << " x double]* %" << L_mem->name << ", i64 0, i64 %"
-					<< L_idx->name << "\n";
+				(*m_ostr) << "%" << elemptr_L_ij->name << " = getelementptr ["
+					<< dim_i*dim_j << " x " << m_real << "], ["
+					<< dim_i*dim_j << " x " << m_real << "]* %"
+					<< L_mem->name << ", " << m_int << " 0, " << m_int
+					<< " %" << L_idx->name << "\n";
 
 				// L[i,j] = d
 				t_astret d_val = get_tmp_var();
-				(*m_ostr) << "%" << d_val->name << " = load double, double* %" << d->name << "\n";
-				(*m_ostr) << "store double %" << d_val->name << ", double* %" << elemptr_L_ij->name << "\n";
+				(*m_ostr) << "%" << d_val->name << " = load " << m_real << ", " << m_realptr
+					<<" %" << d->name << "\n";
+				(*m_ostr) << "store " << m_real << " %" << d_val->name << ", "
+					<< m_realptr << " %" << elemptr_L_ij->name << "\n";
 			});
 		});
 
@@ -505,7 +576,7 @@ t_astret LLAsm::visit(const ASTMult* ast)
 		term2 = convert_sym(term2, ty);
 
 
-		std::string op = ast->IsInverted() ? "div" : "mul";
+		t_str op = ast->IsInverted() ? "div" : "mul";
 		if(ty == SymbolType::SCALAR)
 			op = "f" + op;
 		else if(ty == SymbolType::INT && ast->IsInverted())
@@ -537,7 +608,7 @@ t_astret LLAsm::visit(const ASTMod* ast)
 	term2 = convert_sym(term2, ty);
 
 
-	std::string op = "rem";
+	t_str op = "rem";
 	if(ty == SymbolType::SCALAR)
 		op = "f" + op;
 	else if(ty == SymbolType::INT)
@@ -570,22 +641,25 @@ t_astret LLAsm::visit(const ASTPow* ast)
 		// cast input matrix pointer to element pointer
 		t_astret termptr = get_tmp_var();
 		(*m_ostr) << "%" << termptr->name << " = bitcast ["
-			<< dim << " x double]* %" << term1->name << " to double*\n";
+			<< dim << " x " << m_real << "]* %" << term1->name << " to " << m_realptr << "\n";
 
 		// allocate result matrix
 		t_astret result_mem = get_tmp_var(SymbolType::MATRIX, &term1->dims);
-		(*m_ostr) << "%" << result_mem->name << " = alloca [" << dim << " x double]\n";
+		(*m_ostr) << "%" << result_mem->name << " = alloca [" << dim << " x " << m_real << "]\n";
 
 		// cast result matrix pointer to element pointer
 		t_astret result_ptr = get_tmp_var();
 		(*m_ostr) << "%" << result_ptr->name << " = bitcast ["
-			<< dim << " x double]* %" << result_mem->name << " to double*\n";
+			<< dim << " x " << m_real << "]* %" << result_mem->name << " to " << m_realptr << "\n";
 
 		// call runtime function
 		t_astret result_status = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << result_status->name << " = call i64 @ext_power(double* %"
-			<< termptr->name << ", double* %" << result_ptr->name
-			<< ", i64 " << dim1 << ", i64 %" << term2->name << ")\n";
+		(*m_ostr) << "%" << result_status->name << " = call " << m_int
+			<< " @ext_power(" << m_realptr
+			<< " %" << termptr->name << ", "
+			<< m_realptr << " %" << result_ptr->name
+			<< ", " << m_int << " " << dim1 << ", " << m_int
+			<< " %" << term2->name << ")\n";
 
 		// TODO: check result_status
 		return result_mem;
@@ -603,7 +677,7 @@ t_astret LLAsm::visit(const ASTPow* ast)
 		term1 = convert_sym(term1, ty);
 		term2 = convert_sym(term2, ty);
 
-		(*m_ostr) << "%" << var->name << " = call double @pow("
+		(*m_ostr) << "%" << var->name << " = call " << m_real << " @pow("
 			<< LLAsm::get_type_name(ty) << " %" << term1->name << ", "
 			<< LLAsm::get_type_name(ty) << " %" << term2->name << ")\n";
 
@@ -629,7 +703,7 @@ t_astret LLAsm::visit(const ASTTransp* ast)
 		// allocate result matrix
 		std::array<std::size_t, 2> dimtrans{{dim2, dim1}};
 		t_astret result_mem = get_tmp_var(SymbolType::MATRIX, &dimtrans);
-		(*m_ostr) << "%" << result_mem->name << " = alloca [" << dim << " x double]\n";
+		(*m_ostr) << "%" << result_mem->name << " = alloca [" << dim << " x " << m_real << "]\n";
 
 
 		// copy elements in a loop
@@ -641,25 +715,37 @@ t_astret LLAsm::visit(const ASTTransp* ast)
 			t_astret ctr_div_cols = get_tmp_var(SymbolType::INT);
 			t_astret ctr_mul_rows = get_tmp_var(SymbolType::INT);
 			t_astret ctr_result = get_tmp_var(SymbolType::INT);
-			(*m_ostr) << "%" << ctr_mod_cols->name << " = srem i64 %" << ctrval->name << ", " << dim2 << "\n";
-			(*m_ostr) << "%" << ctr_div_cols->name << " = sdiv i64 %" << ctrval->name << ", " << dim2 << "\n";
-			(*m_ostr) << "%" << ctr_mul_rows->name << " = mul i64 %" << ctr_mod_cols->name << ", " << dim1 << "\n";
-			(*m_ostr) << "%" << ctr_result->name << " = add i64 %" << ctr_mul_rows->name
+			(*m_ostr) << "%" << ctr_mod_cols->name << " = srem " << m_int
+				<< " %" << ctrval->name << ", " << dim2 << "\n";
+			(*m_ostr) << "%" << ctr_div_cols->name << " = sdiv " << m_int
+				<< " %" << ctrval->name << ", " << dim2 << "\n";
+			(*m_ostr) << "%" << ctr_mul_rows->name << " = mul " << m_int
+				<< " %" << ctr_mod_cols->name << ", " << dim1 << "\n";
+			(*m_ostr) << "%" << ctr_result->name << " = add " << m_int
+				<< " %" << ctr_mul_rows->name
 				<< ", %" << ctr_div_cols->name << "\n";
 
 			// get matrix element pointers
 			t_astret elemptr_term = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_term->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << term->name << ", i64 0, i64 %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elemptr_term->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< term->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
 			t_astret elemptr_result = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_result->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << result_mem->name << ", i64 0, i64 %" << ctr_result->name << "\n";
+			(*m_ostr) << "%" << elemptr_result->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< result_mem->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctr_result->name << "\n";
 
 			t_astret elem_term = get_tmp_var();
-			(*m_ostr) << "%" << elem_term->name << " = load double, double* %" << elemptr_term->name << "\n";
+			(*m_ostr) << "%" << elem_term->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << elemptr_term->name << "\n";
 
 			// save result
-			(*m_ostr) << "store double %" << elem_term->name << ", double* %" << elemptr_result->name << "\n";
+			(*m_ostr) << "store " << m_real << " %" << elem_term->name << ", " << m_realptr
+				<< " %" << elemptr_result->name << "\n";
 		});
 
 		return result_mem;
@@ -677,13 +763,16 @@ t_astret LLAsm::visit(const ASTNorm* ast)
 	if(term->ty == SymbolType::SCALAR)
 	{
 		t_astret var = get_tmp_var(term->ty);
-		(*m_ostr) << "%" << var->name << " = call double @fabs(double %" << term->name << ")\n";
+		(*m_ostr) << "%" << var->name << " = call " << m_real << " @fabs("
+			<< m_real << " %" << term->name << ")\n";
 		return var;
 	}
 	else if(term->ty == SymbolType::INT)
 	{
 		t_astret var = get_tmp_var(term->ty);
-		(*m_ostr) << "%" << var->name << " = call i64 @labs(i64 %" << term->name << ")\n";
+		(*m_ostr) << "%" << var->name << " = call " << m_int
+			<< " @labs(" << m_int
+			<< " %" << term->name << ")\n";
 		return var;
 	}
 	else if(term->ty == SymbolType::VECTOR)
@@ -692,40 +781,49 @@ t_astret LLAsm::visit(const ASTNorm* ast)
 
 		// result variable
 		t_astret dotptr = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << dotptr->name << " = alloca double\n";
-		(*m_ostr) << "store double 0., double* %" << dotptr->name << "\n";
+		(*m_ostr) << "%" << dotptr->name << " = alloca " << m_real << "\n";
+		(*m_ostr) << "store " << m_real << " 0., " << m_realptr
+			<< " %" << dotptr->name << "\n";
 
 		// add elements in a loop
 		generate_loop(0, dim, [this, term, dotptr, dim](t_astret ctrval)
 		{
 			// loop statements
 			t_astret elemptr_src1 = get_tmp_var();
-			(*m_ostr) << "%" << elemptr_src1->name << " = getelementptr [" << dim << " x double], ["
-				<< dim << " x double]* %" << term->name << ", i64 0, i64 %" << ctrval->name << "\n";
+			(*m_ostr) << "%" << elemptr_src1->name << " = getelementptr ["
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< term->name << ", " << m_int << " 0, " << m_int
+				<< " %" << ctrval->name << "\n";
 
 			t_astret elem_src1 = get_tmp_var();
-			(*m_ostr) << "%" << elem_src1->name << " = load double, double* %" << elemptr_src1->name << "\n";
+			(*m_ostr) << "%" << elem_src1->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << elemptr_src1->name << "\n";
 
 			// square element
 			t_astret mul_elems = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << mul_elems->name << " = fmul "
-				<< "double %" << elem_src1->name << ", %" << elem_src1->name << "\n";
+			(*m_ostr) << "%" << mul_elems->name << " = fmul " << m_real
+				<< " %" << elem_src1->name << ", %" << elem_src1->name << "\n";
 
 			// increment dot product variable
 			t_astret cur_dot = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << cur_dot->name << " = load double, double* %" << dotptr->name << "\n";
+			(*m_ostr) << "%" << cur_dot->name << " = load " << m_real << ", " << m_realptr
+				<< " %" << dotptr->name << "\n";
 			t_astret sum_dot = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << sum_dot->name << " = fadd "
-				<< "double %" << cur_dot->name << ", %" << mul_elems->name << "\n";
-			(*m_ostr) << "store double %" << sum_dot->name << ", double* %" << dotptr->name << "\n";
+			(*m_ostr) << "%" << sum_dot->name << " = fadd " << m_real
+				<< " %" << cur_dot->name << ", %" << mul_elems->name << "\n";
+			(*m_ostr) << "store " << m_real << " %" << sum_dot->name << ", " << m_realptr
+				<< " %" << dotptr->name << "\n";
 		});
 
 
 		t_astret dot = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << dot->name << " = load double, double* %" << dotptr->name << "\n";
+		(*m_ostr) << "%" << dot->name << " = load " << m_real << ", " << m_realptr
+			<< " %" << dotptr->name << "\n";
 
 		t_astret dot_sqrt = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << dot_sqrt->name << " = call double @sqrt(double %" << dot->name << ")\n";
+		(*m_ostr) << "%" << dot_sqrt->name << " = call " << m_real
+			<< " @sqrt(" << m_real << " %" << dot->name << ")\n";
 
 		return dot_sqrt;
 	}
@@ -740,11 +838,13 @@ t_astret LLAsm::visit(const ASTNorm* ast)
 
 		// cast array pointer to element pointer
 		t_astret termptr = get_tmp_var();
-		(*m_ostr) << "%" << termptr->name << " = bitcast [" << dim << " x double]* %" << term->name << " to double*\n";
+		(*m_ostr) << "%" << termptr->name << " = bitcast ["
+			<< dim << " x " << m_real << "]* %" << term->name << " to " << m_realptr << "\n";
 
 		t_astret det = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << det->name << " = call double @ext_determinant(double* %"
-			<< termptr->name << ", i64 " << dim1 << ")\n";
+		(*m_ostr) << "%" << det->name << " = call " << m_real
+			<< " @ext_determinant(" << m_realptr
+			<< " %" << termptr->name << ", " << m_int << " " << dim1 << ")\n";
 
 		return det;
 	}
@@ -761,46 +861,52 @@ t_astret LLAsm::visit(const ASTComp* ast)
 	{
 		// get epsilon
 		t_astret eps = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << eps->name << " = call double @ext_get_eps()\n";
+		(*m_ostr) << "%" << eps->name << " = call " << m_real << " @ext_get_eps()\n";
 
 		// diff = term1 - term2
 		t_astret diff = get_tmp_var(SymbolType::SCALAR);
 		t_astret diff_abs_ptr = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << diff_abs_ptr->name << " = alloca double\n";
+		(*m_ostr) << "%" << diff_abs_ptr->name << " = alloca " << m_real << "\n";
 
-		(*m_ostr) << "%" << diff->name << " = fsub double %" << term1->name << ", %" << term2->name << "\n";
+		(*m_ostr) << "%" << diff->name << " = fsub " << m_real
+			<< " %" << term1->name << ", %" << term2->name << "\n";
 
 		// diff_neg = |diff|
 		generate_cond([this, diff]() -> t_astret
 		{
 			t_astret cond = get_tmp_var(SymbolType::INT);
-			(*m_ostr) << "%" << cond->name << " = fcmp olt double %" << diff->name << ", 0.\n";
+			(*m_ostr) << "%" << cond->name << " = fcmp olt " << m_real
+				<< " %" << diff->name << ", 0.\n";
 			return cond;
 		}, [this, diff, diff_abs_ptr]
 		{
 			t_astret diff_neg = get_tmp_var(SymbolType::SCALAR);
-			(*m_ostr) << "%" << diff_neg->name << " = fneg double %" << diff->name << "\n";
-			(*m_ostr) << "store double %" << diff_neg->name << ", double* %" << diff_abs_ptr->name << "\n";
+			(*m_ostr) << "%" << diff_neg->name << " = fneg " << m_real
+				<< " %" << diff->name << "\n";
+			(*m_ostr) << "store " << m_real << " %" << diff_neg->name << ", " << m_realptr
+				<< " %" << diff_abs_ptr->name << "\n";
 		}, [this, diff, diff_abs_ptr]
 		{
-			(*m_ostr) << "store double %" << diff->name << ", double* %" << diff_abs_ptr->name << "\n";
+			(*m_ostr) << "store " << m_real << " %" << diff->name << ", " << m_realptr
+				<< " %" << diff_abs_ptr->name << "\n";
 		}, true);
 
 
 		t_astret diff_abs = get_tmp_var(SymbolType::SCALAR);
 		t_astret varbool = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << diff_abs->name << " = load double, double* %" << diff_abs_ptr->name << "\n";
+		(*m_ostr) << "%" << diff_abs->name << " = load " << m_real << ", " << m_realptr
+			<< " %" << diff_abs_ptr->name << "\n";
 		// diff_abs <= eps
 		if(op == ASTComp::EQU)
 		{
-			(*m_ostr) << "%" << varbool->name << " = fcmp ole double %"
-				<< diff_abs->name << ", %" << eps->name << "\n";
+			(*m_ostr) << "%" << varbool->name << " = fcmp ole " << m_real
+				<< " %" << diff_abs->name << ", %" << eps->name << "\n";
 		}
 		// diff_abs > eps
 		else if(op == ASTComp::NEQ)
 		{
-			(*m_ostr) << "%" << varbool->name << " = fcmp ogt double %"
-				<< diff_abs->name << ", %" << eps->name << "\n";
+			(*m_ostr) << "%" << varbool->name << " = fcmp ogt " << m_real
+				<< " %" << diff_abs->name << ", %" << eps->name << "\n";
 		}
 
 		return varbool;
@@ -829,9 +935,9 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		// compare strings
 		t_astret strcmp = get_tmp_var(SymbolType::INT);
 		(*m_ostr) << "%" << strcmp->name << " = call i32 @strncmp(i8* %"
-			<< term1ptr->name << ", i8* %" << term2ptr->name << ", i64 " << maxdim << ")\n";
+			<< term1ptr->name << ", i8* %" << term2ptr->name << ", " << m_int << " " << maxdim << ")\n";
 
-		std::string op;
+		t_str op;
 		switch(ast->GetOp())
 		{
 			case ASTComp::EQU: op = "eq"; break;
@@ -876,25 +982,27 @@ t_astret LLAsm::visit(const ASTComp* ast)
 
 		// compare elements in a loop
 		// TODO: use generate_loop
-		std::string labelStart = get_label();
-		std::string labelBegin = get_label();
-		std::string labelEnd = get_label();
-		std::string labelCont = get_label();
+		t_str labelStart = get_label();
+		t_str labelBegin = get_label();
+		t_str labelEnd = get_label();
+		t_str labelCont = get_label();
 
 		// loop counter
 		t_astret ctr = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << ctr->name << " = alloca i64\n";
-		(*m_ostr) << "store i64 0, i64* %" << ctr->name << "\n";
+		(*m_ostr) << "%" << ctr->name << " = alloca " << m_int << "\n";
+		(*m_ostr) << "store " << m_int << " 0, " << m_intptr
+			<< " %" << ctr->name << "\n";
 
 		(*m_ostr) << "br label %" << labelStart << "\n";
 		(*m_ostr) << labelStart << ":\n";
 
 		// loop condition: ctr < dim
 		t_astret ctrval = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << ctrval->name << " = load i64, i64* %" << ctr->name << "\n";
+		(*m_ostr) << "%" << ctrval->name << " = load " << m_int << ", " << m_intptr << " %" << ctr->name << "\n";
 
 		t_astret cond = get_tmp_var();
-		(*m_ostr) << "%" << cond->name << " = icmp slt i64 %" << ctrval->name <<  ", " << dim1 << "\n";
+		(*m_ostr) << "%" << cond->name << " = icmp slt " << m_int
+			<< " %" << ctrval->name <<  ", " << dim1 << "\n";
 		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelBegin << ", label %" << labelEnd << "\n";
 
 		(*m_ostr) << labelBegin << ":\n";
@@ -904,15 +1012,23 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		t_astret elemptr1 = get_tmp_var(SymbolType::SCALAR);
 		t_astret elemptr2 = get_tmp_var(SymbolType::SCALAR);
 
-		(*m_ostr) << "%" << elemptr1->name << " = getelementptr [" << dim1 << " x double], ["
-			<< dim1 << " x double]* %" << term1->name << ", i64 0, i64 %" << ctrval->name << "\n";
-		(*m_ostr) << "%" << elemptr2->name << " = getelementptr [" << dim2 << " x double], ["
-			<< dim2 << " x double]* %" << term2->name << ", i64 0, i64 %" << ctrval->name << "\n";
+		(*m_ostr) << "%" << elemptr1->name << " = getelementptr ["
+			<< dim1 << " x " << m_real << "], ["
+			<< dim1 << " x " << m_real << "]* %"
+			<< term1->name << ", " << m_int << " 0, " << m_int
+			<< " %" << ctrval->name << "\n";
+		(*m_ostr) << "%" << elemptr2->name << " = getelementptr ["
+			<< dim2 << " x " << m_real << "], ["
+			<< dim2 << " x " << m_real << "]* %"
+			<< term2->name << ", " << m_int << " 0, " << m_int
+			<< " %" << ctrval->name << "\n";
 
 		t_astret elem1 = get_tmp_var(SymbolType::SCALAR);
 		t_astret elem2 = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << elem1->name << " = load double, double* %" << elemptr1->name << "\n";
-		(*m_ostr) << "%" << elem2->name << " = load double, double* %" << elemptr2->name << "\n";
+		(*m_ostr) << "%" << elem1->name << " = load " << m_real << ", " << m_realptr
+			<< " %" << elemptr1->name << "\n";
+		(*m_ostr) << "%" << elem2->name << " = load " << m_real << ", " << m_realptr
+			<< " %" << elemptr2->name << "\n";
 
 		t_astret elems_equal = scalars_equal(elem1, elem2, ASTComp::EQU);
 		(*m_ostr) << "store i1 %" << elems_equal->name << ", i1* %" << varbool_ptr->name << "\n";
@@ -924,8 +1040,10 @@ t_astret LLAsm::visit(const ASTComp* ast)
 
 		// increment counter
 		t_astret newctrval = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << newctrval->name << " = add i64 %" << ctrval->name << ", 1\n";
-		(*m_ostr) << "store i64 %" << newctrval->name << ", i64* %" << ctr->name << "\n";
+		(*m_ostr) << "%" << newctrval->name << " = add " << m_int
+			<< " %" << ctrval->name << ", 1\n";
+		(*m_ostr) << "store " << m_int
+			<< " %" << newctrval->name << ", " << m_intptr << " %" << ctr->name << "\n";
 		// ---------------
 
 		(*m_ostr) << "br label %" << labelStart << "\n";
@@ -979,25 +1097,27 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		// compare elements in a loop
 		// TODO: use generate_loop
 		std::size_t dim = dim1_1*dim1_2;
-		std::string labelStart = get_label();
-		std::string labelBegin = get_label();
-		std::string labelEnd = get_label();
-		std::string labelCont = get_label();
+		t_str labelStart = get_label();
+		t_str labelBegin = get_label();
+		t_str labelEnd = get_label();
+		t_str labelCont = get_label();
 
 		// loop counter
 		t_astret ctr = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << ctr->name << " = alloca i64\n";
-		(*m_ostr) << "store i64 0, i64* %" << ctr->name << "\n";
+		(*m_ostr) << "%" << ctr->name << " = alloca " << m_int << "\n";
+		(*m_ostr) << "store " << m_int << " 0, " << m_intptr
+			<< " %" << ctr->name << "\n";
 
 		(*m_ostr) << "br label %" << labelStart << "\n";
 		(*m_ostr) << labelStart << ":\n";
 
 		// loop condition: ctr < dim
 		t_astret ctrval = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << ctrval->name << " = load i64, i64* %" << ctr->name << "\n";
+		(*m_ostr) << "%" << ctrval->name << " = load " << m_int << ", " << m_intptr << " %" << ctr->name << "\n";
 
 		t_astret cond = get_tmp_var();
-		(*m_ostr) << "%" << cond->name << " = icmp slt i64 %" << ctrval->name <<  ", " << dim << "\n";
+		(*m_ostr) << "%" << cond->name << " = icmp slt " << m_int
+			<< " %" << ctrval->name <<  ", " << dim << "\n";
 		(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelBegin << ", label %" << labelEnd << "\n";
 
 		(*m_ostr) << labelBegin << ":\n";
@@ -1007,15 +1127,23 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		t_astret elemptr1 = get_tmp_var(SymbolType::SCALAR);
 		t_astret elemptr2 = get_tmp_var(SymbolType::SCALAR);
 
-		(*m_ostr) << "%" << elemptr1->name << " = getelementptr [" << dim << " x double], ["
-			<< dim << " x double]* %" << term1->name << ", i64 0, i64 %" << ctrval->name << "\n";
-		(*m_ostr) << "%" << elemptr2->name << " = getelementptr [" << dim << " x double], ["
-			<< dim << " x double]* %" << term2->name << ", i64 0, i64 %" << ctrval->name << "\n";
+		(*m_ostr) << "%" << elemptr1->name << " = getelementptr ["
+			<< dim << " x " << m_real << "], ["
+			<< dim << " x " << m_real << "]* %"
+			<< term1->name << ", " << m_int << " 0, " << m_int
+			<< " %" << ctrval->name << "\n";
+		(*m_ostr) << "%" << elemptr2->name << " = getelementptr ["
+			<< dim << " x " << m_real << "], ["
+			<< dim << " x " << m_real << "]* %"
+			<< term2->name << ", " << m_int << " 0, " << m_int
+			<< " %" << ctrval->name << "\n";
 
 		t_astret elem1 = get_tmp_var(SymbolType::SCALAR);
 		t_astret elem2 = get_tmp_var(SymbolType::SCALAR);
-		(*m_ostr) << "%" << elem1->name << " = load double, double* %" << elemptr1->name << "\n";
-		(*m_ostr) << "%" << elem2->name << " = load double, double* %" << elemptr2->name << "\n";
+		(*m_ostr) << "%" << elem1->name << " = load " << m_real << ", " << m_realptr
+			<< " %" << elemptr1->name << "\n";
+		(*m_ostr) << "%" << elem2->name << " = load " << m_real << ", " << m_realptr
+			<< " %" << elemptr2->name << "\n";
 
 		t_astret elems_equal = scalars_equal(elem1, elem2, ASTComp::EQU);
 		(*m_ostr) << "store i1 %" << elems_equal->name << ", i1* %" << varbool_ptr->name << "\n";
@@ -1027,8 +1155,10 @@ t_astret LLAsm::visit(const ASTComp* ast)
 
 		// increment counter
 		t_astret newctrval = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << newctrval->name << " = add i64 %" << ctrval->name << ", 1\n";
-		(*m_ostr) << "store i64 %" << newctrval->name << ", i64* %" << ctr->name << "\n";
+		(*m_ostr) << "%" << newctrval->name << " = add " << m_int
+			<< " %" << ctrval->name << ", 1\n";
+		(*m_ostr) << "store " << m_int << " %" << newctrval->name
+			<< ", " << m_intptr << " %" << ctr->name << "\n";
 		// ---------------
 
 		(*m_ostr) << "br label %" << labelStart << "\n";
@@ -1073,7 +1203,7 @@ t_astret LLAsm::visit(const ASTComp* ast)
 		// exact comparison
 		else
 		{
-			std::string op;
+			t_str op;
 			switch(ast->GetOp())
 			{
 				case ASTComp::EQU: op = "eq"; break;
@@ -1084,7 +1214,7 @@ t_astret LLAsm::visit(const ASTComp* ast)
 				case ASTComp::LEQ: op = "le"; break;
 			}
 
-			std::string cmpop;
+			t_str cmpop;
 			switch(ty)
 			{
 				case SymbolType::SCALAR:

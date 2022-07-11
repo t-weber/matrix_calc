@@ -113,8 +113,8 @@ public:
 	virtual t_astret visit(const ASTLoop* ast) = 0;
 	virtual t_astret visit(const ASTStrConst* ast) = 0;
 	virtual t_astret visit(const ASTExprList* ast) = 0;
-	virtual t_astret visit(const ASTNumConst<double>* ast) = 0;
-	virtual t_astret visit(const ASTNumConst<std::int64_t>* ast) = 0;
+	virtual t_astret visit(const ASTNumConst<t_real>* ast) = 0;
+	virtual t_astret visit(const ASTNumConst<t_int>* ast) = 0;
 };
 
 
@@ -269,16 +269,16 @@ private:
 class ASTVar : public ASTAcceptor<ASTVar>
 {
 public:
-	ASTVar(const std::string& ident)
+	ASTVar(const t_str& ident)
 		: ident{ident}
 	{}
 
-	const std::string& GetIdent() const { return ident; }
+	const t_str& GetIdent() const { return ident; }
 
 	virtual ASTType type() override { return ASTType::Var; }
 
 private:
-	std::string ident;
+	t_str ident;
 };
 
 
@@ -316,15 +316,15 @@ public:
 		: vars{}, optAssign{optAssign}
 	{}
 
-	void AddVariable(const std::string& var) { vars.push_front(var); }
-	const std::list<std::string>& GetVariables() const { return vars; }
+	void AddVariable(const t_str& var) { vars.push_front(var); }
+	const std::list<t_str>& GetVariables() const { return vars; }
 
 	const std::shared_ptr<ASTAssign> GetAssignment() const { return optAssign; }
 
 	virtual ASTType type() override { return ASTType::VarDecl; }
 
 private:
-	std::list<std::string> vars;
+	std::list<t_str> vars;
 
 	// optional assignment
 	std::shared_ptr<ASTAssign> optAssign;
@@ -337,21 +337,21 @@ public:
 	ASTArgNames() : argnames{}
 	{}
 
-	void AddArg(const std::string& argname,
+	void AddArg(const t_str& argname,
 		SymbolType ty=SymbolType::UNKNOWN,
 		std::size_t dim1=1, std::size_t dim2=1)
 	{
 		argnames.push_front(std::make_tuple(argname, ty, dim1, dim2));
 	}
 
-	const std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>>& GetArgs() const
+	const std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>>& GetArgs() const
 	{
 		return argnames;
 	}
 
-	std::vector<std::string> GetArgIdents() const
+	std::vector<t_str> GetArgIdents() const
 	{
-		std::vector<std::string> idents;
+		std::vector<t_str> idents;
 		for(const auto& arg : argnames)
 			idents.push_back(std::get<0>(arg));
 		return idents;
@@ -368,7 +368,7 @@ public:
 	virtual ASTType type() override { return ASTType::ArgNames; }
 
 private:
-	std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>> argnames;
+	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> argnames;
 };
 
 
@@ -404,7 +404,7 @@ private:
 class ASTFunc : public ASTAcceptor<ASTFunc>
 {
 public:
-	ASTFunc(const std::string& ident, std::shared_ptr<ASTTypeDecl>& rettype,
+	ASTFunc(const t_str& ident, std::shared_ptr<ASTTypeDecl>& rettype,
 		std::shared_ptr<ASTArgNames> args, std::shared_ptr<ASTStmts> stmts,
 		std::shared_ptr<ASTArgNames> rets = nullptr)
 		: ident{ident}, rettype{rettype->GetRet()}, args{args->GetArgs()},
@@ -414,13 +414,13 @@ public:
 			this->rets = rets->GetArgs();
 	}
 
-	const std::string& GetIdent() const { return ident; }
+	const t_str& GetIdent() const { return ident; }
 	std::tuple<SymbolType, std::size_t, std::size_t> GetRetType() const { return rettype; }
 
-	const std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>>&
+	const std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>>&
 	GetArgs() const { return args; }
 
-	const std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>>&
+	const std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>>&
 	GetRets() const { return rets; }
 
 	const std::shared_ptr<ASTStmts> GetStatements() const { return stmts; }
@@ -428,11 +428,11 @@ public:
 	virtual ASTType type() override { return ASTType::Func; }
 
 private:
-	std::string ident;
+	t_str ident;
 	std::tuple<SymbolType, std::size_t, std::size_t> rettype;
-	std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>> args;
+	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> args;
 	std::shared_ptr<ASTStmts> stmts;
-	std::list<std::tuple<std::string, SymbolType, std::size_t, std::size_t>> rets;
+	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> rets;
 };
 
 
@@ -496,21 +496,21 @@ private:
 class ASTCall : public ASTAcceptor<ASTCall>
 {
 public:
-	ASTCall(const std::string& ident)
+	ASTCall(const t_str& ident)
 		: ident{ident}, args{std::make_shared<ASTExprList>()}
 	{}
 
-	ASTCall(const std::string& ident, std::shared_ptr<ASTExprList> args)
+	ASTCall(const t_str& ident, std::shared_ptr<ASTExprList> args)
 		: ident{ident}, args{args}
 	{}
 
-	const std::string& GetIdent() const { return ident; }
+	const t_str& GetIdent() const { return ident; }
 	const std::list<ASTPtr>& GetArgumentList() const { return args->GetList(); }
 
 	virtual ASTType type() override { return ASTType::Call; }
 
 private:
-	std::string ident;
+	t_str ident;
 	std::shared_ptr<ASTExprList> args;
 };
 
@@ -518,16 +518,16 @@ private:
 class ASTAssign : public ASTAcceptor<ASTAssign>
 {
 public:
-	ASTAssign(const std::string& ident, ASTPtr _expr)
+	ASTAssign(const t_str& ident, ASTPtr _expr)
 		: idents{{ident}}, expr{_expr}
 	{}
 
-	ASTAssign(const std::vector<std::string>& idents, ASTPtr expr)
+	ASTAssign(const std::vector<t_str>& idents, ASTPtr expr)
 		: idents{idents}, expr{expr}
 	{}
 
-	const std::vector<std::string>& GetIdents() const { return idents; }
-	const std::string& GetIdent() const { return GetIdents()[0]; }
+	const std::vector<t_str>& GetIdents() const { return idents; }
+	const t_str& GetIdent() const { return GetIdents()[0]; }
 	const ASTPtr GetExpr() const { return expr; }
 
 	bool IsMultiAssign() const { return idents.size() > 1; }
@@ -535,7 +535,7 @@ public:
 	virtual ASTType type() override { return ASTType::Assign; }
 
 private:
-	std::vector<std::string> idents;
+	std::vector<t_str> idents;
 	ASTPtr expr;
 };
 
@@ -676,7 +676,7 @@ private:
 class ASTArrayAssign : public ASTAcceptor<ASTArrayAssign>
 {
 public:
-	ASTArrayAssign(const std::string& ident, ASTPtr expr,
+	ASTArrayAssign(const t_str& ident, ASTPtr expr,
 		ASTPtr num1, ASTPtr num2 = nullptr,
 		ASTPtr num3 = nullptr, ASTPtr num4 = nullptr,
 		bool ranged12 = false, bool ranged34 = false)
@@ -684,7 +684,7 @@ public:
 			num3{num3}, num4{num4}, ranged12{ranged12}, ranged34{ranged34}
 	{}
 
-	const std::string& GetIdent() const { return ident; }
+	const t_str& GetIdent() const { return ident; }
 	const ASTPtr GetExpr() const { return expr; }
 
 	const ASTPtr GetNum1() const { return num1; }
@@ -698,7 +698,7 @@ public:
 	virtual ASTType type() override { return ASTType::ArrayAssign; }
 
 private:
-	std::string ident;
+	t_str ident;
 	ASTPtr expr;
 
 	ASTPtr num1, num2;
@@ -727,15 +727,15 @@ private:
 class ASTStrConst : public ASTAcceptor<ASTStrConst>
 {
 public:
-	ASTStrConst(const std::string& str) : val{str}
+	ASTStrConst(const t_str& str) : val{str}
 	{}
 
-	const std::string& GetVal() const { return val; }
+	const t_str& GetVal() const { return val; }
 
 	virtual ASTType type() override { return ASTType::StrConst; }
 
 private:
-	std::string val;
+	t_str val;
 };
 
 

@@ -6,7 +6,6 @@
  */
 
 #include "semantics.h"
-#include "sym.h"
 
 
 Semantics::Semantics()
@@ -232,13 +231,13 @@ t_astret Semantics::visit(const ASTExprList* ast)
 }
 
 
-t_astret Semantics::visit([[maybe_unused]] const ASTNumConst<double>* ast)
+t_astret Semantics::visit([[maybe_unused]] const ASTNumConst<t_real>* ast)
 {
 	return nullptr;
 }
 
 
-t_astret Semantics::visit([[maybe_unused]] const ASTNumConst<std::int64_t>* ast)
+t_astret Semantics::visit([[maybe_unused]] const ASTNumConst<t_int>* ast)
 {
 	return nullptr;
 }

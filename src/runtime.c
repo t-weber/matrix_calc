@@ -7,16 +7,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <float.h>
 
+#include "types.h"
 
-typedef double t_real;
-typedef int64_t t_int;
 
 static t_real g_eps = DBL_EPSILON;
 static int8_t g_debug = 0;
-
 
 
 // ----------------------------------------------------------------------------

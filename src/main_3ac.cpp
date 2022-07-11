@@ -24,6 +24,7 @@
 	#error No filesystem support found.
 #endif
 
+#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
 
@@ -236,24 +237,19 @@ int main(int argc, char** argv)
 			(*ostr) << std::endl;
 		}
 
-		(*ostr) << "; -----------------------------------------------------------------------------\n";
-		(*ostr) << "; external functions which are available to the compiler\n";
-		(*ostr) << LLAsm::get_function_declarations(ctx.GetSymbols()) << std::endl;
-		(*ostr) << "; -----------------------------------------------------------------------------\n";
-
 		// additional runtime/startup code
-		(*ostr) << "\n" << R"START(
+		std::string startup_code = R"START(
 ; -----------------------------------------------------------------------------
 ; external functions which are not exposed to the compiler
-declare i8* @strncpy(i8*, i8*, i64)
-declare i8* @strncat(i8*, i8*, i64)
-declare i32 @strncmp(i8*, i8*, i64)
+declare i8* @strncpy(i8*, i8*, %%t_int%%)
+declare i8* @strncat(i8*, i8*, %%t_int%%)
+declare i32 @strncmp(i8*, i8*, %%t_int%%)
 declare i32 @puts(i8*)
-declare i32 @snprintf(i8*, i64, i8*, ...)
+declare i32 @snprintf(i8*, %%t_int%%, i8*, ...)
 declare i32 @printf(i8*, ...)
 declare i32 @scanf(i8*, ...)
-declare i8* @memcpy(i8*, i8*, i64)
-declare i8* @ext_heap_alloc(i64, i64)
+declare i8* @memcpy(i8*, i8*, %%t_int%%)
+declare i8* @ext_heap_alloc(%%t_int%%, %%t_int%%)
 declare void @ext_heap_free(i8*)
 declare void @ext_init()
 declare void @ext_deinit()
@@ -262,9 +258,9 @@ declare void @ext_deinit()
 
 ; -----------------------------------------------------------------------------
 ; external functions from runtime.c which are not exposed to the compiler
-declare double @ext_determinant(double*, i64)
-declare i64 @ext_power(double*, double*, i64, i64)
-declare i64 @ext_transpose(double*, double*, i64, i64)
+declare %%t_real%% @ext_determinant(%%t_real%%*, %%t_int%%)
+declare %%t_int%% @ext_power(%%t_real%%*, %%t_real%%*, %%t_int%%, %%t_int%%)
+declare %%t_int%% @ext_transpose(%%t_real%%*, %%t_real%%*, %%t_int%%, %%t_int%%)
 ; -----------------------------------------------------------------------------
 
 
@@ -284,33 +280,33 @@ declare i64 @ext_transpose(double*, double*, i64, i64)
 ; internal runtime functions
 
 ; returns 0 if flt <= eps
-define double @zero_eps(double %flt)
+define %%t_real%% @zero_eps(%%t_real%% %flt)
 {
-	%eps = call double @get_eps()
-	%fltabs = call double (double) @fabs(double %flt)
+	%eps = call %%t_real%% @get_eps()
+	%fltabs = call %%t_real%% (%%t_real%%) @fabs(%%t_real%% %flt)
 
-	%cond = fcmp ole double %fltabs, %eps
+	%cond = fcmp ole %%t_real%% %fltabs, %eps
 	br i1 %cond, label %labelIf, label %labelEnd
 labelIf:
-	ret double 0.
+	ret %%t_real%% 0.
 labelEnd:
-	ret double %flt
+	ret %%t_real%% %flt
 }
 
-; double -> string
-define void @flt_to_str(double %flt, i8* %strptr, i64 %len)
+; %%t_real%% -> string
+define void @flt_to_str(%%t_real%% %flt, i8* %strptr, %%t_int%% %len)
 {
 	%fmtptr = bitcast [4 x i8]* @__strfmt_lg to i8*
-	%theflt = call double (double) @zero_eps(double %flt)
-	call i32 (i8*, i64, i8*, ...) @snprintf(i8* %strptr, i64 %len, i8* %fmtptr, double %theflt)
+	%theflt = call %%t_real%% (%%t_real%%) @zero_eps(%%t_real%% %flt)
+	call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, %%t_real%% %theflt)
 	ret void
 }
 
 ; int -> string
-define void @int_to_str(i64 %i, i8* %strptr, i64 %len)
+define void @int_to_str(%%t_int%% %i, i8* %strptr, %%t_int%% %len)
 {
 	%fmtptr = bitcast [4 x i8]* @__strfmt_ld to i8*
-	call i32 (i8*, i64, i8*, ...) @snprintf(i8* %strptr, i64 %len, i8* %fmtptr, i64 %i)
+	call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, %%t_int%% %i)
 	ret void
 }
 
@@ -322,12 +318,12 @@ define void @putstr(i8* %val)
 }
 
 ; output a float
-define void @putflt(double %val)
+define void @putflt(%%t_real%% %val)
 {
 	; convert to string
 	%strval = alloca [64 x i8]
 	%strvalptr = bitcast [64 x i8]* %strval to i8*
-	call void @flt_to_str(double %val, i8* %strvalptr, i64 64)
+	call void @flt_to_str(%%t_real%% %val, i8* %strvalptr, %%t_int%% 64)
 
 	; output string
 	call void (i8*) @putstr(i8* %strvalptr)
@@ -335,12 +331,12 @@ define void @putflt(double %val)
 }
 
 ; output an int
-define void @putint(i64 %val)
+define void @putint(%%t_int%% %val)
 {
 	; convert to string
 	%strval = alloca [64 x i8]
 	%strvalptr = bitcast [64 x i8]* %strval to i8*
-	call void @int_to_str(i64 %val, i8* %strvalptr, i64 64)
+	call void @int_to_str(%%t_int%% %val, i8* %strvalptr, %%t_int%% 64)
 
 	; output string
 	call void (i8*) @putstr(i8* %strvalptr)
@@ -348,39 +344,39 @@ define void @putint(i64 %val)
 }
 
 ; input a float
-define double @getflt(i8* %str)
+define %%t_real%% @getflt(i8* %str)
 {
 	; output given string
 	%fmtptr_s = bitcast [3 x i8]* @__strfmt_s to i8*
 	call i32 (i8*, ...) @printf(i8* %fmtptr_s, i8* %str)
 
-	; alloc double
-	%d_ptr = alloca double
+	; alloc %%t_real%%
+	%d_ptr = alloca %%t_real%%
 
-	; read double from stdin
+	; read %%t_real%% from stdin
 	%fmtptr_g = bitcast [4 x i8]* @__strfmt_lg to i8*
-	call i32 (i8*, ...) @scanf(i8* %fmtptr_g, double* %d_ptr)
+	call i32 (i8*, ...) @scanf(i8* %fmtptr_g, %%t_real%%* %d_ptr)
 
-	%d = load double, double* %d_ptr
-	ret double %d
+	%d = load %%t_real%%, %%t_real%%* %d_ptr
+	ret %%t_real%% %d
 }
 
 ; input an int
-define i64 @getint(i8* %str)
+define %%t_int%% @getint(i8* %str)
 {
 	; output given string
 	%fmtptr_s = bitcast [3 x i8]* @__strfmt_s to i8*
 	call i32 (i8*, ...) @printf(i8* %fmtptr_s, i8* %str)
 
 	; alloc int
-	%i_ptr = alloca i64
+	%i_ptr = alloca %%t_int%%
 
 	; read int from stdin
 	%fmtptr_ld = bitcast [4 x i8]* @__strfmt_ld to i8*
-	call i32 (i8*, ...) @scanf(i8* %fmtptr_ld, i64* %i_ptr)
+	call i32 (i8*, ...) @scanf(i8* %fmtptr_ld, %%t_int%%* %i_ptr)
 
-	%i = load i64, i64* %i_ptr
-	ret i64 %i
+	%i = load %%t_int%%, %%t_int%%* %i_ptr
+	ret %%t_int%% %i
 }
 
 ; -----------------------------------------------------------------------------
@@ -402,6 +398,15 @@ define i32 @main()
 ; -----------------------------------------------------------------------------
 )START";
 
+		// sets types in startup code
+		boost::replace_all(startup_code, "%%t_real%%", get_lltype_name<t_real>());
+		boost::replace_all(startup_code, "%%t_int%%", get_lltype_name<t_int>());
+
+		(*ostr) << "; -----------------------------------------------------------------------------\n";
+		(*ostr) << "; external functions which are available to the compiler\n";
+		(*ostr) << LLAsm::get_function_declarations(ctx.GetSymbols()) << std::endl;
+		(*ostr) << "; -----------------------------------------------------------------------------\n";
+		(*ostr) << "\n" << startup_code;
 		(*ostr) << std::endl;
 		// --------------------------------------------------------------------
 

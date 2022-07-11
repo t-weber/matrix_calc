@@ -20,12 +20,12 @@ t_astret LLAsm::visit(const ASTVar* ast)
 	if(sym == nullptr)
 		throw std::runtime_error("ASTVar: Symbol \"" + ast->GetIdent() + "\" not in symbol table.");
 
-	std::string var = std::string{"%"} + sym->name;
+	t_str var = t_str{"%"} + sym->name;
 
 	if(sym->ty == SymbolType::SCALAR || sym->ty == SymbolType::INT)
 	{
 		t_astret retvar = get_tmp_var(sym->ty, &sym->dims);
-		std::string ty = LLAsm::get_type_name(sym->ty);
+		t_str ty = LLAsm::get_type_name(sym->ty);
 		(*m_ostr) << "%" << retvar->name << " = load " 
 			<< ty  << ", " << ty << "* " << var << "\n";
 		return retvar;
@@ -52,7 +52,7 @@ t_astret LLAsm::visit(const ASTVarDecl* ast)
 	for(const auto& _var : ast->GetVariables())
 	{
 		t_astret sym = get_sym(_var);
-		std::string ty = LLAsm::get_type_name(sym->ty);
+		t_str ty = LLAsm::get_type_name(sym->ty);
 
 		if(sym->ty == SymbolType::SCALAR || sym->ty == SymbolType::INT)
 		{
@@ -63,7 +63,7 @@ t_astret LLAsm::visit(const ASTVarDecl* ast)
 			std::size_t dim = get_arraydim(sym);
 
 			// allocate the array's memory
-			(*m_ostr) << "%" << sym->name << " = alloca [" << dim << " x double]\n";
+			(*m_ostr) << "%" << sym->name << " = alloca [" << dim << " x " << m_real << "]\n";
 		}
 		else if(sym->ty == SymbolType::STRING)
 		{
@@ -75,7 +75,7 @@ t_astret LLAsm::visit(const ASTVarDecl* ast)
 			// get a pointer to the string
 			t_astret strptr = get_tmp_var(sym->ty);
 			(*m_ostr) << "%" << strptr->name << " = getelementptr [" << dim << " x i8], ["
-				<< dim << " x i8]* %" << sym->name << ", i64 0, i64 0\n";
+				<< dim << " x i8]* %" << sym->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 			// set first element to zero
 			(*m_ostr) << "store i8 0, i8* %"  << strptr->name << "\n";
@@ -123,19 +123,19 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 		{
 			const SymbolPtr retsym = expr->elems[idx];
 
-			const std::string& var = vars[idx];
+			const t_str& var = vars[idx];
 			t_astret sym = get_sym(var);
 
 			// get current memory block pointer
 			t_astret varmemptr = get_tmp_var(SymbolType::STRING);
 			(*m_ostr) << "%" << varmemptr->name << " = getelementptr i8, i8* %"
-				<< expr->name << ", i64 " << elemidx << "\n";
+				<< expr->name << ", " << m_int << " " << elemidx << "\n";
 
 			// directly read scalar value from memory block
 			if(sym->ty == SymbolType::SCALAR || sym->ty == SymbolType::INT)
 			{
-				std::string symty = LLAsm::get_type_name(sym->ty);
-				std::string retty = LLAsm::get_type_name(retsym->ty);
+				t_str symty = LLAsm::get_type_name(sym->ty);
+				t_str retty = LLAsm::get_type_name(retsym->ty);
 
 				t_astret varptr = get_tmp_var(sym->ty);
 				(*m_ostr) << "%" << varptr->name << " = bitcast i8* %" << varmemptr->name 
@@ -162,10 +162,11 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 				// cast if needed
 				_varval = convert_sym(_varval, sym->ty);
 
-				(*m_ostr) << "store " << symty << " %" << _varval->name << ", "<< symty << "* %" << var << "\n";
+				(*m_ostr) << "store " << symty
+					<< " %" << _varval->name << ", "<< symty << "* %" << var << "\n";
 			}
 
-			// read double array from memory block
+			// read real array from memory block
 			else if(sym->ty == SymbolType::VECTOR || sym->ty == SymbolType::MATRIX)
 			{
 				cp_mem_vec(varmemptr, sym, false);
@@ -193,7 +194,7 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 	// single assignment
 	else
 	{
-		std::string var = ast->GetIdent();
+		t_str var = ast->GetIdent();
 		t_astret sym = get_sym(var);
 
 		if(!check_sym_compat(
@@ -215,7 +216,7 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 
 		if(expr->ty == SymbolType::SCALAR || expr->ty == SymbolType::INT)
 		{
-			std::string ty = LLAsm::get_type_name(expr->ty);
+			t_str ty = LLAsm::get_type_name(expr->ty);
 			(*m_ostr) << "store " << ty << " %" << expr->name << ", "<< ty << "* %" << var << "\n";
 		}
 
@@ -229,15 +230,23 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 			{
 				// loop statements
 				t_astret elemptr_src = get_tmp_var(SymbolType::SCALAR);
-				(*m_ostr) << "%" << elemptr_src->name << " = getelementptr [" << dimSrc << " x double], ["
-					<< dimSrc << " x double]* %" << expr->name << ", i64 0, i64 %" << ctrval->name << "\n";
+				(*m_ostr) << "%" << elemptr_src->name << " = getelementptr ["
+					<< dimSrc << " x " << m_real << "], ["
+					<< dimSrc << " x " << m_real << "]* %"
+					<< expr->name << ", " << m_int << " 0, " << m_int
+					<< " %" << ctrval->name << "\n";
 				t_astret elemptr_dst = get_tmp_var(SymbolType::SCALAR);
-				(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr [" << dimDst << " x double], ["
-					<< dimDst << " x double]* %" << sym->name << ", i64 0, i64 %" << ctrval->name << "\n";
+				(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr ["
+					<< dimDst << " x " << m_real << "], ["
+					<< dimDst << " x " << m_real << "]* %"
+					<< sym->name << ", " << m_int << " 0, " << m_int
+					<< " %" << ctrval->name << "\n";
 				t_astret elem_src = get_tmp_var(SymbolType::SCALAR);
-				(*m_ostr) << "%" << elem_src->name << " = load double, double* %" << elemptr_src->name << "\n";
+				(*m_ostr) << "%" << elem_src->name << " = load " << m_real
+					<< ", " << m_realptr << " %" << elemptr_src->name << "\n";
 
-				(*m_ostr) << "store double %" << elem_src->name << ", double* %" << elemptr_dst->name << "\n";
+				(*m_ostr) << "store " << m_real << " %" << elem_src->name
+					<< ", " << m_realptr << " %" << elemptr_dst->name << "\n";
 			});
 		}
 
@@ -256,10 +265,14 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 				// loop statements
 				t_astret elemptr_src = get_tmp_var();
 				(*m_ostr) << "%" << elemptr_src->name << " = getelementptr [" << src_dim << " x i8], ["
-					<< src_dim << " x i8]* %" << expr->name << ", i64 0, i64 %" << ctrval->name << "\n";
+					<< src_dim << " x i8]* %"
+					<< expr->name << ", " << m_int << " 0, " << m_int
+					<< " %" << ctrval->name << "\n";
 				t_astret elemptr_dst = get_tmp_var();
 				(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr [" << dst_dim << " x i8], ["
-					<< dst_dim << " x i8]* %" << sym->name << ", i64 0, i64 %" << ctrval->name << "\n";
+					<< dst_dim << " x i8]* %"
+					<< sym->name << ", " << m_int << " 0, " << m_int
+					<< " %" << ctrval->name << "\n";
 				t_astret elem_src = get_tmp_var();
 				(*m_ostr) << "%" << elem_src->name << " = load i8, i8* %" << elemptr_src->name << "\n";
 
@@ -274,29 +287,33 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 }
 
 
-t_astret LLAsm::visit(const ASTNumConst<double>* ast)
+t_astret LLAsm::visit(const ASTNumConst<t_real>* ast)
 {
-	double val = ast->GetVal();
+	t_real val = ast->GetVal();
 
 	t_astret retvar = get_tmp_var(SymbolType::SCALAR);
 	t_astret retval = get_tmp_var(SymbolType::SCALAR);
-	(*m_ostr) << "%" << retvar->name << " = alloca double\n";
-	(*m_ostr) << "store double " << std::scientific << val << ", double* %" << retvar->name << "\n";
-	(*m_ostr) << "%" << retval->name << " = load double, double* %" << retvar->name << "\n";
+	(*m_ostr) << "%" << retvar->name << " = alloca " << m_real << "\n";
+	(*m_ostr) << "store " << m_real << " " << std::scientific
+		<< val << ", " << m_realptr << " %" << retvar->name << "\n";
+	(*m_ostr) << "%" << retval->name << " = load " << m_real << ", "
+		<< m_realptr << " %" << retvar->name << "\n";
 
 	return retval;
 }
 
 
-t_astret LLAsm::visit(const ASTNumConst<std::int64_t>* ast)
+t_astret LLAsm::visit(const ASTNumConst<t_int>* ast)
 {
-	std::int64_t val = ast->GetVal();
+	t_int val = ast->GetVal();
 
 	t_astret retvar = get_tmp_var(SymbolType::INT);
 	t_astret retval = get_tmp_var(SymbolType::INT);
-	(*m_ostr) << "%" << retvar->name << " = alloca i64\n";
-	(*m_ostr) << "store i64 " << val << ", i64* %" << retvar->name << "\n";
-	(*m_ostr) << "%" << retval->name << " = load i64, i64* %" << retvar->name << "\n";
+	(*m_ostr) << "%" << retvar->name << " = alloca " << m_int << "\n";
+	(*m_ostr) << "store " << m_int << " " << val << ", " << m_intptr
+		<< " %" << retvar->name << "\n";
+	(*m_ostr) << "%" << retval->name << " = load " << m_int << ", " << m_intptr
+		<< " %" << retvar->name << "\n";
 
 	return retval;
 }
@@ -304,7 +321,7 @@ t_astret LLAsm::visit(const ASTNumConst<std::int64_t>* ast)
 
 t_astret LLAsm::visit(const ASTStrConst* ast)
 {
-	const std::string& str = ast->GetVal();
+	const t_str& str = ast->GetVal();
 	std::size_t dim = str.length()+1;
 
 	std::array<std::size_t, 2> dims{{dim, 1}};
@@ -318,7 +335,8 @@ t_astret LLAsm::visit(const ASTStrConst* ast)
 	{
 		t_astret ptr = get_tmp_var();
 		(*m_ostr) << "%" << ptr->name << " = getelementptr [" << dim << " x i8], ["
-			<< dim << " x i8]* %" << str_mem->name << ", i64 0, i64 " << idx << "\n";
+			<< dim << " x i8]* %" << str_mem->name << ", "
+			<< m_int << " 0, " << m_int << " " << idx << "\n";
 
 		int val = (idx<dim-1) ? str[idx] : 0;
 		(*m_ostr) << "store i8 " << val << ", i8* %"  << ptr->name << "\n";
@@ -330,7 +348,7 @@ t_astret LLAsm::visit(const ASTStrConst* ast)
 
 t_astret LLAsm::visit(const ASTExprList* ast)
 {
-	// only double arrays are handled here
+	// only real arrays are handled here
 	if(!ast->IsScalarArray())
 	{
 		throw std::runtime_error("ASTExprList: General expression list should not be directly evaluated.");
@@ -341,22 +359,24 @@ t_astret LLAsm::visit(const ASTExprList* ast)
 	std::size_t len = lst.size();
 	std::array<std::size_t, 2> dims{{len, 1}};
 
-	// allocate double array
+	// allocate real array
 	t_astret vec_mem = get_tmp_var(SymbolType::VECTOR, &dims);
-	(*m_ostr) << "%" << vec_mem->name << " = alloca [" << len << " x double]\n";
+	(*m_ostr) << "%" << vec_mem->name << " = alloca [" << len << " x " << m_real << "]\n";
 
 	// set the individual array elements
 	auto iter = lst.begin();
 	for(std::size_t idx=0; idx<len; ++idx)
 	{
 		t_astret ptr = get_tmp_var();
-		(*m_ostr) << "%" << ptr->name << " = getelementptr [" << len << " x double], ["
-			<< len << " x double]* %" << vec_mem->name << ", i64 0, i64 " << idx << "\n";
+		(*m_ostr) << "%" << ptr->name << " = getelementptr [" << len << " x " << m_real << "], ["
+			<< len << " x " << m_real << "]* %"
+			<< vec_mem->name << ", " << m_int << " 0, " << m_int << " " << idx << "\n";
 
 		t_astret val = (*iter)->accept(this);
 		val = convert_sym(val, SymbolType::SCALAR);
 
-		(*m_ostr) << "store double %" << val->name << ", double* %"  << ptr->name << "\n";
+		(*m_ostr) << "store " << m_real << " %" << val->name << ", "
+			<< m_realptr << " %"  << ptr->name << "\n";
 		++iter;
 	}
 

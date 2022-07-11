@@ -9,7 +9,6 @@
 #define __ZEROACASM_H__
 
 #include "ast.h"
-#include "sym.h"
 #include <stack>
 
 
@@ -41,8 +40,8 @@ public:
 	virtual t_astret visit(const ASTLoop* ast) override;
 	virtual t_astret visit(const ASTStrConst* ast) override;
 	virtual t_astret visit(const ASTExprList* ast) override;
-	virtual t_astret visit(const ASTNumConst<double>* ast) override;
-	virtual t_astret visit(const ASTNumConst<std::int64_t>* ast) override;
+	virtual t_astret visit(const ASTNumConst<t_real>* ast) override;
+	virtual t_astret visit(const ASTNumConst<t_int>* ast) override;
 
 	// ------------------------------------------------------------------------
 	// internally handled dummy nodes
@@ -56,7 +55,7 @@ protected:
 
 
 private:
-	std::vector<std::string> m_curscope;
+	std::vector<t_str> m_curscope;
 	SymTab* m_syms = nullptr;
 	std::ostream* m_ostr = &std::cout;
 };

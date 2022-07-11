@@ -15,6 +15,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include "types.h"
+
 
 struct Symbol;
 using SymbolPtr = std::shared_ptr<Symbol>;
@@ -38,8 +40,8 @@ enum class SymbolType
 
 struct Symbol
 {
-	std::string name{};
-	std::string scoped_name{};
+	t_str name{};
+	t_str scoped_name{};
 
 	SymbolType ty = SymbolType::VOID;
 	std::array<std::size_t, 2> dims{{1,1}};
@@ -61,7 +63,7 @@ struct Symbol
 	/**
 	 * get the corresponding data type name
 	 */
-	static std::string get_type_name(SymbolType ty)
+	static t_str get_type_name(SymbolType ty)
 	{
 		switch(ty)
 		{
@@ -81,9 +83,9 @@ struct Symbol
 	}
 
 
-	static const std::string& get_scopenameseparator()
+	static const t_str& get_scopenameseparator()
 	{
-		static const std::string sep{"::"};
+		static const t_str sep{"::"};
 		return sep;
 	}
 };
@@ -92,8 +94,8 @@ struct Symbol
 class SymTab
 {
 public:
-	Symbol* AddSymbol(const std::string& scope,
-		const std::string& name, SymbolType ty,
+	Symbol* AddSymbol(const t_str& scope,
+		const t_str& name, SymbolType ty,
 		const std::array<std::size_t, 2>& dims,
 		bool is_temp = false)
 	{
@@ -105,8 +107,8 @@ public:
 	}
 
 
-	Symbol* AddFunc(const std::string& scope,
-		const std::string& name, SymbolType retty,
+	Symbol* AddFunc(const t_str& scope,
+		const t_str& name, SymbolType retty,
 		const std::vector<SymbolType>& argtypes,
 		const std::array<std::size_t, 2>* retdims = nullptr,
 		const std::vector<SymbolType>* multirettypes = nullptr,
@@ -133,8 +135,8 @@ public:
 	}
 
 
-	Symbol* AddExtFunc(const std::string& scope,
-		const std::string& name, SymbolType retty,
+	Symbol* AddExtFunc(const t_str& scope,
+		const t_str& name, SymbolType retty,
 		const std::vector<SymbolType>& argtypes,
 		const std::array<std::size_t, 2>* retdims = nullptr,
 		const std::vector<SymbolType>* multirettypes = nullptr)
@@ -143,7 +145,7 @@ public:
 	}
 
 
-	const Symbol* FindSymbol(const std::string& name) const
+	const Symbol* FindSymbol(const t_str& name) const
 	{
 		auto iter = m_syms.find(name);
 		if(iter == m_syms.end())
@@ -152,7 +154,7 @@ public:
 	}
 
 
-	const std::unordered_map<std::string, Symbol>& GetSymbols() const
+	const std::unordered_map<t_str, Symbol>& GetSymbols() const
 	{
 		return m_syms;
 	}
@@ -160,19 +162,24 @@ public:
 
 	friend std::ostream& operator<<(std::ostream& ostr, const SymTab& tab)
 	{
-		ostr << std::left << std::setw(32) << "full name" 
-			<< std::left << std::setw(16) << "type" 
-			<< std::left << std::setw(8) << "refs" 
-			<< std::left << std::setw(8) << "dim1"
-			<< std::left << std::setw(8) << "dim2"
+		const int name_len = 32;
+		const int type_len = 16;
+		const int refs_len = 8;
+		const int dims_len = 8;
+
+		ostr << std::left << std::setw(name_len) << "full name"
+			<< std::left << std::setw(type_len) << "type"
+			<< std::left << std::setw(refs_len) << "refs"
+			<< std::left << std::setw(dims_len) << "dim1"
+			<< std::left << std::setw(dims_len) << "dim2"
 			<< "\n";
 		ostr << "--------------------------------------------------------------------------------\n";
 		for(const auto& pair : tab.m_syms)
-			ostr << std::left << std::setw(32) << pair.first 
-				<< std::left << std::setw(16) << Symbol::get_type_name(pair.second.ty) 
-				<< std::left << std::setw(8) << pair.second.refcnt 
-				<< std::left << std::setw(8) << std::get<0>(pair.second.dims) 
-				<< std::left << std::setw(8) << std::get<1>(pair.second.dims)
+			ostr << std::left << std::setw(name_len) << pair.first
+				<< std::left << std::setw(type_len) << Symbol::get_type_name(pair.second.ty)
+				<< std::left << std::setw(refs_len) << pair.second.refcnt
+				<< std::left << std::setw(dims_len) << std::get<0>(pair.second.dims)
+				<< std::left << std::setw(dims_len) << std::get<1>(pair.second.dims)
 				<< "\n";
 
 		return ostr;
@@ -180,7 +187,7 @@ public:
 
 
 private:
-	std::unordered_map<std::string, Symbol> m_syms;
+	std::unordered_map<t_str, Symbol> m_syms;
 };
 
 

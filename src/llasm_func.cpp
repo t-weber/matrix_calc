@@ -16,7 +16,7 @@
 
 t_astret LLAsm::visit(const ASTCall* ast)
 {
-	const std::string& funcname = ast->GetIdent();
+	const t_str& funcname = ast->GetIdent();
 	t_astret func = get_sym(funcname);
 
 	if(func == nullptr)
@@ -42,21 +42,21 @@ t_astret LLAsm::visit(const ASTCall* ast)
 			(*m_ostr) << "%" << strptr->name << " = getelementptr ["
 				<< std::get<0>(arg_casted->dims) << " x i8], ["
 				<< std::get<0>(arg_casted->dims) << " x i8]* %"
-				<< arg_casted->name << ", i64 0, i64 0\n";
+				<< arg_casted->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 			args.push_back(strptr);
 		}
 
 		else if(arg_casted->ty == SymbolType::VECTOR || arg_casted->ty == SymbolType::MATRIX)
 		{
-			// array arguments are of type double*, so use a pointer to the array
+			// array arguments are of type t_real*, so use a pointer to the array
 			t_astret arrptr = get_tmp_var(arg_casted->ty, &arg_casted->dims);
 			std::size_t dim = get_arraydim(arg_casted);
 
 			(*m_ostr) << "%" << arrptr->name << " = getelementptr ["
-				<< dim << " x double], ["
-				<< dim << " x double]* %"
-				<< arg_casted->name << ", i64 0, i64 0\n";
+				<< dim << " x " << m_real << "], ["
+				<< dim << " x " << m_real << "]* %"
+				<< arg_casted->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 			args.push_back(arrptr);
 
@@ -65,9 +65,11 @@ t_astret LLAsm::visit(const ASTCall* ast)
 			{
 				t_astret dim1var = get_tmp_var(SymbolType::INT);
 				t_astret dim1val = get_tmp_var(SymbolType::INT);
-				(*m_ostr) << "%" << dim1var->name << " = alloca i64\n";
-				(*m_ostr) << "store i64 " << std::get<0>(arg_casted->dims) << ", i64* %" << dim1var->name << "\n";
-				(*m_ostr) << "%" << dim1val->name << " = load i64, i64* %" << dim1var->name << "\n";
+				(*m_ostr) << "%" << dim1var->name << " = alloca " << m_int << "\n";
+				(*m_ostr) << "store " << m_int << " " << std::get<0>(arg_casted->dims) << ", " << m_intptr
+					<< " %" << dim1var->name << "\n";
+				(*m_ostr) << "%" << dim1val->name << " = load " << m_int << ", " << m_intptr
+					<< " %" << dim1var->name << "\n";
 
 				args.push_back(dim1val);
 
@@ -75,9 +77,11 @@ t_astret LLAsm::visit(const ASTCall* ast)
 				{
 					t_astret dim2var = get_tmp_var(SymbolType::INT);
 					t_astret dim2val = get_tmp_var(SymbolType::INT);
-					(*m_ostr) << "%" << dim2var->name << " = alloca i64\n";
-					(*m_ostr) << "store i64 " << std::get<1>(arg_casted->dims) << ", i64* %" << dim2var->name << "\n";
-					(*m_ostr) << "%" << dim2val->name << " = load i64, i64* %" << dim2var->name << "\n";
+					(*m_ostr) << "%" << dim2var->name << " = alloca " << m_int << "\n";
+					(*m_ostr) << "store " << m_int << " " << std::get<1>(arg_casted->dims) << ", " << m_intptr
+						<< " %" << dim2var->name << "\n";
+					(*m_ostr) << "%" << dim2val->name << " = load " << m_int << ", " << m_intptr
+						<< " %" << dim2var->name << "\n";
 
 					args.push_back(dim2val);
 				}
@@ -94,7 +98,7 @@ t_astret LLAsm::visit(const ASTCall* ast)
 
 
 	t_astret retvar = get_tmp_var(func->retty, &func->retdims);
-	std::string retty = LLAsm::get_type_name(func->retty);
+	t_str retty = LLAsm::get_type_name(func->retty);
 
 	// call function
 	if(func->retty != SymbolType::VOID)
@@ -125,7 +129,8 @@ t_astret LLAsm::visit(const ASTCall* ast)
 	{
 		// cast mem to i8*
 		t_astret memcast = get_tmp_var();
-		(*m_ostr) << "%" << memcast->name << " = bitcast double* %" << retvar->name << " to i8*\n";
+		(*m_ostr) << "%" << memcast->name << " = bitcast " << m_realptr
+			<< " %" << retvar->name << " to i8*\n";
 
 		t_astret symcpy = get_tmp_var(func->retty, &func->retdims);
 		retvar = cp_mem_vec(memcast, symcpy, true);
@@ -150,14 +155,14 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 	m_funcstack.push(ast);
 	m_curscope.push_back(ast->GetIdent());
 
-	std::string rettype = LLAsm::get_type_name(std::get<0>(ast->GetRetType()));
+	t_str rettype = LLAsm::get_type_name(std::get<0>(ast->GetRetType()));
 	(*m_ostr) << "define " << rettype << " @" << ast->GetIdent() << "(";
 
 	auto argnames = ast->GetArgs();
 	std::size_t idx=0;
 	for(const auto& [argname, argtype, dim1, dim2] : argnames)
 	{
-		const std::string arg = std::string{"__arg_"} + argname;
+		const t_str arg = t_str{"__arg_"} + argname;
 		(*m_ostr) << LLAsm::get_type_name(argtype) << " %" << arg;
 		if(idx < argnames.size()-1)
 			(*m_ostr) << ", ";
@@ -169,7 +174,7 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 	// create local copies of the arguments
 	for(const auto& [argname, argtype, dim1, dim2] : argnames)
 	{
-		const std::string arg = std::string{"__arg_"} + argname;
+		const t_str arg = t_str{"__arg_"} + argname;
 		std::array<std::size_t, 2> argdims{{dim1, dim2}};
 
 		// create a local variable for each function parameter
@@ -178,7 +183,7 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 
 		if(argtype == SymbolType::SCALAR || argtype == SymbolType::INT)
 		{
-			std::string ty = LLAsm::get_type_name(argtype);
+			t_str ty = LLAsm::get_type_name(argtype);
 			(*m_ostr) << "%" << symparam->name << " = alloca " << ty << "\n";
 			(*m_ostr) << "store " << ty << " %" << arg << ", " << ty << "* %" << symparam->name << "\n";
 		}
@@ -189,33 +194,37 @@ t_astret LLAsm::visit(const ASTFunc* ast)
 
 			t_astret strptr = get_tmp_var();
 			(*m_ostr) << "%" << strptr->name << " = getelementptr [" << std::get<0>(argdims) << " x i8], ["
-				<< std::get<0>(argdims) << " x i8]* %" << symparam->name << ", i64 0, i64 0\n";
+				<< std::get<0>(argdims) << " x i8]* %" << symparam->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 			// copy string
 			(*m_ostr) << "call i8* @strncpy(i8* %" << strptr->name << ", i8* %" << arg
-				<< ", i64 " << std::get<0>(argdims) << ")\n";
+				<< ", " << m_int << " " << std::get<0>(argdims) << ")\n";
 		}
 		else if(argtype == SymbolType::VECTOR || argtype == SymbolType::MATRIX)
 		{
 			std::size_t argdim = ::get_arraydim(argdims);
 
 			// allocate memory for local array copy
-			(*m_ostr) << "%" << symparam->name << " = alloca [" << argdim << " x double]\n";
+			(*m_ostr) << "%" << symparam->name << " = alloca [" << argdim << " x " << m_real << "]\n";
 
 			t_astret arrptr = get_tmp_var();
-			(*m_ostr) << "%" << arrptr->name << " = getelementptr [" << argdim << " x double], ["
-				<< argdim << " x double]* %" << symparam->name << ", i64 0, i64 0\n";
+			(*m_ostr) << "%" << arrptr->name << " = getelementptr ["
+				<< argdim << " x " << m_real << "], ["
+				<< argdim << " x " << m_real << "]* %"
+				<< symparam->name << ", " << m_int << " 0, " << m_int << " 0\n";
 
 			// copy array
 			t_astret arrptr_cast = get_tmp_var();
 			t_astret arg_cast = get_tmp_var();
 
 			// cast to memcpy argument pointer type
-			(*m_ostr) << "%" << arrptr_cast->name << " = bitcast double* %" << arrptr->name << " to i8*\n";
-			(*m_ostr) << "%" << arg_cast->name << " = bitcast double* %" << arg << " to i8*\n";
+			(*m_ostr) << "%" << arrptr_cast->name << " = bitcast " << m_realptr
+				<< " %" << arrptr->name << " to i8*\n";
+			(*m_ostr) << "%" << arg_cast->name << " = bitcast " << m_realptr
+				<< " %" << arg << " to i8*\n";
 
 			(*m_ostr) << "call i8* @memcpy(i8* %" << arrptr_cast->name << ", i8* %" << arg_cast->name
-				<< ", i64 " << argdim*sizeof(double) << ")\n";
+				<< ", " << m_int << " " << argdim*sizeof(t_real) << ")\n";
 		}
 		else
 		{
@@ -295,8 +304,8 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 
 		std::array<std::size_t, 2> memsize{{retsize, 1}};
 		t_astret memblock = get_tmp_var(SymbolType::STRING, &memsize, nullptr);
-		(*m_ostr) << "%" << memblock->name << " = call i8* @ext_heap_alloc(i64 "
-			<< retsize << ", i64 1" << ")\n";
+		(*m_ostr) << "%" << memblock->name << " = call i8* @ext_heap_alloc("
+			<< m_int << " " << retsize << ", " << m_int << " 1" << ")\n";
 
 		// write memory block
 		for(std::size_t retsymidx=0; retsymidx<retsyms.size(); ++retsymidx)
@@ -306,7 +315,7 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 
 			t_astret varmemptr = get_tmp_var(SymbolType::STRING);
 			(*m_ostr) << "%" << varmemptr->name << " = getelementptr i8, i8* %"
-				<< memblock->name << ", i64 " << elemidx << "\n";
+				<< memblock->name << ", " << m_int << " " << elemidx << "\n";
 
 			// directly copy scalar value to memory
 			if(retsym->ty == SymbolType::SCALAR || retsym->ty == SymbolType::INT)
@@ -326,7 +335,7 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 				cp_str_mem(retsym, varmemptr);
 			}
 
-			// write double array to memory block
+			// write real array to memory block
 			else if(retsym->ty == SymbolType::VECTOR || retsym->ty == SymbolType::MATRIX)
 			{
 				cp_vec_mem(retsym, varmemptr);
@@ -391,7 +400,7 @@ t_astret LLAsm::visit(const ASTReturn* ast)
 		else if(retsym->ty == SymbolType::VECTOR || retsym->ty == SymbolType::MATRIX)
 		{
 			t_astret arrret_double = cp_vec_mem(retsym);
-			(*m_ostr) << "ret double* %" << arrret_double->name << "\n";
+			(*m_ostr) << "ret " << m_realptr << " %" << arrret_double->name << "\n";
 			return arrret_double;
 		}
 
