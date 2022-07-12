@@ -287,15 +287,39 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 }
 
 
+template<class t_real>
+std::string real_to_hex(t_real val)
+{
+	std::ostringstream ostr;
+	ostr << "0x";
+
+	const std::uint8_t* p = reinterpret_cast<const std::uint8_t*>(&val);
+	for(std::ptrdiff_t i=sizeof(t_real)-1; i>=0; --i)
+	{
+		ostr << std::setw(2) << std::right << std::setfill('0')
+			<< std::hex << static_cast<std::uint16_t>(p[i]);
+	}
+
+	return ostr.str();
+}
+
+
 t_astret LLAsm::visit(const ASTNumConst<t_real>* ast)
 {
 	t_real val = ast->GetVal();
+	std::string hexval;
+	// need to use double representation for floats,
+	// see: https://llvm.org/docs/LangRef.html#simple-constants
+	if constexpr(std::is_same_v<std::decay_t<t_real>, float>)
+		hexval = real_to_hex<double>(val);
+	else
+		hexval = real_to_hex<t_real>(val);
 
 	t_astret retvar = get_tmp_var(SymbolType::SCALAR);
 	t_astret retval = get_tmp_var(SymbolType::SCALAR);
 	(*m_ostr) << "%" << retvar->name << " = alloca " << m_real << "\n";
 	(*m_ostr) << "store " << m_real << " " << std::scientific
-		<< val << ", " << m_realptr << " %" << retvar->name << "\n";
+		<< hexval << ", " << m_realptr << " %" << retvar->name << "\n";
 	(*m_ostr) << "%" << retval->name << " = load " << m_real << ", "
 		<< m_realptr << " %" << retvar->name << "\n";
 

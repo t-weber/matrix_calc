@@ -7,12 +7,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <float.h>
 
 #include "types.h"
 
 
-static t_real g_eps = DBL_EPSILON;
+static t_real g_eps = REAL_EPSILON;
 static int8_t g_debug = 0;
 
 

@@ -181,6 +181,8 @@ int main(int argc, char** argv)
 
 		std::ofstream ofstr{outprog_0ac};
 		std::ostream* ostr = &ofstr;
+		ostr->precision(std::numeric_limits<t_real>::digits10);
+
 		ZeroACAsm zeroacasm{&ctx.GetSymbols(), ostr};
 		auto stmts = ctx.GetStatements()->GetStatementList();
 		for(auto iter=stmts.rbegin(); iter!=stmts.rend(); ++iter)

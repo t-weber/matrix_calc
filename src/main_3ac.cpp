@@ -29,6 +29,39 @@
 namespace args = boost::program_options;
 
 
+
+/**
+ * get format string (and its length) for scanf/printf
+ */
+template<class t_type, class t_str = const char*>
+std::tuple<t_str, int> get_format_string()
+{
+	if constexpr(std::is_same_v<std::decay_t<t_type>, double>)
+		return std::make_tuple("\"%lg\\00\"", 4);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, float>)
+		return std::make_tuple("\"%g\\00\"", 3);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::int64_t>)
+		return std::make_tuple("\"%ld\\00\"", 4);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::int32_t>)
+		return std::make_tuple("\"%d\\00\"", 3);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::int16_t>)
+		return std::make_tuple("\"%d\\00\"", 3);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::int8_t>)
+		return std::make_tuple("\"%d\\00\"", 3);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::uint64_t>)
+		return std::make_tuple("\"%lu\\00\"", 4);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::uint32_t>)
+		return std::make_tuple("\"%u\\00\"", 3);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::uint16_t>)
+		return std::make_tuple("\"%u\\00\"", 3);
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, std::uint8_t>)
+		return std::make_tuple("\"%u\\00\"", 3);
+	else
+		return std::make_tuple("\00", 1);
+}
+
+
+
 int main(int argc, char** argv)
 {
 	try
@@ -229,6 +262,8 @@ int main(int argc, char** argv)
 
 		std::ofstream ofstr{outprog_3ac};
 		std::ostream* ostr = &ofstr /*&std::cout*/;
+		ostr->precision(std::numeric_limits<t_real>::digits10);
+
 		LLAsm llasm{&ctx.GetSymbols(), ostr};
 		auto stmts = ctx.GetStatements()->GetStatementList();
 		for(auto iter=stmts.rbegin(); iter!=stmts.rend(); ++iter)
@@ -241,6 +276,8 @@ int main(int argc, char** argv)
 		std::string startup_code = R"START(
 ; -----------------------------------------------------------------------------
 ; external functions which are not exposed to the compiler
+declare i8* @llvm.stacksave()
+declare void @llvm.stackrestore(i8*)
 declare i8* @strncpy(i8*, i8*, %%t_int%%)
 declare i8* @strncat(i8*, i8*, %%t_int%%)
 declare i32 @strncmp(i8*, i8*, %%t_int%%)
@@ -267,8 +304,8 @@ declare %%t_int%% @ext_transpose(%%t_real%%*, %%t_real%%*, %%t_int%%, %%t_int%%)
 ; -----------------------------------------------------------------------------
 ; constants
 @__strfmt_s = constant [3 x i8] c"%s\00"
-@__strfmt_lg = constant [4 x i8] c"%lg\00"
-@__strfmt_ld = constant [4 x i8] c"%ld\00"
+@__strfmt_lg = constant [%%fmt_real_len%% x i8] c%%fmt_real%%
+@__strfmt_ld = constant [%%fmt_int_len%% x i8] c%%fmt_int%%
 @__str_vecbegin = constant [3 x i8] c"[ \00"
 @__str_vecend = constant [3 x i8] c" ]\00"
 @__str_vecsep = constant [3 x i8] c", \00"
@@ -296,16 +333,19 @@ labelEnd:
 ; %%t_real%% -> string
 define void @flt_to_str(%%t_real%% %flt, i8* %strptr, %%t_int%% %len)
 {
-	%fmtptr = bitcast [4 x i8]* @__strfmt_lg to i8*
+	%fmtptr = bitcast [%%fmt_real_len%% x i8]* @__strfmt_lg to i8*
 	%theflt = call %%t_real%% (%%t_real%%) @zero_eps(%%t_real%% %flt)
 	call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, %%t_real%% %theflt)
+	; TODO: convert to double
+	;%dval = fpext %%t_real%% %theflt to double
+	;call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, double %dval)
 	ret void
 }
 
 ; int -> string
 define void @int_to_str(%%t_int%% %i, i8* %strptr, %%t_int%% %len)
 {
-	%fmtptr = bitcast [4 x i8]* @__strfmt_ld to i8*
+	%fmtptr = bitcast [%%fmt_int_len%% x i8]* @__strfmt_ld to i8*
 	call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, %%t_int%% %i)
 	ret void
 }
@@ -354,7 +394,7 @@ define %%t_real%% @getflt(i8* %str)
 	%d_ptr = alloca %%t_real%%
 
 	; read %%t_real%% from stdin
-	%fmtptr_g = bitcast [4 x i8]* @__strfmt_lg to i8*
+	%fmtptr_g = bitcast [%%fmt_real_len%% x i8]* @__strfmt_lg to i8*
 	call i32 (i8*, ...) @scanf(i8* %fmtptr_g, %%t_real%%* %d_ptr)
 
 	%d = load %%t_real%%, %%t_real%%* %d_ptr
@@ -372,7 +412,7 @@ define %%t_int%% @getint(i8* %str)
 	%i_ptr = alloca %%t_int%%
 
 	; read int from stdin
-	%fmtptr_ld = bitcast [4 x i8]* @__strfmt_ld to i8*
+	%fmtptr_ld = bitcast [%%fmt_int_len%% x i8]* @__strfmt_ld to i8*
 	call i32 (i8*, ...) @scanf(i8* %fmtptr_ld, %%t_int%%* %i_ptr)
 
 	%i = load %%t_int%%, %%t_int%%* %i_ptr
@@ -399,8 +439,14 @@ define i32 @main()
 )START";
 
 		// sets types in startup code
+		auto [ fmt_real, fmt_real_len ] = get_format_string<t_real>();
+		auto [ fmt_int, fmt_int_len ] = get_format_string<t_int>();
 		boost::replace_all(startup_code, "%%t_real%%", get_lltype_name<t_real>());
+		boost::replace_all(startup_code, "%%fmt_real%%", fmt_real);
+		boost::replace_all(startup_code, "%%fmt_real_len%%", std::to_string(fmt_real_len));
 		boost::replace_all(startup_code, "%%t_int%%", get_lltype_name<t_int>());
+		boost::replace_all(startup_code, "%%fmt_int%%", fmt_int);
+		boost::replace_all(startup_code, "%%fmt_int_len%%", std::to_string(fmt_int_len));
 
 		(*ostr) << "; -----------------------------------------------------------------------------\n";
 		(*ostr) << "; external functions which are available to the compiler\n";
@@ -409,7 +455,6 @@ define i32 @main()
 		(*ostr) << "\n" << startup_code;
 		(*ostr) << std::endl;
 		// --------------------------------------------------------------------
-
 
 
 		// --------------------------------------------------------------------
@@ -431,7 +476,6 @@ define i32 @main()
 			outprog_3ac = outprog_3ac_opt;
 		}
 		// --------------------------------------------------------------------
-
 
 
 		// --------------------------------------------------------------------
@@ -458,7 +502,6 @@ define i32 @main()
 			return -1;
 		}
 		// --------------------------------------------------------------------
-
 
 
 		// --------------------------------------------------------------------

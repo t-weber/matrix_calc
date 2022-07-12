@@ -123,6 +123,11 @@ protected:
 	t_str get_label();
 
 	/**
+	 * create a label for a block of statements
+	 */
+	t_str get_block_label();
+
+	/**
 	 * get the type name for a symbol
 	 */
 	static t_str get_type_name(SymbolType ty);
@@ -193,8 +198,9 @@ protected:
 
 
 private:
-	std::size_t m_varCount = 0;	// # of tmp vars
-	std::size_t m_labelCount = 0;	// # of labels
+	std::size_t m_varCount = 0;         // # of tmp vars
+	std::size_t m_labelCount = 0;       // # of labels
+	std::size_t m_labelCountBlock = 0;  // # of block labels
 
 	std::vector<t_str> m_curscope;
 
@@ -273,12 +279,14 @@ void LLAsm::generate_loop(t_funcCond funcCond, t_funcBody funcBody)
 	t_str labelStart = get_label();
 	t_str labelBegin = get_label();
 	t_str labelEnd = get_label();
+	t_str block = get_block_label();
 
 	(*m_ostr) << "\n;-------------------------------------------------------------\n";
 	(*m_ostr) << "; loop head\n";
 	(*m_ostr) << ";-------------------------------------------------------------\n";
 	(*m_ostr) << "br label %" << labelStart << "\n";
 	(*m_ostr) << labelStart << ":\n";
+	(*m_ostr) << "%" << block << " = call i8* @llvm.stacksave()\n";
 	t_astret cond = funcCond();
 	(*m_ostr) << "br i1 %" << cond->name << ", label %" << labelBegin << ", label %" << labelEnd << "\n";
 
@@ -287,10 +295,13 @@ void LLAsm::generate_loop(t_funcCond funcCond, t_funcBody funcBody)
 	(*m_ostr) << ";-------------------------------------------------------------\n";
 	(*m_ostr) << labelBegin << ":\n";
 	funcBody();
+	// remove stack variables created within the loop by alloca (would overflow otherwise)
+	(*m_ostr) << "call void @llvm.stackrestore(i8* %" << block << ")\n";
 	(*m_ostr) << ";-------------------------------------------------------------\n";
 
 	(*m_ostr) << "br label %" << labelStart << "\n";
 	(*m_ostr) << labelEnd << ":\n";
+	(*m_ostr) << "call void @llvm.stackrestore(i8* %" << block << ")\n";
 	(*m_ostr) << ";-------------------------------------------------------------\n\n";
 }
 

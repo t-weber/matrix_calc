@@ -29,10 +29,14 @@ LLAsm::LLAsm(SymTab* syms, std::ostream* ostr) : m_syms{syms}, m_ostr{ostr}
 t_astret LLAsm::visit(const ASTStmts* ast)
 {
 	t_astret lastres = nullptr;
+	t_str block = get_block_label();
+	(*m_ostr) << "%" << block << " = call i8* @llvm.stacksave()\n";
 
 	for(const auto& stmt : ast->GetStatementList())
 		lastres = stmt->accept(this);
 
+	// remove stack variables, limit scope to current block
+	(*m_ostr) << "call void @llvm.stackrestore(i8* %" << block << ")\n";
 	return lastres;
 }
 
@@ -117,6 +121,15 @@ t_str LLAsm::get_label()
 }
 
 
+t_str LLAsm::get_block_label()
+{
+	t_str lab{"__block_"};
+	lab += std::to_string(m_labelCountBlock);
+	++m_labelCountBlock;
+	return lab;
+}
+
+
 /**
  * output declarations for registered functions
  */
@@ -145,9 +158,9 @@ t_str LLAsm::get_function_declarations(const SymTab& symtab, bool only_externals
 
 			// add size arguments for array types
 			if(ty == SymbolType::VECTOR || ty == SymbolType::MATRIX)
-				ostr << ", i64";	// first dim
+				ostr << ", " << m_int;	// first dim
 			if(ty == SymbolType::MATRIX)
-				ostr << ", i64";	// second dim
+				ostr << ", " << m_int;	// second dim
 
 			if(arg < sym.argty.size()-1)
 				ostr << ", ";
@@ -732,7 +745,7 @@ t_astret LLAsm::cp_mem_str(t_astret mem, t_astret sym, bool alloc_sym)
 
 	// copy string
 	(*m_ostr) << "call i8* @strncpy(i8* %" << strptr->name << ", i8* %" << mem->name
-		<< ", i64 " << std::get<0>(sym->dims) << ")\n";
+		<< ", " << m_int << " " << std::get<0>(sym->dims) << ")\n";
 
 	return sym;
 }
@@ -742,37 +755,42 @@ t_astret LLAsm::safe_array_index(t_astret idx, std::size_t size)
 {
 	// modidx = idx % size
 	t_astret modidx = get_tmp_var(SymbolType::INT);
-	(*m_ostr) << "%" << modidx->name << " = srem i64 %" 
-		<< idx->name << ", " << size << "\n";
+	(*m_ostr) << "%" << modidx->name << " = srem " << m_int
+		<< " %" << idx->name << ", " << size << "\n";
 
 	// if(modidx < 0) modidx2 = size - modidx
 	t_astret modidx2 = get_tmp_var(SymbolType::INT);
-	(*m_ostr) << "%" << modidx2->name << " = alloca i64\n";
+	(*m_ostr) << "%" << modidx2->name << " = alloca " << m_int << "\n";
 
 	generate_cond(
 	[this, modidx]() -> t_astret
 	{
 		t_astret _cond = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << _cond->name << " = icmp slt i64 %"
-			<< modidx->name << ", 0\n";
+		(*m_ostr) << "%" << _cond->name << " = icmp slt " << m_int
+			<< " %" << modidx->name << ", 0\n";
 		return _cond;
 	}, [this, modidx, modidx2, size]
 	{
 		t_astret diff = get_tmp_var(SymbolType::INT);
-		(*m_ostr) << "%" << diff->name << " = sub i64 " << size
+		(*m_ostr) << "%" << diff->name << " = sub " << m_int << " " << size
 			<< ", %" << modidx->name << "\n";
 
-		(*m_ostr) << "store i64 %" << diff->name 
-			<< ", i64* %" << modidx2->name << "\n";
+		(*m_ostr) << "store " << m_int
+			<< " %" << diff->name
+			<< ", " << m_intptr
+			<< " %" << modidx2->name << "\n";
 	}, [this, modidx, modidx2]
 	{
-		(*m_ostr) << "store i64 %" << modidx->name 
-			<< ", i64* %" << modidx2->name << "\n";
+		(*m_ostr) << "store " << m_int
+			<< " %" << modidx->name
+			<< ", " << m_intptr
+			<< " %" << modidx2->name << "\n";
 	}, true);
 
-	// write result back to an i64 variable
+	// write result back to an int variable
 	t_astret modidx3 = get_tmp_var(SymbolType::INT);
 	(*m_ostr) << "%" << modidx3->name 
-		<< " = load i64, i64* %" << modidx2->name << "\n";
+		<< " = load " << m_int << ", " << m_intptr
+		<< " %" << modidx2->name << "\n";
 	return modidx3;
 }

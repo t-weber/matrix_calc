@@ -163,9 +163,9 @@ namespace yy
 		{
 			auto iter = m_consts.find(name);
 			if(iter == m_consts.end())
-				return std::make_pair(0, 0.);
+				return std::make_pair(false, t_real(0.));
 
-			return std::make_pair(1, iter->second);
+			return std::make_pair(true, iter->second);
 		}
 
 		// --------------------------------------------------------------------
