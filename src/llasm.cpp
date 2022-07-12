@@ -148,8 +148,13 @@ t_str LLAsm::get_function_declarations(const SymTab& symtab, bool only_externals
 		if(only_externals && !sym.is_external)
 			continue;
 
-		ostr << "declare " << get_type_name(sym.retty)
-			<< " @" << sym.name << "(";
+		ostr << "declare " << get_type_name(sym.retty);
+
+		// if the function has an external name assigned, use it
+		if(sym.ext_name)
+			ostr << " @" << *sym.ext_name << "(";
+		else
+			ostr << " @" << sym.name << "(";
 
 		for(std::size_t arg=0; arg<sym.argty.size(); ++arg)
 		{

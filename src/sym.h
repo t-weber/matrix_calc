@@ -12,6 +12,7 @@
 #include <string>
 #include <unordered_map>
 #include <array>
+#include <optional>
 #include <iostream>
 #include <iomanip>
 
@@ -31,8 +32,8 @@ enum class SymbolType
 	INT,
 	VOID,
 
-	COMP,	// compound
-	FUNC,	// function pointer
+	COMP,     // compound
+	FUNC,     // function pointer
 
 	UNKNOWN,
 };
@@ -42,6 +43,7 @@ struct Symbol
 {
 	t_str name{};
 	t_str scoped_name{};
+	std::optional<t_str> ext_name{};      // name of external symbol (if different from "name")
 
 	SymbolType ty = SymbolType::VOID;
 	std::array<std::size_t, 2> dims{{1,1}};
@@ -54,10 +56,10 @@ struct Symbol
 	// for compound type
 	std::vector<SymbolPtr> elems{};
 
-	bool tmp = false;		// temporary or declared variable?
-	bool is_external = false;	// link to external variable?
+	bool tmp = false;                     // temporary or declared variable?
+	bool is_external = false;             // link to external variable?
 
-	mutable std::size_t refcnt = 0;	// number of reference to this symbol
+	mutable std::size_t refcnt = 0;       // number of reference to this symbol
 
 
 	/**
@@ -136,12 +138,15 @@ public:
 
 
 	Symbol* AddExtFunc(const t_str& scope,
-		const t_str& name, SymbolType retty,
+		const t_str& name, const t_str& extfunc_name,
+		SymbolType retty,
 		const std::vector<SymbolType>& argtypes,
 		const std::array<std::size_t, 2>* retdims = nullptr,
 		const std::vector<SymbolType>* multirettypes = nullptr)
 	{
-		return AddFunc(scope, name, retty, argtypes, retdims, multirettypes, true);
+		Symbol *sym = AddFunc(scope, name, retty, argtypes, retdims, multirettypes, true);
+		sym->ext_name = extfunc_name;
+		return sym;
 	}
 
 

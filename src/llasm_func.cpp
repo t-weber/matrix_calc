@@ -103,7 +103,13 @@ t_astret LLAsm::visit(const ASTCall* ast)
 	// call function
 	if(func->retty != SymbolType::VOID)
 		(*m_ostr) << "%" << retvar->name << " = ";
-	(*m_ostr) << "call " << retty << " @" << funcname << "(";
+
+	// if the function has an external name assigned, use it
+	if(func->ext_name)
+		(*m_ostr) << "call " << retty << " @" << *func->ext_name << "(";
+	else
+		(*m_ostr) << "call " << retty << " @" << funcname << "(";
+
 	for(std::size_t idx=0; idx<args.size(); ++idx)
 	{
 		(*m_ostr) << LLAsm::get_type_name(args[idx]->ty) << " %" << args[idx]->name;

@@ -5,8 +5,8 @@
  * @license: see 'LICENSE.GPL' file
  */
 
+#include "main.h"
 #include "ast.h"
-#include "parser.h"
 #include "llasm.h"
 #include "printast.h"
 #include "semantics.h"
@@ -71,8 +71,11 @@ int main(int argc, char** argv)
 		std::locale::global(loc);
 		//std::cout << "Locale: " << loc.name() << "." << std::endl;
 
-		std::cout << "Matrix expression compiler version 0.2"
+		std::cout << "Matrix expression compiler version 0.3"
 			<< " by Tobias Weber <tobias.weber@tum.de>, 2020." << std::endl;
+		std::cout << "Internal data type lengths:"
+			<< " real: " << sizeof(t_real)*8 << " bits,"
+			<< " int: " << sizeof(t_int)*8 << " bits." << std::endl;
 
 		// llvm toolchain
 		std::string tool_opt = "opt";
@@ -183,26 +186,23 @@ int main(int argc, char** argv)
 		yy::ParserContext ctx{ifstr};
 
 		// register external runtime functions which should be available to the compiler
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "pow", SymbolType::SCALAR, {SymbolType::SCALAR, SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "exp", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "sin", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "cos", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "sqrt", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "labs", SymbolType::INT, {SymbolType::INT});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "strlen", SymbolType::INT, {SymbolType::STRING});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "set_eps", SymbolType::VOID, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "get_eps", SymbolType::SCALAR, {});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "set_debug", SymbolType::VOID, {SymbolType::INT});
+		add_ext_funcs<t_real, t_int>(ctx);
 
 		// register internal runtime functions which should be available to the compiler
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr", SymbolType::VOID, {SymbolType::STRING});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putflt", SymbolType::VOID, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putint", SymbolType::VOID, {SymbolType::INT});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getflt", SymbolType::SCALAR, {SymbolType::STRING});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getint", SymbolType::INT, {SymbolType::STRING});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "flt_to_str", SymbolType::VOID, {SymbolType::SCALAR, SymbolType::STRING, SymbolType::INT});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "int_to_str", SymbolType::VOID, {SymbolType::INT, SymbolType::STRING, SymbolType::INT});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr",
+			SymbolType::VOID, {SymbolType::STRING});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putflt",
+			SymbolType::VOID, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putint",
+			SymbolType::VOID, {SymbolType::INT});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getflt",
+			SymbolType::SCALAR, {SymbolType::STRING});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getint",
+			SymbolType::INT, {SymbolType::STRING});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "flt_to_str",
+			SymbolType::VOID, {SymbolType::SCALAR, SymbolType::STRING, SymbolType::INT});
+		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "int_to_str",
+			SymbolType::VOID, {SymbolType::INT, SymbolType::STRING, SymbolType::INT});
 
 
 		yy::Parser parser(ctx);
@@ -320,7 +320,8 @@ declare %%t_int%% @ext_transpose(%%t_real%%*, %%t_real%%*, %%t_int%%, %%t_int%%)
 define %%t_real%% @zero_eps(%%t_real%% %flt)
 {
 	%eps = call %%t_real%% @get_eps()
-	%fltabs = call %%t_real%% (%%t_real%%) @fabs(%%t_real%% %flt)
+	%%double_func%%%fltabs = call %%t_real%% (%%t_real%%) @fabs(%%t_real%% %flt)
+	%%float_func%%%fltabs = call %%t_real%% (%%t_real%%) @fabsf(%%t_real%% %flt)
 
 	%cond = fcmp ole %%t_real%% %fltabs, %eps
 	br i1 %cond, label %labelIf, label %labelEnd
@@ -335,10 +336,10 @@ define void @flt_to_str(%%t_real%% %flt, i8* %strptr, %%t_int%% %len)
 {
 	%fmtptr = bitcast [%%fmt_real_len%% x i8]* @__strfmt_lg to i8*
 	%theflt = call %%t_real%% (%%t_real%%) @zero_eps(%%t_real%% %flt)
-	call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, %%t_real%% %theflt)
-	; TODO: convert to double
-	;%dval = fpext %%t_real%% %theflt to double
-	;call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, double %dval)
+	%%double_func%%call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, %%t_real%% %theflt)
+	; convert to double
+	%%float_func%%%dval = fpext %%t_real%% %theflt to double
+	%%float_func%%call i32 (i8*, %%t_int%%, i8*, ...) @snprintf(i8* %strptr, %%t_int%% %len, i8* %fmtptr, double %dval)
 	ret void
 }
 
@@ -447,6 +448,18 @@ define i32 @main()
 		boost::replace_all(startup_code, "%%t_int%%", get_lltype_name<t_int>());
 		boost::replace_all(startup_code, "%%fmt_int%%", fmt_int);
 		boost::replace_all(startup_code, "%%fmt_int_len%%", std::to_string(fmt_int_len));
+
+		// comments out non-needed code
+		if constexpr(std::is_same_v<std::decay_t<t_real>, float>)
+		{
+			boost::replace_all(startup_code, "%%float_func%%", "");
+			boost::replace_all(startup_code, "%%double_func%%", ";");
+		}
+		else
+		{
+			boost::replace_all(startup_code, "%%float_func%%", ";");
+			boost::replace_all(startup_code, "%%double_func%%", "");
+		}
 
 		(*ostr) << "; -----------------------------------------------------------------------------\n";
 		(*ostr) << "; external functions which are available to the compiler\n";

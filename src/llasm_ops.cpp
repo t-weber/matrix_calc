@@ -677,9 +677,18 @@ t_astret LLAsm::visit(const ASTPow* ast)
 		term1 = convert_sym(term1, ty);
 		term2 = convert_sym(term2, ty);
 
-		(*m_ostr) << "%" << var->name << " = call " << m_real << " @pow("
-			<< LLAsm::get_type_name(ty) << " %" << term1->name << ", "
+		(*m_ostr) << "%" << var->name << " = call " << m_real << " ";
+
+		if constexpr(std::is_same_v<std::decay_t<t_real>, float>)
+			(*m_ostr) << " @powf(";
+		else if constexpr(std::is_same_v<std::decay_t<t_real>, double>)
+			(*m_ostr) << " @pow(";
+		else if constexpr(std::is_same_v<std::decay_t<t_real>, long double>)
+			(*m_ostr) << " @powl(";
+
+		(*m_ostr)<< LLAsm::get_type_name(ty) << " %" << term1->name << ", "
 			<< LLAsm::get_type_name(ty) << " %" << term2->name << ")\n";
+
 
 		return var;
 	}
@@ -763,16 +772,29 @@ t_astret LLAsm::visit(const ASTNorm* ast)
 	if(term->ty == SymbolType::SCALAR)
 	{
 		t_astret var = get_tmp_var(term->ty);
-		(*m_ostr) << "%" << var->name << " = call " << m_real << " @fabs("
-			<< m_real << " %" << term->name << ")\n";
+		(*m_ostr) << "%" << var->name << " = call " << m_real << " ";
+
+		if constexpr(std::is_same_v<std::decay_t<t_real>, float>)
+			(*m_ostr) << " @fabsf(";
+		else if constexpr(std::is_same_v<std::decay_t<t_real>, double>)
+			(*m_ostr) << " @fabs(";
+		else if constexpr(std::is_same_v<std::decay_t<t_real>, long double>)
+			(*m_ostr) << " @fabsl(";
+
+		(*m_ostr) << m_real << " %" << term->name << ")\n";
 		return var;
 	}
 	else if(term->ty == SymbolType::INT)
 	{
 		t_astret var = get_tmp_var(term->ty);
-		(*m_ostr) << "%" << var->name << " = call " << m_int
-			<< " @labs(" << m_int
-			<< " %" << term->name << ")\n";
+		(*m_ostr) << "%" << var->name << " = call " << m_int << " ";
+
+		if constexpr(std::is_same_v<std::decay_t<t_real>, std::int32_t>)
+			(*m_ostr) << "@abs(";
+		else if constexpr(std::is_same_v<std::decay_t<t_real>, std::int32_t>)
+			(*m_ostr) << "@absl(";
+
+		(*m_ostr) << m_int << " %" << term->name << ")\n";
 		return var;
 	}
 	else if(term->ty == SymbolType::VECTOR)

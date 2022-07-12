@@ -14,9 +14,9 @@
 #include <cstdint>
 #include <string>
 
+using t_str = std::string;
 using t_real = double;
 using t_int = std::int64_t;
-using t_str = std::string;
 
 //using t_real = float;
 //using t_int = std::int32_t;

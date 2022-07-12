@@ -5,8 +5,8 @@
  * @license: see 'LICENSE.GPL' file
  */
 
+#include "main.h"
 #include "ast.h"
-#include "parser.h"
 #include "zeroacasm.h"
 #include "printast.h"
 #include "semantics.h"
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 		std::locale loc{};
 		std::locale::global(loc);
 
-		std::cout << "Matrix expression compiler version 0.2"
+		std::cout << "Matrix expression compiler version 0.3"
 			<< " by Tobias Weber <tobias.weber@tum.de>, 2022."
 			<< std::endl;
 
@@ -114,17 +114,7 @@ int main(int argc, char** argv)
 		yy::ParserContext ctx{ifstr};
 
 		// register external runtime functions which should be available to the compiler
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "pow", SymbolType::SCALAR, {SymbolType::SCALAR, SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "exp", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "sin", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "cos", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "sqrt", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "fabs", SymbolType::SCALAR, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "labs", SymbolType::INT, {SymbolType::INT});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "strlen", SymbolType::INT, {SymbolType::STRING});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "set_eps", SymbolType::VOID, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "get_eps", SymbolType::SCALAR, {});
-		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "set_debug", SymbolType::VOID, {SymbolType::INT});
+		add_ext_funcs<t_real, t_int>(ctx);
 
 		// register internal runtime functions which should be available to the compiler
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr", SymbolType::VOID, {SymbolType::STRING});

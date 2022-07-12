@@ -21,7 +21,9 @@
 template<class t_type, class t_str = const char*>
 t_str get_lltype_name()
 {
-	if constexpr(std::is_same_v<std::decay_t<t_type>, double>)
+	if constexpr(std::is_same_v<std::decay_t<t_type>, long double>)
+		return "long double";
+	else if constexpr(std::is_same_v<std::decay_t<t_type>, double>)
 		return "double";
 	else if constexpr(std::is_same_v<std::decay_t<t_type>, float>)
 		return "float";
