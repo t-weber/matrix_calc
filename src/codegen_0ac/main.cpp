@@ -5,11 +5,11 @@
  * @license: see 'LICENSE.GPL' file
  */
 
-#include "main.h"
-#include "ast.h"
-#include "zeroacasm.h"
-#include "printast.h"
-#include "semantics.h"
+#include "../main.h"
+#include "../ast.h"
+#include "../printast.h"
+#include "../semantics.h"
+#include "asm.h"
 
 #include <fstream>
 #include <locale>
@@ -26,6 +26,7 @@
 
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
+
 
 
 int main(int argc, char** argv)
@@ -177,6 +178,7 @@ int main(int argc, char** argv)
 		auto stmts = ctx.GetStatements()->GetStatementList();
 		for(auto iter=stmts.rbegin(); iter!=stmts.rend(); ++iter)
 			(*iter)->accept(&zeroacasm);
+		zeroacasm.Finish();
 		// --------------------------------------------------------------------
 
 	}

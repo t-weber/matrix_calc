@@ -9,7 +9,9 @@
 #define __ZEROACASM_H__
 
 #include "ast.h"
+
 #include <stack>
+
 
 
 class ZeroACAsm : public ASTVisitor
@@ -49,6 +51,9 @@ public:
 	virtual t_astret visit(const ASTArgNames*) override { return nullptr; }
 	virtual t_astret visit(const ASTTypeDecl*) override { return nullptr; }
 	// ------------------------------------------------------------------------
+
+
+	void Finish();
 
 
 protected:

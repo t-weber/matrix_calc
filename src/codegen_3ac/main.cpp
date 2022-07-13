@@ -5,11 +5,11 @@
  * @license: see 'LICENSE.GPL' file
  */
 
-#include "main.h"
-#include "ast.h"
-#include "llasm.h"
-#include "printast.h"
-#include "semantics.h"
+#include "../main.h"
+#include "../ast.h"
+#include "../printast.h"
+#include "../semantics.h"
+#include "asm.h"
 
 #include <fstream>
 #include <locale>
