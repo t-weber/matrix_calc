@@ -58,6 +58,7 @@ struct Symbol
 
 	bool tmp = false;                     // temporary or declared variable?
 	bool is_external = false;             // link to external variable?
+	t_int addr = 0;                       // optional address of variable
 
 	mutable std::size_t refcnt = 0;       // number of reference to this symbol
 
@@ -150,12 +151,18 @@ public:
 	}
 
 
-	const Symbol* FindSymbol(const t_str& name) const
+	Symbol* FindSymbol(const t_str& name)
 	{
 		auto iter = m_syms.find(name);
 		if(iter == m_syms.end())
 			return nullptr;
 		return &iter->second;
+	}
+
+
+	const Symbol* FindSymbol(const t_str& name) const
+	{
+		return const_cast<SymTab*>(this)->FindSymbol(name);
 	}
 
 

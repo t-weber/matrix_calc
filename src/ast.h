@@ -78,7 +78,7 @@ enum class ASTType
 
 
 using ASTPtr = std::shared_ptr<AST>;
-using t_astret = const Symbol*;
+using t_astret = Symbol*;
 
 
 /**

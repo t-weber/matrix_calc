@@ -273,7 +273,7 @@ t_astret LLAsm::get_sym(const t_str& name) const
 		scoped_name += scope + Symbol::get_scopenameseparator();
 	scoped_name += name;
 
-	const Symbol* sym = nullptr;
+	Symbol* sym = nullptr;
 	if(m_syms)
 	{
 		sym = m_syms->FindSymbol(scoped_name);

@@ -175,6 +175,7 @@ int main(int argc, char** argv)
 		ostr->precision(std::numeric_limits<t_real>::digits10);
 
 		ZeroACAsm zeroacasm{&ctx.GetSymbols(), ostr};
+		zeroacasm.Start();
 		auto stmts = ctx.GetStatements()->GetStatementList();
 		for(auto iter=stmts.rbegin(); iter!=stmts.rend(); ++iter)
 			(*iter)->accept(&zeroacasm);

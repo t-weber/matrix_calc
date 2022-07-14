@@ -9,6 +9,7 @@
 #define __ZEROACASM_H__
 
 #include "ast.h"
+#include "../vm_0ac/opcodes.h"
 
 #include <stack>
 
@@ -52,17 +53,26 @@ public:
 	virtual t_astret visit(const ASTTypeDecl*) override { return nullptr; }
 	// ------------------------------------------------------------------------
 
-
+	void Start();
 	void Finish();
 
 
 protected:
+	/**
+	 * find the symbol with a specific name in the symbol table
+	 */
+	t_astret get_sym(const t_str& name) const;
 
 
 private:
-	std::vector<t_str> m_curscope;
+	std::vector<t_str> m_curscope{};
 	SymTab* m_syms = nullptr;
 	std::ostream* m_ostr = &std::cout;
+
+	// stream positions where addresses need to be patched in
+	std::vector<std::tuple<std::string, std::streampos, t_vm_addr, const AST*>>
+		m_func_comefroms{};
+	std::vector<std::streampos> m_endfunc_comefroms{};
 };
 
 

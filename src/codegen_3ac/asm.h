@@ -204,7 +204,7 @@ private:
 	std::size_t m_labelCount = 0;       // # of labels
 	std::size_t m_labelCountBlock = 0;  // # of block labels
 
-	std::vector<t_str> m_curscope;
+	std::vector<t_str> m_curscope{};
 
 	SymTab* m_syms = nullptr;
 
@@ -214,7 +214,7 @@ private:
 	t_astret scalar_matrix_prod(t_astret scalar, t_astret matrix, bool mul_or_div=1);
 
 	// stack only needed for (future) nested functions
-	std::stack<const ASTFunc*> m_funcstack;
+	std::stack<const ASTFunc*> m_funcstack{};
 
 	// type names
 	static const t_str m_real;
