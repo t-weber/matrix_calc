@@ -43,7 +43,7 @@ struct Symbol
 {
 	t_str name{};
 	t_str scoped_name{};
-	std::optional<t_str> ext_name{};      // name of external symbol (if different from "name")
+	std::optional<t_str> ext_name{};  // name of external symbol (if different from "name")
 
 	SymbolType ty = SymbolType::VOID;
 	std::array<std::size_t, 2> dims{{1,1}};
@@ -56,13 +56,13 @@ struct Symbol
 	// for compound type
 	std::vector<SymbolPtr> elems{};
 
-	bool is_tmp = false;                  // temporary or declared variable?
-	bool is_external = false;             // link to external variable or function?
-	bool is_arg = false;                  // symbol is a function argument
-	t_int addr = 0;                       // optional address of variable
-	std::size_t argidx = 0;               // optional argument index
+	bool is_tmp = false;              // temporary or declared variable?
+	bool is_external = false;         // link to external variable or function?
+	bool is_arg = false;              // symbol is a function argument
+	std::optional<t_int> addr{};      // optional address of variable
+	std::size_t argidx = 0;           // optional argument index
 
-	mutable std::size_t refcnt = 0;       // number of reference to this symbol
+	mutable std::size_t refcnt = 0;   // number of reference to this symbol
 
 
 	/**

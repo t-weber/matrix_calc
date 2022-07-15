@@ -63,6 +63,8 @@ void ZeroACAsm::Finish()
 		t_astret sym = get_sym(func_name);
 		if(!sym)
 			throw std::runtime_error("Tried to call unknown function \"" + func_name + "\".");
+		if(!sym->addr)
+			throw std::runtime_error("Function address for \"" + func_name + "\" not known.");
 
 		t_vm_int func_num_args = static_cast<t_vm_int>(sym->argty.size());
 		if(num_args != func_num_args)
@@ -76,7 +78,7 @@ void ZeroACAsm::Finish()
 		m_ostr->seekp(pos);
 
 		// write relative function address
-		t_vm_addr to_skip = static_cast<t_vm_addr>(sym->addr - pos);
+		t_vm_addr to_skip = static_cast<t_vm_addr>(*sym->addr - pos);
 		// already skipped over address and jmp instruction
 		to_skip -= sizeof(t_vm_byte) + sizeof(t_vm_addr);
 		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_vm_addr));
@@ -235,7 +237,44 @@ t_astret ZeroACAsm::visit(const ASTNorm* ast)
 // ----------------------------------------------------------------------------
 t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 {
-	// TODO
+	if(!m_curscope.size())
+	{
+		throw std::runtime_error("ASTVarDecl: Global variables are not supported.");
+	}
+
+	const t_str& cur_func = *m_curscope.rbegin();
+
+	for(const auto& varname : ast->GetVariables())
+	{
+		// get variable from symbol table and assign an address
+		t_astret sym = get_sym(varname);
+		if(!sym)
+			throw std::runtime_error("ASTVarDecl: Variable \"" + varname + "\" not in symbol table.");
+		if(sym->addr)
+			throw std::runtime_error("ASTVarDecl: Variable \"" + varname + "\" already declared.");
+
+		// start of local stack frame?
+		if(m_local_stack.find(cur_func) == m_local_stack.end())
+		{
+			// padding of maximum data type size, to avoid overwriting top stack value
+			m_local_stack[cur_func] = g_vm_longest_size + 1;
+		}
+
+		sym->addr = -m_local_stack[cur_func];
+
+		if(sym->ty == SymbolType::SCALAR)
+			m_local_stack[cur_func] += get_vm_type_size(VMType::REAL, true);
+		else if(sym->ty == SymbolType::INT)
+			m_local_stack[cur_func] += get_vm_type_size(VMType::INT, true);
+		else
+			throw std::runtime_error("ASTVarDecl: Invalid type in declaration: \"" + sym->name + "\".");
+
+		// optional assignment
+		if(ast->GetAssignment())
+		{
+			ast->GetAssignment()->accept(this);
+		}
+	}
 
 	return nullptr;
 }
@@ -243,7 +282,24 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 
 t_astret ZeroACAsm::visit(const ASTVar* ast)
 {
-	// TODO
+	const t_str& varname = ast->GetIdent();
+
+	// get variable from symbol table
+	t_astret sym = get_sym(varname);
+	if(!sym)
+		throw std::runtime_error("ASTVar: Variable \"" + varname + "\" not in symbol table.");
+	if(!sym->addr)
+		throw std::runtime_error("ASTVar: Variable \"" + varname + "\" has not been declared.");
+
+	// push variable address
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
+	t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
+	m_ostr->write(reinterpret_cast<const char*>(&addr), sizeof(t_vm_addr));
+
+	// dereference the variable
+	if(sym->ty != SymbolType::FUNC)
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::DEREF));
 
 	return nullptr;
 }
@@ -251,8 +307,23 @@ t_astret ZeroACAsm::visit(const ASTVar* ast)
 
 t_astret ZeroACAsm::visit(const ASTAssign* ast)
 {
-	// TODO
+	t_str varname = ast->GetIdent();
+	t_astret sym = get_sym(varname);
+	if(!sym)
+		throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" not in symbol table.");
+	if(!sym->addr)
+		throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" has not been declared.");
 
+	ast->GetExpr()->accept(this);
+
+	// push variable address
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
+	t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
+	m_ostr->write(reinterpret_cast<const char*>(&addr), sizeof(t_vm_addr));
+
+	// assign variable
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::WRMEM));
 	return nullptr;
 }
 // ----------------------------------------------------------------------------
@@ -323,6 +394,7 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 	auto argnames = ast->GetArgs();
 	t_vm_int num_args = static_cast<t_vm_int>(argnames.size());
 
+	// TODO: args
 	/*std::size_t argidx=0;
 	for(const auto& [argname, argtype, dim1, dim2] : argnames)
 	{
@@ -339,7 +411,7 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 		++argidx;
 	}*/
 
-	// add function to symbol table
+	// get function from symbol table and set address
 	t_astret func = get_sym(funcname);
 	if(!func)
 		throw std::runtime_error("ASTFunc: Function \"" + funcname + "\" not in symbol table.");
@@ -384,7 +456,7 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 		throw std::runtime_error("ASTCall: Function \"" + (*funcname) + "\" not in symbol table.");
 
 	t_vm_int num_args = static_cast<t_vm_int>(func->argty.size());
-	if(ast->GetArgumentList().size() != num_args)
+	if(static_cast<t_vm_int>(ast->GetArgumentList().size()) != num_args)
 		throw std::runtime_error("ASTCall: Invalid number of function parameters for \"" + (*funcname) + "\".");
 
 	for(const auto& curarg : ast->GetArgumentList())
@@ -413,8 +485,8 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 	{
 		// call internal function
 		t_vm_addr func_addr = 0;  // to be filled in later
+		// push function address relative to instruction pointer
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-		// push relative function address
 		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
 		// already skipped over address and jmp instruction
 		std::streampos addr_pos = m_ostr->tellp();

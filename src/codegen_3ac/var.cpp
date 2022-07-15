@@ -49,9 +49,12 @@ t_astret LLAsm::visit(const ASTVar* ast)
 
 t_astret LLAsm::visit(const ASTVarDecl* ast)
 {
-	for(const auto& _var : ast->GetVariables())
+	for(const auto& varname : ast->GetVariables())
 	{
-		t_astret sym = get_sym(_var);
+		t_astret sym = get_sym(varname);
+		if(!sym)
+			throw std::runtime_error("ASTVarDecl: Variable \"" + varname + "\" not in symbol table.");
+
 		t_str ty = LLAsm::get_type_name(sym->ty);
 
 		if(sym->ty == SymbolType::SCALAR || sym->ty == SymbolType::INT)
