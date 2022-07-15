@@ -104,7 +104,7 @@ t_astret LLAsm::visit(const ASTCall* ast)
 	if(func->retty != SymbolType::VOID)
 		(*m_ostr) << "%" << retvar->name << " = ";
 
-	// if the function has an external name assigned, use it
+	// if the function has an alternate external name assigned, use it
 	if(func->ext_name)
 		(*m_ostr) << "call " << retty << " @" << *func->ext_name << "(";
 	else

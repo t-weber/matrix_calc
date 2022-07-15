@@ -17,7 +17,7 @@
  * registers external runtime functions which should be available to the compiler
  */
 template<class t_real, class t_int>
-void add_ext_funcs(yy::ParserContext& ctx)
+void add_ext_funcs(yy::ParserContext& ctx, bool skip_some = false)
 {
 	// real functions
 	if constexpr(std::is_same_v<std::decay_t<t_real>, float>)
@@ -88,6 +88,25 @@ void add_ext_funcs(yy::ParserContext& ctx)
 		SymbolType::VOID, {SymbolType::SCALAR});
 	ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "get_eps", "get_eps",
 		SymbolType::SCALAR, {});
+
+	// functions that could also be declared as internals (e.g. in 3ac module)
+	if(!skip_some)
+	{
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "putstr", "putstr",
+			SymbolType::VOID, {SymbolType::STRING});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "putflt", "putflt",
+			SymbolType::VOID, {SymbolType::SCALAR});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "putint", "putint",
+			SymbolType::VOID, {SymbolType::INT});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "getflt", "getflt",
+			SymbolType::SCALAR, {SymbolType::STRING});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "getint", "getint",
+			SymbolType::INT, {SymbolType::STRING});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "flt_to_str", "flt_to_str",
+			SymbolType::VOID, {SymbolType::SCALAR, SymbolType::STRING, SymbolType::INT});
+		ctx.GetSymbols().AddExtFunc(ctx.GetScopeName(), "int_to_str", "int_to_str",
+			SymbolType::VOID, {SymbolType::INT, SymbolType::STRING, SymbolType::INT});
+	}
 }
 
 

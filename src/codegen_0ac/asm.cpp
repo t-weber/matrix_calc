@@ -323,10 +323,21 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 	auto argnames = ast->GetArgs();
 	t_vm_int num_args = static_cast<t_vm_int>(argnames.size());
 
-	if(num_args)
+	/*std::size_t argidx=0;
+	for(const auto& [argname, argtype, dim1, dim2] : argnames)
 	{
-		// TODO
-	}
+		std::string varname = *m_curscope.rbegin() + "/" + argname;
+
+		VMType argty = VMType::UNKNOWN;
+		if(argtype == SymbolType::SCALAR)
+			argty = VMType::REAL;
+		else if(argtype == SymbolType::INT)
+			argty = VMType::INT;
+		else if(argtype == SymbolType::STRING)
+			argty = VMType::STR;
+
+		++argidx;
+	}*/
 
 	// add function to symbol table
 	t_astret func = get_sym(funcname);
@@ -367,34 +378,55 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 
 t_astret ZeroACAsm::visit(const ASTCall* ast)
 {
-	const t_str& funcname = ast->GetIdent();
-	t_astret func = get_sym(funcname);
+	const t_str* funcname = &ast->GetIdent();
+	t_astret func = get_sym(*funcname);
 	if(!func)
-		throw std::runtime_error("ASTCall: Function \"" + funcname + "\" not in symbol table.");
+		throw std::runtime_error("ASTCall: Function \"" + (*funcname) + "\" not in symbol table.");
 
 	t_vm_int num_args = static_cast<t_vm_int>(func->argty.size());
 	if(ast->GetArgumentList().size() != num_args)
-		throw std::runtime_error("ASTCall: Invalid number of function parameters for \"" + funcname + "\".");
+		throw std::runtime_error("ASTCall: Invalid number of function parameters for \"" + (*funcname) + "\".");
 
 	for(const auto& curarg : ast->GetArgumentList())
+		curarg->accept(this);
+
+	if(func->is_external)
 	{
-		// TODO
+		// if the function has an alternate external name assigned, use it
+		if(func->ext_name)
+			funcname = &(*func->ext_name);
+
+		// call external function
+		// push external function name
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+		// write type descriptor byte
+		m_ostr->put(static_cast<t_vm_byte>(VMType::STR));
+		// write function name
+		t_vm_addr len = static_cast<t_vm_addr>(funcname->length());
+		m_ostr->write(reinterpret_cast<const char*>(&len),
+			vm_type_size<VMType::ADDR_MEM, false>);
+		// write string data
+		m_ostr->write(funcname->data(), len);
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::EXTCALL));
 	}
+	else
+	{
+		// call internal function
+		t_vm_addr func_addr = 0;  // to be filled in later
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+		// push relative function address
+		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+		// already skipped over address and jmp instruction
+		std::streampos addr_pos = m_ostr->tellp();
+		t_vm_addr to_skip = static_cast<t_vm_addr>(func_addr - addr_pos);
+		to_skip -= sizeof(t_vm_byte) + sizeof(t_vm_addr);
+		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_vm_addr));
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::CALL));
 
-	t_vm_addr func_addr = 0;  // to be filled in later
-	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-	// push relative function address
-	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
-	// already skipped over address and jmp instruction
-	std::streampos addr_pos = m_ostr->tellp();
-	t_vm_addr to_skip = static_cast<t_vm_addr>(func_addr - addr_pos);
-	to_skip -= sizeof(t_vm_byte) + sizeof(t_vm_addr);
-	m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_vm_addr));
-	m_ostr->put(static_cast<t_vm_byte>(OpCode::CALL));
-
-	// function address not yet known
-	m_func_comefroms.emplace_back(
-		std::make_tuple(funcname, addr_pos, num_args, ast));
+		// function address not yet known
+		m_func_comefroms.emplace_back(
+			std::make_tuple(*funcname, addr_pos, num_args, ast));
+	}
 
 	return nullptr;
 }

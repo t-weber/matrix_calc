@@ -117,15 +117,6 @@ int main(int argc, char** argv)
 		// register external runtime functions which should be available to the compiler
 		add_ext_funcs<t_real, t_int>(ctx);
 
-		// register internal runtime functions which should be available to the compiler
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr", SymbolType::VOID, {SymbolType::STRING});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putflt", SymbolType::VOID, {SymbolType::SCALAR});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putint", SymbolType::VOID, {SymbolType::INT});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getflt", SymbolType::SCALAR, {SymbolType::STRING});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "getint", SymbolType::INT, {SymbolType::STRING});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "flt_to_str", SymbolType::VOID, {SymbolType::SCALAR, SymbolType::STRING, SymbolType::INT});
-		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "int_to_str", SymbolType::VOID, {SymbolType::INT, SymbolType::STRING, SymbolType::INT});
-
 
 		yy::Parser parser(ctx);
 		int res = parser.parse();

@@ -36,54 +36,56 @@ VM::t_data VM::CallExternal(const t_str& func_name)
 		OpCast<m_realidx>();
 		t_real arg2 = std::get<m_realidx>(PopData());
 
-		retval = t_data{std::in_place_index<m_realidx>,
-			std::pow(arg1, arg2)};
+		retval = t_data{std::in_place_index<m_realidx>, std::pow(arg1, arg2)};
 	}
 	else if(func_name == "sin")
 	{
 		OpCast<m_realidx>();
 		t_real arg = std::get<m_realidx>(PopData());
 
-		retval = t_data{std::in_place_index<m_realidx>,
-			std::sin(arg)};
+		retval = t_data{std::in_place_index<m_realidx>, std::sin(arg)};
 	}
 	else if(func_name == "cos")
 	{
 		OpCast<m_realidx>();
 		t_real arg = std::get<m_realidx>(PopData());
 
-		retval = t_data{std::in_place_index<m_realidx>,
-			std::cos(arg)};
+		retval = t_data{std::in_place_index<m_realidx>, std::cos(arg)};
 	}
 	else if(func_name == "tan")
 	{
 		OpCast<m_realidx>();
 		t_real arg = std::get<m_realidx>(PopData());
 
-		retval = t_data{std::in_place_index<m_realidx>,
-			std::tan(arg)};
+		retval = t_data{std::in_place_index<m_realidx>, std::tan(arg)};
 	}
-	else if(func_name == "print")
+	else if(func_name == "set_eps")
+	{
+		OpCast<m_realidx>();
+		m_eps = std::get<m_realidx>(PopData());
+	}
+	else if(func_name == "get_eps")
+	{
+		retval = t_data{std::in_place_index<m_realidx>, m_eps};
+	}
+	else if(func_name == "to_str" || func_name == "flt_to_str" || func_name == "int_to_str")
 	{
 		OpCast<m_stridx>();
-		const t_str/*&*/ arg = std::get<m_stridx>(PopData());
-		std::cout << arg;
-		std::cout.flush();
 	}
-	else if(func_name == "println")
+	else if(func_name == "putstr" || func_name == "putflt" || func_name == "putint")
 	{
 		OpCast<m_stridx>();
 		const t_str/*&*/ arg = std::get<m_stridx>(PopData());
 		std::cout << arg << std::endl;
 	}
-	else if(func_name == "input_real")
+	else if(func_name == "getflt")
 	{
 		t_real val{};
 		std::cin >> val;
 
 		retval = t_data{std::in_place_index<m_realidx>, val};
 	}
-	else if(func_name == "input_int")
+	else if(func_name == "getint")
 	{
 		t_int val{};
 		std::cin >> val;
@@ -120,6 +122,11 @@ VM::t_data VM::CallExternal(const t_str& func_name)
 			m_timer_ticks = std::chrono::milliseconds{delay};
 			StartTimer();
 		}
+	}
+	else if(func_name == "set_debug")
+	{
+		OpCast<m_intidx>();
+		m_debug = (std::get<m_intidx>(PopData()) != 0);
 	}
 
 	return retval;

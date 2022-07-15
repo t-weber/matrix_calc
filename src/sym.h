@@ -56,9 +56,11 @@ struct Symbol
 	// for compound type
 	std::vector<SymbolPtr> elems{};
 
-	bool tmp = false;                     // temporary or declared variable?
-	bool is_external = false;             // link to external variable?
+	bool is_tmp = false;                  // temporary or declared variable?
+	bool is_external = false;             // link to external variable or function?
+	bool is_arg = false;                  // symbol is a function argument
 	t_int addr = 0;                       // optional address of variable
+	std::size_t argidx = 0;               // optional argument index
 
 	mutable std::size_t refcnt = 0;       // number of reference to this symbol
 
@@ -104,7 +106,7 @@ public:
 	{
 		Symbol sym{.name = name, .scoped_name = scope+name,
 			.ty = ty, .dims = dims, .elems = {},
-			.tmp = is_temp, .refcnt = 0};
+			.is_tmp = is_temp, .refcnt = 0};
 		auto pair = m_syms.insert_or_assign(scope+name, sym);
 		return &pair.first->second;
 	}
@@ -175,7 +177,7 @@ public:
 	friend std::ostream& operator<<(std::ostream& ostr, const SymTab& tab)
 	{
 		const int name_len = 32;
-		const int type_len = 16;
+		const int type_len = 18;
 		const int refs_len = 8;
 		const int dims_len = 8;
 
@@ -186,13 +188,26 @@ public:
 			<< std::left << std::setw(dims_len) << "dim2"
 			<< "\n";
 		ostr << "--------------------------------------------------------------------------------\n";
+
 		for(const auto& pair : tab.m_syms)
+		{
+			const Symbol& sym = pair.second;
+
+			std::string ty = Symbol::get_type_name(sym.ty);
+			if(sym.is_external)
+				ty += " (ext)";
+			if(sym.is_arg)
+				ty += " (arg " + std::to_string(sym.argidx) + ")";
+			if(sym.is_tmp)
+				ty += " (tmp)";
+
 			ostr << std::left << std::setw(name_len) << pair.first
-				<< std::left << std::setw(type_len) << Symbol::get_type_name(pair.second.ty)
-				<< std::left << std::setw(refs_len) << pair.second.refcnt
-				<< std::left << std::setw(dims_len) << std::get<0>(pair.second.dims)
-				<< std::left << std::setw(dims_len) << std::get<1>(pair.second.dims)
+				<< std::left << std::setw(type_len) << ty
+				<< std::left << std::setw(refs_len) << sym.refcnt
+				<< std::left << std::setw(dims_len) << std::get<0>(sym.dims)
+				<< std::left << std::setw(dims_len) << std::get<1>(sym.dims)
 				<< "\n";
+		}
 
 		return ostr;
 	}

@@ -42,7 +42,7 @@ static bool run_vm(const char* _prog = nullptr)
 		VM vm(4096);
 		VM::t_addr sp_initial = vm.GetSP();
 
-		vm.SetDebug(true);
+		vm.SetDebug(false);
 		vm.SetChecks(true);
 		vm.SetMem(0, bytes.data(), filesize, true);
 		vm.Run();

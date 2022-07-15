@@ -242,12 +242,16 @@ function[res]
 		}
 		'(' full_argumentlist[args] ')' {
 			// register argument variables
+			std::size_t argidx = 0;
 			for(const auto& arg : $args->GetArgs())
 			{
 				Symbol* sym = context.AddScopedSymbol(std::get<0>(arg));
 				sym->ty = std::get<1>(arg);
+				sym->is_arg = true;
+				sym->argidx = argidx;
 				std::get<0>(sym->dims) = std::get<2>(arg);
 				std::get<1>(sym->dims) = std::get<3>(arg);
+				++argidx;
 			}
 
 			// register the function in the symbol map
@@ -268,12 +272,16 @@ function[res]
 		}
 		'(' full_argumentlist[args] ')' {
 			// register argument variables
+			std::size_t argidx = 0;
 			for(const auto& arg : $args->GetArgs())
 			{
 				Symbol* sym = context.AddScopedSymbol(std::get<0>(arg));
 				sym->ty = std::get<1>(arg);
+				sym->is_arg = true;
+				sym->argidx = argidx;
 				std::get<0>(sym->dims) = std::get<2>(arg);
 				std::get<1>(sym->dims) = std::get<3>(arg);
+				++argidx;
 			}
 
 			// register the function in the symbol map
@@ -294,12 +302,16 @@ function[res]
 		}
 		'(' full_argumentlist[args] ')' {
 			// register argument variables
+			std::size_t argidx = 0;
 			for(const auto& arg : $args->GetArgs())
 			{
 				Symbol* sym = context.AddScopedSymbol(std::get<0>(arg));
 				sym->ty = std::get<1>(arg);
+				sym->is_arg = true;
+				sym->argidx = argidx;
 				std::get<0>(sym->dims) = std::get<2>(arg);
 				std::get<1>(sym->dims) = std::get<3>(arg);
+				++argidx;
 			}
 
 			// register the function in the symbol map

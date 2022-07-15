@@ -186,7 +186,7 @@ int main(int argc, char** argv)
 		yy::ParserContext ctx{ifstr};
 
 		// register external runtime functions which should be available to the compiler
-		add_ext_funcs<t_real, t_int>(ctx);
+		add_ext_funcs<t_real, t_int>(ctx, true);
 
 		// register internal runtime functions which should be available to the compiler
 		ctx.GetSymbols().AddFunc(ctx.GetScopeName(), "putstr",
