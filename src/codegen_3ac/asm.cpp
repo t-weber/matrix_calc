@@ -283,7 +283,7 @@ t_astret LLAsm::get_sym(const t_str& name) const
 			sym = m_syms->FindSymbol(name);
 	}
 
-	if(sym==nullptr)
+	if(sym == nullptr)
 		throw std::runtime_error("get_sym: \"" + scoped_name + "\" does not have an associated symbol.");
 
 	//++sym->refcnt;	// increment symbol's reference counter

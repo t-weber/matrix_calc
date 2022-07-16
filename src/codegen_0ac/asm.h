@@ -66,20 +66,25 @@ protected:
 
 
 private:
+	// symbol table
+	SymTab* m_syms{nullptr};
+	// code output
+	std::ostream* m_ostr{&std::cout};
+
 	// currently active function scope
 	std::vector<t_str> m_curscope{};
 	// current address on stack for local variables
 	std::unordered_map<std::string, t_vm_addr> m_local_stack{};
 
-	// symbol table
-	SymTab* m_syms = nullptr;
-	// code output
-	std::ostream* m_ostr = &std::cout;
-
 	// stream positions where addresses need to be patched in
 	std::vector<std::tuple<std::string, std::streampos, t_vm_addr, const AST*>>
 		m_func_comefroms{};
 	std::vector<std::streampos> m_endfunc_comefroms{};
+
+	// currently active loops in function
+	std::vector<std::size_t> m_cur_loop{};
+	std::unordered_multimap<std::size_t, std::streampos>
+		m_loop_begin_comefroms{}, m_loop_end_comefroms{};
 };
 
 

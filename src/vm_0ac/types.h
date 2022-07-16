@@ -35,8 +35,6 @@ enum class VMType : t_vm_byte
 	ADDR_IP     = 0b00001001,  // address relative to the instruction pointer
 	ADDR_SP     = 0b00001010,  // address relative to the stack pointer
 	ADDR_BP     = 0b00001011,  // address relative to a local base pointer
-
-	ADDR_BP_ARG = 0b00011011,  // number of arguments from base pointer
 };
 
 
@@ -54,7 +52,6 @@ constexpr t_str get_vm_base_reg(VMType ty)
 		case VMType::ADDR_IP:     return "ip";
 		case VMType::ADDR_SP:     return "sp";
 		case VMType::ADDR_BP:     return "bp";
-		case VMType::ADDR_BP_ARG: return "index/bp";
 		default:                  return "<unknown>";
 	}
 }
@@ -79,7 +76,6 @@ constexpr t_str get_vm_type_name(VMType ty)
 		case VMType::ADDR_IP:     return "address relative to ip";
 		case VMType::ADDR_SP:     return "address relative to sp";
 		case VMType::ADDR_BP:     return "address relative to bp";
-		case VMType::ADDR_BP_ARG: return "argument index relative bp";
 		default:                  return "<unknown>";
 	}
 }
@@ -87,8 +83,7 @@ constexpr t_str get_vm_type_name(VMType ty)
 
 
 /**
- * get VMType sizes (including data type and, optionally, descriptor byte)
- * (static version)
+ * get (static) type sizes (including data type and, optionally, descriptor byte)
  */
 template<VMType ty, bool with_descr = false> constexpr t_vm_addr vm_type_size
 	= g_vm_longest_size + (with_descr ? sizeof(t_vm_byte) : 0);
@@ -98,8 +93,6 @@ template<bool with_descr> constexpr inline t_vm_addr vm_type_size<VMType::REAL, 
 	= sizeof(t_vm_real) + (with_descr ? sizeof(t_vm_byte) : 0);
 template<bool with_descr> constexpr inline t_vm_addr vm_type_size<VMType::INT, with_descr>
 	= sizeof(t_vm_int) + (with_descr ? sizeof(t_vm_byte) : 0);
-template<bool with_descr> constexpr inline t_vm_addr vm_type_size<VMType::STR, with_descr>
-	= g_vm_longest_size + (with_descr ? sizeof(t_vm_byte) : 0);
 template<bool with_descr> constexpr inline t_vm_addr vm_type_size<VMType::BOOLEAN, with_descr>
 	= sizeof(t_vm_bool) + (with_descr ? sizeof(t_vm_byte) : 0);
 template<bool with_descr> constexpr inline t_vm_addr vm_type_size<VMType::ADDR_MEM, with_descr>
@@ -110,49 +103,13 @@ template<bool with_descr> constexpr inline t_vm_addr vm_type_size<VMType::ADDR_S
 	= sizeof(t_vm_addr) + (with_descr ? sizeof(t_vm_byte) : 0);
 template<bool with_descr> constexpr inline t_vm_addr vm_type_size<VMType::ADDR_BP, with_descr>
 	= sizeof(t_vm_addr) + (with_descr ? sizeof(t_vm_byte) : 0);
+//template<bool with_descr> constexpr inline t_vm_addr vm_type_size<VMType::STR, with_descr>
+//	= g_vm_longest_size + (with_descr ? sizeof(t_vm_byte) : 0);
 
 
-
-/**
- * get VMType sizes (including data type and, optionally, descriptor byte)
- * (run-time version)
- */
-static inline t_vm_addr get_vm_type_size(VMType ty, bool with_descr = false)
+static inline t_vm_addr get_vm_str_size(t_vm_addr raw_len, bool with_descr = false)
 {
-	t_vm_addr size = 0;
-
-	switch(ty)
-	{
-		case VMType::UNKNOWN:
-			size = g_vm_longest_size;
-			break;
-		case VMType::REAL:
-			size = sizeof(t_vm_real);
-			break;
-		case VMType::INT:
-			size = sizeof(t_vm_int);
-			break;
-		case VMType::STR:
-			size = g_vm_longest_size;
-			break;
-		case VMType::BOOLEAN:
-			size = sizeof(t_vm_bool);
-			break;
-		case VMType::ADDR_MEM:
-		case VMType::ADDR_IP:
-		case VMType::ADDR_SP:
-		case VMType::ADDR_BP:
-			size = sizeof(t_vm_addr);
-			break;
-		default:
-			size = g_vm_longest_size;
-			break;
-	}
-
-	if(with_descr)
-		size += sizeof(t_vm_byte);
-
-	return size;
+	return raw_len*sizeof(t_vm_byte) + (with_descr ? sizeof(t_vm_byte) : 0);
 }
 
 

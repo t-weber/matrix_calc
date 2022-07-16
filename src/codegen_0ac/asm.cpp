@@ -26,7 +26,7 @@ void ZeroACAsm::Start()
 	const t_str& funcname = "start";
 	t_astret func = get_sym(funcname);
 	if(!func)
-		throw std::runtime_error("Start function not in symbol table.");
+		throw std::runtime_error("Start function is not in symbol table.");
 
 	t_vm_addr func_addr = 0;  // to be filled in later
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
@@ -35,8 +35,8 @@ void ZeroACAsm::Start()
 	// already skipped over address and jmp instruction
 	std::streampos addr_pos = m_ostr->tellp();
 	t_vm_addr to_skip = static_cast<t_vm_addr>(func_addr - addr_pos);
-	to_skip -= sizeof(t_vm_byte) + sizeof(t_vm_addr);
-	m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_vm_addr));
+	to_skip -= vm_type_size<VMType::ADDR_IP, true>;
+	m_ostr->write(reinterpret_cast<const char*>(&to_skip), vm_type_size<VMType::ADDR_IP, false>);
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::CALL));
 
 	// function address not yet known
@@ -80,8 +80,8 @@ void ZeroACAsm::Finish()
 		// write relative function address
 		t_vm_addr to_skip = static_cast<t_vm_addr>(*sym->addr - pos);
 		// already skipped over address and jmp instruction
-		to_skip -= sizeof(t_vm_byte) + sizeof(t_vm_addr);
-		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_vm_addr));
+		to_skip -= vm_type_size<VMType::ADDR_IP, true>;
+		m_ostr->write(reinterpret_cast<const char*>(&to_skip), vm_type_size<VMType::ADDR_IP, false>);
 	}
 
 	// seek to end of stream
@@ -109,8 +109,11 @@ t_astret ZeroACAsm::get_sym(const t_str& name) const
 			sym = m_syms->FindSymbol(name);
 	}
 
-	if(sym==nullptr)
-		throw std::runtime_error("get_sym: \"" + scoped_name + "\" does not have an associated symbol.");
+	if(!sym)
+	{
+		throw std::runtime_error("get_sym: \"" + scoped_name +
+			"\" does not have an associated symbol.");
+	}
 
 	return sym;
 }
@@ -122,23 +125,153 @@ t_astret ZeroACAsm::get_sym(const t_str& name) const
 // ----------------------------------------------------------------------------
 t_astret ZeroACAsm::visit(const ASTCond* ast)
 {
-	// TODO
+	// condition
+	ast->GetCond()->accept(this);
 
-	//return ast->GetCond()->accept(this);
-	//ast->GetIf()->accept(this);
-	//ast->GetElse()->accept(this);
-	//ast->HasElse());
+	t_vm_addr skipEndCond = 0;         // how many bytes to skip to jump to end of the if block?
+	t_vm_addr skipEndIf = 0;           // how many bytes to skip to jump to end of the entire if statement?
+	std::streampos skip_addr = 0;      // stream position with the condition jump label
+	std::streampos skip_else_addr = 0; // stream position with the if block jump label
 
+	// if the condition is not fulfilled...
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::NOT));
+
+	// ...skip to the end of the if block
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));      // push jump address
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+	skip_addr = m_ostr->tellp();
+	m_ostr->write(reinterpret_cast<const char*>(&skipEndCond),
+		vm_type_size<VMType::ADDR_IP, false>);
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::JMPCND));
+
+	// if block
+	std::streampos before_if_block = m_ostr->tellp();
+	ast->GetIf()->accept(this);
+	if(ast->HasElse())
+	{
+		// skip to end of if statement if there's an else block
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));  // push jump address
+		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+		skip_else_addr = m_ostr->tellp();
+		m_ostr->write(reinterpret_cast<const char*>(&skipEndIf),
+			vm_type_size<VMType::ADDR_IP, false>);
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::JMP));
+	}
+
+	std::streampos after_if_block = m_ostr->tellp();
+
+	// go back and fill in missing number of bytes to skip
+	skipEndCond = after_if_block - before_if_block;
+	m_ostr->seekp(skip_addr);
+	m_ostr->write(reinterpret_cast<const char*>(&skipEndCond),
+		vm_type_size<VMType::ADDR_IP, false>);
+	m_ostr->seekp(0, std::ios_base::end);
+
+	// else block
+	if(ast->HasElse())
+	{
+		std::streampos before_else_block = m_ostr->tellp();
+		ast->GetElse()->accept(this);
+		std::streampos after_else_block = m_ostr->tellp();
+
+		// go back and fill in missing number of bytes to skip
+		skipEndIf = after_else_block - before_else_block;
+		m_ostr->seekp(skip_else_addr);
+		m_ostr->write(reinterpret_cast<const char*>(&skipEndIf),
+			vm_type_size<VMType::ADDR_IP, false>);
+	}
+
+	// go to end of stream
+	m_ostr->seekp(0, std::ios_base::end);
 	return nullptr;
 }
 
 
 t_astret ZeroACAsm::visit(const ASTLoop* ast)
 {
-	// TODO
+	static std::size_t loop_ident = 0;
+	++loop_ident;
+	m_cur_loop.push_back(loop_ident);
 
-	//t_astret cond = ast->GetCond()->accept(this);
-	//ast->GetLoopStmt()->accept(this);
+	std::streampos loop_begin = m_ostr->tellp();
+
+	// loop condition
+	ast->GetCond()->accept(this);
+
+	// how many bytes to skip to jump to end of the block?
+	t_vm_addr skip = 0;
+	std::streampos skip_addr = 0;
+
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::NOT));
+
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));      // push jump address
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+	skip_addr = m_ostr->tellp();
+	m_ostr->write(reinterpret_cast<const char*>(&skip),
+		vm_type_size<VMType::ADDR_IP, false>);
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::JMPCND));
+
+	std::streampos before_block = m_ostr->tellp();
+	// loop statements
+	ast->GetLoopStmt()->accept(this);
+
+	// loop back
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));      // push jump address
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+	std::streampos after_block = m_ostr->tellp();
+	skip = after_block - before_block;
+	t_vm_addr skip_back = loop_begin - after_block;
+	skip_back -= vm_type_size<VMType::ADDR_IP, true>;
+	m_ostr->write(reinterpret_cast<const char*>(&skip_back),
+		vm_type_size<VMType::ADDR_IP, false>);
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::JMP));
+
+	// go back and fill in missing number of bytes to skip
+	after_block = m_ostr->tellp();
+	skip = after_block - before_block;
+	m_ostr->seekp(skip_addr);
+	m_ostr->write(reinterpret_cast<const char*>(&skip),
+		vm_type_size<VMType::ADDR_IP, false>);
+
+	// fill in any saved, unset start-of-loop jump addresses (continues)
+	while(true)
+	{
+		auto iter = m_loop_begin_comefroms.find(loop_ident);
+		if(iter == m_loop_begin_comefroms.end())
+			break;
+
+		std::streampos pos = iter->second;
+		m_loop_begin_comefroms.erase(iter);
+
+		t_vm_addr to_skip = loop_begin - pos;
+		// already skipped over address and jmp instruction
+		to_skip -= vm_type_size<VMType::ADDR_IP, true>;
+		m_ostr->seekp(pos);
+		m_ostr->write(reinterpret_cast<const char*>(&to_skip),
+			vm_type_size<VMType::ADDR_IP, false>);
+	}
+
+	// fill in any saved, unset end-of-loop jump addresses (breaks)
+	while(true)
+	{
+		auto iter = m_loop_end_comefroms.find(loop_ident);
+		if(iter == m_loop_end_comefroms.end())
+			break;
+
+		std::streampos pos = iter->second;
+		m_loop_end_comefroms.erase(iter);
+
+		t_vm_addr to_skip = after_block - pos;
+		// already skipped over address and jmp instruction
+		to_skip -= vm_type_size<VMType::ADDR_IP, true>;
+		m_ostr->seekp(pos);
+		m_ostr->write(reinterpret_cast<const char*>(&to_skip),
+			vm_type_size<VMType::ADDR_IP, false>);
+	}
+
+	// go to end of stream
+	m_ostr->seekp(0, std::ios_base::end);
+	m_cur_loop.pop_back();
 	return nullptr;
 }
 // ----------------------------------------------------------------------------
@@ -228,6 +361,94 @@ t_astret ZeroACAsm::visit(const ASTNorm* ast)
 
 	return nullptr;
 }
+
+
+t_astret ZeroACAsm::visit(const ASTComp* ast)
+{
+	t_astret term1 = ast->GetTerm1()->accept(this);
+	t_astret term2 = ast->GetTerm2()->accept(this);
+
+	switch(ast->GetOp())
+	{
+		case ASTComp::EQU:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::EQU));
+			break;
+		}
+		case ASTComp::NEQ:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::NEQU));
+			break;
+		}
+		case ASTComp::GT:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::GT));
+			break;
+		}
+		case ASTComp::LT:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::LT));
+			break;
+		}
+		case ASTComp::GEQ:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::GEQU));
+			break;
+		}
+		case ASTComp::LEQ:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::LEQU));
+			break;
+		}
+		default:
+		{
+			throw std::runtime_error("ASTComp: Invalid operation.");
+			break;
+		}
+	}
+
+	return nullptr;
+}
+
+
+t_astret ZeroACAsm::visit(const ASTBool* ast)
+{
+	t_astret term1 = ast->GetTerm1()->accept(this);
+	t_astret term2 = nullptr;
+	if(ast->GetTerm2())
+		term2 = ast->GetTerm2()->accept(this);
+
+	switch(ast->GetOp())
+	{
+		case ASTBool::XOR:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::XOR));
+			break;
+		}
+		case ASTBool::OR:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::OR));
+			break;
+		}
+		case ASTBool::AND:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::AND));
+			break;
+		}
+		case ASTBool::NOT:
+		{
+			m_ostr->put(static_cast<t_vm_byte>(OpCode::NOT));
+			break;
+		}
+		default:
+		{
+			throw std::runtime_error("ASTBool: Invalid operation.");
+			break;
+		}
+	}
+
+	return nullptr;
+}
 // ----------------------------------------------------------------------------
 
 
@@ -249,7 +470,7 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 		// get variable from symbol table and assign an address
 		t_astret sym = get_sym(varname);
 		if(!sym)
-			throw std::runtime_error("ASTVarDecl: Variable \"" + varname + "\" not in symbol table.");
+			throw std::runtime_error("ASTVarDecl: Variable \"" + varname + "\" is not in symbol table.");
 		if(sym->addr)
 			throw std::runtime_error("ASTVarDecl: Variable \"" + varname + "\" already declared.");
 
@@ -263,11 +484,21 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 		sym->addr = -m_local_stack[cur_func];
 
 		if(sym->ty == SymbolType::SCALAR)
-			m_local_stack[cur_func] += get_vm_type_size(VMType::REAL, true);
+		{
+			m_local_stack[cur_func] += vm_type_size<VMType::REAL, true>;
+		}
 		else if(sym->ty == SymbolType::INT)
-			m_local_stack[cur_func] += get_vm_type_size(VMType::INT, true);
+		{
+			m_local_stack[cur_func] += vm_type_size<VMType::INT, true>;
+		}
+		else if(sym->ty == SymbolType::STRING)
+		{
+			m_local_stack[cur_func] += get_vm_str_size(std::get<0>(sym->dims), true);
+		}
 		else
+		{
 			throw std::runtime_error("ASTVarDecl: Invalid type in declaration: \"" + sym->name + "\".");
+		}
 
 		// optional assignment
 		if(ast->GetAssignment())
@@ -287,7 +518,7 @@ t_astret ZeroACAsm::visit(const ASTVar* ast)
 	// get variable from symbol table
 	t_astret sym = get_sym(varname);
 	if(!sym)
-		throw std::runtime_error("ASTVar: Variable \"" + varname + "\" not in symbol table.");
+		throw std::runtime_error("ASTVar: Variable \"" + varname + "\" is not in symbol table.");
 	if(!sym->addr)
 		throw std::runtime_error("ASTVar: Variable \"" + varname + "\" has not been declared.");
 
@@ -295,7 +526,7 @@ t_astret ZeroACAsm::visit(const ASTVar* ast)
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
 	t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
-	m_ostr->write(reinterpret_cast<const char*>(&addr), sizeof(t_vm_addr));
+	m_ostr->write(reinterpret_cast<const char*>(&addr), vm_type_size<VMType::ADDR_BP, false>);
 
 	// dereference the variable
 	if(sym->ty != SymbolType::FUNC)
@@ -310,7 +541,7 @@ t_astret ZeroACAsm::visit(const ASTAssign* ast)
 	t_str varname = ast->GetIdent();
 	t_astret sym = get_sym(varname);
 	if(!sym)
-		throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" not in symbol table.");
+		throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" is not in symbol table.");
 	if(!sym->addr)
 		throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" has not been declared.");
 
@@ -320,7 +551,7 @@ t_astret ZeroACAsm::visit(const ASTAssign* ast)
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
 	t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
-	m_ostr->write(reinterpret_cast<const char*>(&addr), sizeof(t_vm_addr));
+	m_ostr->write(reinterpret_cast<const char*>(&addr), vm_type_size<VMType::ADDR_BP, false>);
 
 	// assign variable
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::WRMEM));
@@ -356,8 +587,7 @@ t_astret ZeroACAsm::visit(const ASTNumConst<t_int>* ast)
 	// write type descriptor byte
 	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
 	// write data
-	m_ostr->write(reinterpret_cast<const char*>(&val),
-		vm_type_size<VMType::INT, false>);
+	m_ostr->write(reinterpret_cast<const char*>(&val), vm_type_size<VMType::INT, false>);
 
 	return nullptr;
 }
@@ -372,8 +602,7 @@ t_astret ZeroACAsm::visit(const ASTStrConst* ast)
 	m_ostr->put(static_cast<t_vm_byte>(VMType::STR));
 	// write string length
 	t_vm_addr len = static_cast<t_vm_addr>(val.length());
-	m_ostr->write(reinterpret_cast<const char*>(&len),
-		vm_type_size<VMType::ADDR_MEM, false>);
+	m_ostr->write(reinterpret_cast<const char*>(&len), vm_type_size<VMType::ADDR_MEM, false>);
 	// write string data
 	m_ostr->write(val.data(), len);
 
@@ -394,27 +623,50 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 	auto argnames = ast->GetArgs();
 	t_vm_int num_args = static_cast<t_vm_int>(argnames.size());
 
-	// TODO: args
-	/*std::size_t argidx=0;
+	// function arguments
+	std::size_t argidx = 0;
+	t_vm_addr frame_addr = 2 * (vm_type_size<VMType::ADDR_IP, true>); // skip old bp and ip on frame
 	for(const auto& [argname, argtype, dim1, dim2] : argnames)
 	{
-		std::string varname = *m_curscope.rbegin() + "/" + argname;
+		// get variable from symbol table and assign an address
+		t_astret sym = get_sym(argname);
+		if(!sym)
+			throw std::runtime_error("ASTFunc: Argument \"" + argname + "\" is not in symbol table.");
+		if(sym->addr)
+			throw std::runtime_error("ASTFunc: Argument \"" + argname + "\" already declared.");
+		if(!sym->is_arg)
+			throw std::runtime_error("ASTFunc: Variable \"" + argname + "\" is not an argument.");
+		if(sym->ty != argtype)
+			throw std::runtime_error("ASTFunc: Argument \"" + argname + "\" type mismatch.");
+		if(sym->argidx != argidx)
+			throw std::runtime_error("ASTFunc: Argument \"" + argname + "\" index mismatch.");
 
-		VMType argty = VMType::UNKNOWN;
-		if(argtype == SymbolType::SCALAR)
-			argty = VMType::REAL;
-		else if(argtype == SymbolType::INT)
-			argty = VMType::INT;
-		else if(argtype == SymbolType::STRING)
-			argty = VMType::STR;
+		sym->addr = frame_addr;
+
+		if(sym->ty == SymbolType::SCALAR)
+		{
+			frame_addr += vm_type_size<VMType::REAL, true>;
+		}
+		else if(sym->ty == SymbolType::INT)
+		{
+			frame_addr += vm_type_size<VMType::INT, true>;
+		}
+		else if(sym->ty == SymbolType::STRING)
+		{
+			frame_addr += get_vm_str_size(std::get<0>(sym->dims), true);
+		}
+		else
+		{
+			throw std::runtime_error("ASTFunc: Invalid type in declaration: \"" + sym->name + "\".");
+		}
 
 		++argidx;
-	}*/
+	}
 
 	// get function from symbol table and set address
 	t_astret func = get_sym(funcname);
 	if(!func)
-		throw std::runtime_error("ASTFunc: Function \"" + funcname + "\" not in symbol table.");
+		throw std::runtime_error("ASTFunc: Function \"" + funcname + "\" is not in symbol table.");
 	func->addr = m_ostr->tellp();
 
 	// function statement block
@@ -425,7 +677,7 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 	// push number of arguments and return
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
-	m_ostr->write(reinterpret_cast<const char*>(&num_args), sizeof(t_vm_int));
+	m_ostr->write(reinterpret_cast<const char*>(&num_args), vm_type_size<VMType::INT, false>);
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::RET));
 
 	// end-of-function jump address
@@ -436,13 +688,14 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 	{
 		t_vm_addr to_skip = ret_streampos - pos;
 		// already skipped over address and jmp instruction
-		to_skip -= sizeof(t_vm_byte) + sizeof(t_vm_addr);
+		to_skip -= vm_type_size<VMType::ADDR_IP, true>;
 		m_ostr->seekp(pos);
-		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_vm_addr));
+		m_ostr->write(reinterpret_cast<const char*>(&to_skip), vm_type_size<VMType::ADDR_IP, false>);
 	}
 	m_endfunc_comefroms.clear();
 	m_ostr->seekp(end_func_streampos);
 
+	m_cur_loop.clear();
 	m_curscope.pop_back();
 	return nullptr;
 }
@@ -453,22 +706,22 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 	const t_str* funcname = &ast->GetIdent();
 	t_astret func = get_sym(*funcname);
 	if(!func)
-		throw std::runtime_error("ASTCall: Function \"" + (*funcname) + "\" not in symbol table.");
+		throw std::runtime_error("ASTCall: Function \"" + (*funcname) + "\" is not in symbol table.");
 
 	t_vm_int num_args = static_cast<t_vm_int>(func->argty.size());
 	if(static_cast<t_vm_int>(ast->GetArgumentList().size()) != num_args)
 		throw std::runtime_error("ASTCall: Invalid number of function parameters for \"" + (*funcname) + "\".");
 
-	for(const auto& curarg : ast->GetArgumentList())
-		curarg->accept(this);
+	for(auto iter = ast->GetArgumentList().rbegin(); iter != ast->GetArgumentList().rend(); ++iter)
+		(*iter)->accept(this);
 
+	// call external function
 	if(func->is_external)
 	{
 		// if the function has an alternate external name assigned, use it
 		if(func->ext_name)
 			funcname = &(*func->ext_name);
 
-		// call external function
 		// push external function name
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 		// write type descriptor byte
@@ -481,9 +734,10 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 		m_ostr->write(funcname->data(), len);
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::EXTCALL));
 	}
+
+	// call internal function
 	else
 	{
-		// call internal function
 		t_vm_addr func_addr = 0;  // to be filled in later
 		// push function address relative to instruction pointer
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
@@ -491,8 +745,8 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 		// already skipped over address and jmp instruction
 		std::streampos addr_pos = m_ostr->tellp();
 		t_vm_addr to_skip = static_cast<t_vm_addr>(func_addr - addr_pos);
-		to_skip -= sizeof(t_vm_byte) + sizeof(t_vm_addr);
-		m_ostr->write(reinterpret_cast<const char*>(&to_skip), sizeof(t_vm_addr));
+		to_skip -= vm_type_size<VMType::ADDR_IP, true>;
+		m_ostr->write(reinterpret_cast<const char*>(&to_skip), vm_type_size<VMType::ADDR_IP, false>);
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::CALL));
 
 		// function address not yet known
@@ -506,12 +760,19 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 
 t_astret ZeroACAsm::visit(const ASTReturn* ast)
 {
+	// return value(s)
+	const auto& retvals = ast->GetRets()->GetList();
+	std::size_t numRets = retvals.size();
+
+	for(const auto& retast : retvals)
+		retast->accept(this);
+
 	// jump to the end of the function
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH)); // push jump address
 	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
 	m_endfunc_comefroms.push_back(m_ostr->tellp());
 	t_vm_addr dummy_addr = 0;
-	m_ostr->write(reinterpret_cast<const char*>(&dummy_addr), sizeof(t_vm_addr));
+	m_ostr->write(reinterpret_cast<const char*>(&dummy_addr), vm_type_size<VMType::ADDR_IP, false>);
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::JMP));
 
 	return nullptr;
@@ -546,8 +807,6 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 
 	return nullptr;
 }
-// ----------------------------------------------------------------------------
-
 
 
 t_astret ZeroACAsm::visit(const ASTExprList* ast)
@@ -556,19 +815,4 @@ t_astret ZeroACAsm::visit(const ASTExprList* ast)
 
 	return nullptr;
 }
-
-
-t_astret ZeroACAsm::visit(const ASTComp* ast)
-{
-	// TODO
-
-	return nullptr;
-}
-
-
-t_astret ZeroACAsm::visit(const ASTBool* ast)
-{
-	// TODO
-
-	return nullptr;
-}
+// ----------------------------------------------------------------------------

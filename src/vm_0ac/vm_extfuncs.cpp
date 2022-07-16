@@ -80,6 +80,11 @@ VM::t_data VM::CallExternal(const t_str& func_name)
 	}
 	else if(func_name == "getflt")
 	{
+		OpCast<m_stridx>();
+		const t_str/*&*/ arg = std::get<m_stridx>(PopData());
+		std::cout << arg;
+		std::cout.flush();
+
 		t_real val{};
 		std::cin >> val;
 
@@ -87,6 +92,11 @@ VM::t_data VM::CallExternal(const t_str& func_name)
 	}
 	else if(func_name == "getint")
 	{
+		OpCast<m_stridx>();
+		const t_str/*&*/ arg = std::get<m_stridx>(PopData());
+		std::cout << arg;
+		std::cout.flush();
+
 		t_int val{};
 		std::cin >> val;
 

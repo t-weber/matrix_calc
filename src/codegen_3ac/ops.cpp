@@ -1089,7 +1089,9 @@ t_astret LLAsm::visit(const ASTComp* ast)
 	}
 
 	// matrix comparison
-	else if(term1->ty == SymbolType::MATRIX && term2->ty == SymbolType::MATRIX && (ast->GetOp() == ASTComp::EQU || ast->GetOp() == ASTComp::NEQ))
+	else if(term1->ty == SymbolType::MATRIX &&
+		term2->ty == SymbolType::MATRIX &&
+		(ast->GetOp() == ASTComp::EQU || ast->GetOp() == ASTComp::NEQ))
 	{
 		bool bNeq = (ast->GetOp() == ASTComp::NEQ);
 

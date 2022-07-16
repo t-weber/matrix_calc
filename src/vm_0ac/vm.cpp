@@ -556,7 +556,6 @@ VM::t_addr VM::PopAddress()
 		case VMType::ADDR_IP: addr += m_ip; break;
 		case VMType::ADDR_SP: addr += m_sp; break;
 		case VMType::ADDR_BP: addr += m_bp; break;
-		//case VMType::ADDR_BP_ARG: break;
 		default: throw std::runtime_error("Unknown address base register."); break;
 	}
 
@@ -844,55 +843,6 @@ void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 
 
 /**
- * get the address of a function argument variable
- */
-VM::t_addr VM::GetArgAddr(VM::t_addr addr, VM::t_addr arg_num) const
-{
-	// skip to correct argument index
-	while(arg_num > 0)
-	{
-		// get data type info from memory
-		VMType ty = static_cast<VMType>(ReadMemRaw<t_byte>(addr));
-		addr += m_bytesize;
-
-		switch(ty)
-		{
-			case VMType::REAL:
-				addr += m_realsize;
-				break;
-			case VMType::INT:
-				addr += m_intsize;
-				break;
-			case VMType::ADDR_MEM:
-			case VMType::ADDR_IP:
-			case VMType::ADDR_SP:
-			case VMType::ADDR_BP:
-				addr += m_addrsize;
-				break;
-			case VMType::STR:
-			{
-				t_addr len = ReadMemRaw<t_addr>(addr);
-				addr += m_addrsize + len;
-				break;
-			}
-			default:
-			{
-				std::ostringstream msg;
-				msg << "GetArgAddr: Data type " << (int)ty
-					<< " (" << get_vm_type_name(ty) << ")"
-					<< " not yet implemented.";
-				throw std::runtime_error(msg.str());
-			}
-		}
-
-		--arg_num;
-	}
-
-	return addr;
-}
-
-
-/**
  * read type-prefixed data from memory
  */
 std::tuple<VMType, VM::t_data> VM::ReadMemData(VM::t_addr addr)
@@ -948,26 +898,6 @@ std::tuple<VMType, VM::t_data> VM::ReadMemData(VM::t_addr addr)
 					<< " from address " << t_int(addr-1)
 					<< "." << std::endl;
 			}
-			break;
-		}
-
-		case VMType::ADDR_BP_ARG:
-		{
-			t_addr arg_num = ReadMemRaw<t_addr>(addr);
-			t_addr arg_addr = GetArgAddr(m_bp, arg_num) - m_bp;
-			ty = VMType::ADDR_BP;
-
-			dat = t_data{std::in_place_index<m_addridx>, arg_addr};
-
-			if(m_debug)
-			{
-				std::cout << "read address " << t_int(arg_addr)
-					<< " for argument #" << t_int(arg_num)
-					<< "." << std::endl;
-			}
-
-			// dereference:
-			//std::tie(ty, dat, std::ignore) = ReadMemData(arg_addr);
 			break;
 		}
 
