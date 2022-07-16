@@ -28,15 +28,23 @@ void ZeroACAsm::Start()
 	if(!func)
 		throw std::runtime_error("Start function is not in symbol table.");
 
+	// push stack frame size
+	t_vm_int framesize = static_cast<t_vm_int>(get_stackframe_size(func));
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
+	m_ostr->write(reinterpret_cast<const char*>(&framesize), vm_type_size<VMType::INT, false>);
+
+	// push relative function address
 	t_vm_addr func_addr = 0;  // to be filled in later
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-	// push relative function address
 	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
 	// already skipped over address and jmp instruction
 	std::streampos addr_pos = m_ostr->tellp();
 	t_vm_addr to_skip = static_cast<t_vm_addr>(func_addr - addr_pos);
 	to_skip -= vm_type_size<VMType::ADDR_IP, true>;
 	m_ostr->write(reinterpret_cast<const char*>(&to_skip), vm_type_size<VMType::ADDR_IP, false>);
+
+	// call the start function
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::CALL));
 
 	// function address not yet known
@@ -116,6 +124,50 @@ t_astret ZeroACAsm::get_sym(const t_str& name) const
 	}
 
 	return sym;
+}
+
+
+/**
+ * finds the size of the symbol for the stack frame
+ */
+std::size_t ZeroACAsm::get_sym_size(const Symbol* sym) const
+{
+	if(sym->ty == SymbolType::SCALAR)
+	{
+		return vm_type_size<VMType::REAL, true>;
+	}
+	else if(sym->ty == SymbolType::INT)
+	{
+		return vm_type_size<VMType::INT, true>;
+	}
+	else if(sym->ty == SymbolType::STRING)
+	{
+		return get_vm_str_size(std::get<0>(sym->dims), true);
+	}
+	else
+	{
+		throw std::runtime_error("Invalid symbol type for \"" + sym->name + "\".");
+	}
+
+	return 0;
+}
+
+
+/**
+ * finds the size of the local function variables for the stack frame
+ */
+std::size_t ZeroACAsm::get_stackframe_size(const Symbol* func) const
+{
+	auto syms = m_syms->FindSymbolsWithSameScope(
+		func->scoped_name + Symbol::get_scopenameseparator());
+	std::size_t needed_size = 0;
+
+	//for(const auto symty : func->argty)
+	for(const Symbol* sym : syms)
+		needed_size += get_sym_size(sym);
+
+	needed_size += g_vm_longest_size + 1;  // TODO: remove padding
+	return needed_size;
 }
 
 
@@ -459,10 +511,7 @@ t_astret ZeroACAsm::visit(const ASTBool* ast)
 t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 {
 	if(!m_curscope.size())
-	{
 		throw std::runtime_error("ASTVarDecl: Global variables are not supported.");
-	}
-
 	const t_str& cur_func = *m_curscope.rbegin();
 
 	for(const auto& varname : ast->GetVariables())
@@ -478,27 +527,11 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 		if(m_local_stack.find(cur_func) == m_local_stack.end())
 		{
 			// padding of maximum data type size, to avoid overwriting top stack value
-			m_local_stack[cur_func] = g_vm_longest_size + 1;
+			m_local_stack[cur_func] = g_vm_longest_size + 1;  // TODO: remove padding
 		}
 
 		sym->addr = -m_local_stack[cur_func];
-
-		if(sym->ty == SymbolType::SCALAR)
-		{
-			m_local_stack[cur_func] += vm_type_size<VMType::REAL, true>;
-		}
-		else if(sym->ty == SymbolType::INT)
-		{
-			m_local_stack[cur_func] += vm_type_size<VMType::INT, true>;
-		}
-		else if(sym->ty == SymbolType::STRING)
-		{
-			m_local_stack[cur_func] += get_vm_str_size(std::get<0>(sym->dims), true);
-		}
-		else
-		{
-			throw std::runtime_error("ASTVarDecl: Invalid type in declaration: \"" + sym->name + "\".");
-		}
+		m_local_stack[cur_func] += get_sym_size(sym);
 
 		// optional assignment
 		if(ast->GetAssignment())
@@ -642,23 +675,7 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 			throw std::runtime_error("ASTFunc: Argument \"" + argname + "\" index mismatch.");
 
 		sym->addr = frame_addr;
-
-		if(sym->ty == SymbolType::SCALAR)
-		{
-			frame_addr += vm_type_size<VMType::REAL, true>;
-		}
-		else if(sym->ty == SymbolType::INT)
-		{
-			frame_addr += vm_type_size<VMType::INT, true>;
-		}
-		else if(sym->ty == SymbolType::STRING)
-		{
-			frame_addr += get_vm_str_size(std::get<0>(sym->dims), true);
-		}
-		else
-		{
-			throw std::runtime_error("ASTFunc: Invalid type in declaration: \"" + sym->name + "\".");
-		}
+		frame_addr += get_sym_size(sym);
 
 		++argidx;
 	}
@@ -674,10 +691,18 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 
 	std::streampos ret_streampos = m_ostr->tellp();
 
-	// push number of arguments and return
+	// push stack frame size
+	t_vm_int framesize = static_cast<t_vm_int>(get_stackframe_size(func));
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
+	m_ostr->write(reinterpret_cast<const char*>(&framesize), vm_type_size<VMType::INT, false>);
+
+	// push number of arguments
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
 	m_ostr->write(reinterpret_cast<const char*>(&num_args), vm_type_size<VMType::INT, false>);
+
+	// return
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::RET));
 
 	// end-of-function jump address
@@ -738,8 +763,14 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 	// call internal function
 	else
 	{
-		t_vm_addr func_addr = 0;  // to be filled in later
+		// push stack frame size
+		t_vm_int framesize = static_cast<t_vm_int>(get_stackframe_size(func));
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+		m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
+		m_ostr->write(reinterpret_cast<const char*>(&framesize), vm_type_size<VMType::INT, false>);
+
 		// push function address relative to instruction pointer
+		t_vm_addr func_addr = 0;  // to be filled in later
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
 		// already skipped over address and jmp instruction
@@ -747,6 +778,8 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 		t_vm_addr to_skip = static_cast<t_vm_addr>(func_addr - addr_pos);
 		to_skip -= vm_type_size<VMType::ADDR_IP, true>;
 		m_ostr->write(reinterpret_cast<const char*>(&to_skip), vm_type_size<VMType::ADDR_IP, false>);
+
+		// call the function
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::CALL));
 
 		// function address not yet known
@@ -760,6 +793,15 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 
 t_astret ZeroACAsm::visit(const ASTReturn* ast)
 {
+	if(!m_curscope.size())
+		throw std::runtime_error("ASTReturn: Not in a function.");
+
+	/*const t_str& cur_func = *m_curscope.rbegin();
+	t_astret func = get_sym(cur_func);
+	if(!func)
+		throw std::runtime_error("ASTReturn: Function \"" + cur_func + "\" is not in symbol table.");*/
+
+
 	// return value(s)
 	const auto& retvals = ast->GetRets()->GetList();
 	std::size_t numRets = retvals.size();
@@ -767,12 +809,14 @@ t_astret ZeroACAsm::visit(const ASTReturn* ast)
 	for(const auto& retast : retvals)
 		retast->accept(this);
 
-	// jump to the end of the function
+	// write jump address to the end of the function
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH)); // push jump address
 	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
 	m_endfunc_comefroms.push_back(m_ostr->tellp());
 	t_vm_addr dummy_addr = 0;
 	m_ostr->write(reinterpret_cast<const char*>(&dummy_addr), vm_type_size<VMType::ADDR_IP, false>);
+
+	// jump to end of function
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::JMP));
 
 	return nullptr;

@@ -64,6 +64,16 @@ protected:
 	 */
 	t_astret get_sym(const t_str& name) const;
 
+	/**
+	 * finds the size of the symbol for the stack frame
+	 */
+	std::size_t get_sym_size(const Symbol* sym) const;
+
+	/**
+	 * finds the size of the local function variables for the stack frame
+	 */
+	std::size_t get_stackframe_size(const Symbol* func) const;
+
 
 private:
 	// symbol table

@@ -67,7 +67,7 @@ public:
 
 
 public:
-	VM(t_addr memsize = 0x1000, std::optional<t_addr> framesize = std::nullopt);
+	VM(t_addr memsize = 0x1000);
 	~VM();
 
 	void SetDebug(bool b) { m_debug = b; }
@@ -641,7 +641,6 @@ private:
 
 	// memory sizes and ranges
 	t_addr m_memsize = 0x1000;         // total memory size
-	t_addr m_framesize = 0x100;        // size per function stack frame
 
 	// signals interrupt requests
 	std::array<std::atomic_bool, m_num_interrupts> m_irqs{};

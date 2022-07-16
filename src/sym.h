@@ -41,9 +41,10 @@ enum class SymbolType
 
 struct Symbol
 {
-	t_str name{};
-	t_str scoped_name{};
-	std::optional<t_str> ext_name{};  // name of external symbol (if different from "name")
+	t_str name{};                     // local symbol identifier
+	t_str scoped_name{};              // full identifier with scope prefixes
+	t_str scope_name{};               // scope prefixes
+	std::optional<t_str> ext_name{};  // name of external symbol (if different from internal name)
 
 	SymbolType ty = SymbolType::VOID;
 	std::array<std::size_t, 2> dims{{1,1}};
@@ -104,10 +105,13 @@ public:
 		const std::array<std::size_t, 2>& dims,
 		bool is_temp = false)
 	{
-		Symbol sym{.name = name, .scoped_name = scope+name,
+		Symbol sym{.name = name,
+			.scoped_name = scope + name,
+			.scope_name = scope,
 			.ty = ty, .dims = dims, .elems = {},
 			.is_tmp = is_temp, .refcnt = 0};
-		auto pair = m_syms.insert_or_assign(scope+name, sym);
+
+		auto pair = m_syms.insert_or_assign(sym.scoped_name, sym);
 		return &pair.first->second;
 	}
 
@@ -119,13 +123,17 @@ public:
 		const std::vector<SymbolType>* multirettypes = nullptr,
 		bool is_external = false)
 	{
-		Symbol sym{.name = name, .scoped_name = scope+name,
+		Symbol sym{.name = name,
+			.scoped_name = scope + name,
+			.scope_name = scope,
 			.ty = SymbolType::FUNC,
 			.argty = argtypes, .retty = retty,
 			.is_external = is_external,
 			.refcnt = 0};
+
 		if(retdims)
 			sym.retdims = *retdims;
+
 		if(multirettypes)
 		{
 			for(SymbolType ty : *multirettypes)
@@ -135,7 +143,8 @@ public:
 				sym.elems.emplace_back(retsym);
 			}
 		}
-		auto pair = m_syms.insert_or_assign(scope+name, sym);
+
+		auto pair = m_syms.insert_or_assign(sym.scoped_name, sym);
 		return &pair.first->second;
 	}
 
@@ -168,6 +177,27 @@ public:
 	}
 
 
+	std::vector<const Symbol*> FindSymbolsWithSameScope(
+		const t_str& scope, bool no_args = true) const
+	{
+		std::vector<const Symbol*> syms;
+
+		for(const auto& [name, sym] : m_syms)
+		{
+			//if(sym.addr)
+			//	std::cout << name << ": " << *sym.addr << std::endl;
+
+			if(no_args && sym.is_arg)
+				continue;
+
+			if(sym.scope_name == scope)
+				syms.push_back(&sym);
+		}
+
+		return syms;
+	}
+
+
 	const std::unordered_map<t_str, Symbol>& GetSymbols() const
 	{
 		return m_syms;
@@ -180,12 +210,14 @@ public:
 		const int type_len = 18;
 		const int refs_len = 8;
 		const int dims_len = 8;
+		//const int addr_len = 8;
 
 		ostr << std::left << std::setw(name_len) << "full name"
 			<< std::left << std::setw(type_len) << "type"
 			<< std::left << std::setw(refs_len) << "refs"
 			<< std::left << std::setw(dims_len) << "dim1"
 			<< std::left << std::setw(dims_len) << "dim2"
+			//<< std::left << std::setw(addr_len) << "addr"
 			<< "\n";
 		ostr << "--------------------------------------------------------------------------------\n";
 
@@ -201,11 +233,16 @@ public:
 			if(sym.is_tmp)
 				ty += " (tmp)";
 
+			/*std::string addr = "-";
+			if(sym.addr)
+				addr = std::to_string(*sym.addr);*/
+
 			ostr << std::left << std::setw(name_len) << pair.first
 				<< std::left << std::setw(type_len) << ty
 				<< std::left << std::setw(refs_len) << sym.refcnt
 				<< std::left << std::setw(dims_len) << std::get<0>(sym.dims)
 				<< std::left << std::setw(dims_len) << std::get<1>(sym.dims)
+				//<< std::left << std::setw(addr_len) << addr
 				<< "\n";
 		}
 

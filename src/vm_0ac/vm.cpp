@@ -12,8 +12,7 @@
 #include <cstring>
 
 
-VM::VM(t_addr memsize, std::optional<t_addr> framesize)
-	: m_memsize{memsize}, m_framesize{framesize ? *framesize : memsize/16}
+VM::VM(t_addr memsize) : m_memsize{memsize}
 {
 	m_mem.reset(new t_byte[m_memsize]);
 	Reset();
@@ -418,7 +417,7 @@ bool VM::Run()
 			 *  --------------------      |
 			 * |      ...           |     |
 			 *  --------------------      |
-			 * |  local var 2       |     |  m_framesize
+			 * |  local var 2       |     |  framesize
 			 *  --------------------      |
 			 * |  local var 1       |     |
 			 *  --------------------      |
@@ -437,7 +436,9 @@ bool VM::Run()
 			 */
 			case OpCode::CALL: // function call
 			{
+				// get return address and frame size
 				t_addr funcaddr = PopAddress();
+				t_int framesize = std::get<m_intidx>(PopData());
 
 				// save instruction and base pointer and
 				// set up the function's stack frame for local variables
@@ -451,7 +452,7 @@ bool VM::Run()
 						<< std::endl;
 				}
 				m_bp = m_sp;
-				m_sp -= m_framesize;
+				m_sp -= framesize;
 
 				// jump to function
 				m_ip = funcaddr;
@@ -466,12 +467,13 @@ bool VM::Run()
 
 			case OpCode::RET: // return from function
 			{
-				// get number of function arguments
+				// get number of function arguments and frame size
 				t_int num_args = std::get<m_intidx>(PopData());
+				t_int framesize = std::get<m_intidx>(PopData());
 
 				// if there's still a value on the stack, use it as return value
 				t_data retval;
-				if(m_sp + m_framesize < m_bp)
+				if(m_sp + framesize < m_bp)
 					retval = PopData();
 
 				// zero the stack frame
@@ -1029,7 +1031,7 @@ VM::t_addr VM::GetDataSize(const t_data& data) const
 void VM::Reset()
 {
 	m_ip = 0;
-	m_sp = m_memsize - m_framesize;
+	m_sp = m_memsize - 0x100;   // TODO
 	m_bp = m_memsize;
 	m_bp -= sizeof(t_data) + 1; // padding of max. data type size to avoid writing beyond memory size
 
