@@ -399,7 +399,7 @@ protected:
 
 		if(val1.index() != val2.index())
 		{
-			throw std::runtime_error("Type mismatch in arithmetic operation."
+			throw std::runtime_error("Type mismatch in arithmetic operation. "
 				"Type indices: " + std::to_string(val1.index()) +
 					", " + std::to_string(val2.index()) + ".");
 		}
@@ -496,7 +496,7 @@ protected:
 
 		if(val1.index() != val2.index())
 		{
-			throw std::runtime_error("Type mismatch in binary operation."
+			throw std::runtime_error("Type mismatch in binary operation. "
 				"Type indices: " + std::to_string(val1.index()) +
 					", " + std::to_string(val2.index()) + ".");
 		}
@@ -576,7 +576,7 @@ protected:
 
 		if(val1.index() != val2.index())
 		{
-			throw std::runtime_error("Type mismatch in comparison operation."
+			throw std::runtime_error("Type mismatch in comparison operation. "
 				"Type indices: " + std::to_string(val1.index()) +
 					", " + std::to_string(val2.index()) + ".");
 		}

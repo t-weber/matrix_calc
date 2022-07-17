@@ -46,7 +46,7 @@ struct Symbol
 	t_str scope_name{};               // scope prefixes
 	std::optional<t_str> ext_name{};  // name of external symbol (if different from internal name)
 
-	SymbolType ty = SymbolType::VOID;
+	SymbolType ty { SymbolType::VOID };
 	std::array<std::size_t, 2> dims{{1,1}};
 
 	// for functions
@@ -251,7 +251,7 @@ public:
 
 
 private:
-	std::unordered_map<t_str, Symbol> m_syms;
+	std::unordered_map<t_str, Symbol> m_syms{};
 };
 
 

@@ -15,12 +15,18 @@
 #include <unordered_map>
 
 
-
+/**
+ * zero-address code generation
+ * (the return value is only used for type information for casting)
+ */
 class ZeroACAsm : public ASTVisitor
 {
 public:
-	ZeroACAsm(SymTab* syms, std::ostream* ostr=&std::cout);
-	virtual ~ZeroACAsm() = default;
+	ZeroACAsm(SymTab* syms, std::ostream* ostr = &std::cout);
+	virtual ~ZeroACAsm();
+
+	ZeroACAsm(const ZeroACAsm&) = delete;
+	const ZeroACAsm& operator=(const ZeroACAsm&) = delete;
 
 	virtual t_astret visit(const ASTUMinus* ast) override;
 	virtual t_astret visit(const ASTPlus* ast) override;
@@ -74,6 +80,11 @@ protected:
 	 */
 	std::size_t get_stackframe_size(const Symbol* func) const;
 
+	/**
+	 * emit code to cast to given type
+	 */
+	void cast_to(t_astret ty_to, std::streampos pos);
+
 
 private:
 	// symbol table
@@ -95,6 +106,9 @@ private:
 	std::vector<std::size_t> m_cur_loop{};
 	std::unordered_multimap<std::size_t, std::streampos>
 		m_loop_begin_comefroms{}, m_loop_end_comefroms{};
+
+	// dummy symbols for constants
+	Symbol *m_scalar_const{}, *m_int_const{}, *m_str_const{};
 };
 
 

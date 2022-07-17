@@ -13,8 +13,47 @@
 
 ZeroACAsm::ZeroACAsm(SymTab* syms, std::ostream* ostr)
 	: m_syms{syms}, m_ostr{ostr}
-{}
+{
+	// dummy symbol for scalar constants
+	m_scalar_const = new Symbol();
+	m_scalar_const->ty = SymbolType::SCALAR;
+	m_scalar_const->is_tmp = true;
+	m_scalar_const->name = "<scalar>";
 
+	// dummy symbol for int constants
+	m_int_const = new Symbol();
+	m_int_const->ty = SymbolType::INT;
+	m_int_const->is_tmp = true;
+	m_int_const->name = "<int>";
+
+	// dummy symbol for string constants
+	m_str_const = new Symbol();
+	m_str_const->ty = SymbolType::STRING;
+	m_str_const->is_tmp = true;
+	m_str_const->name = "<str>";
+}
+
+
+ZeroACAsm::~ZeroACAsm()
+{
+	if(m_scalar_const)
+	{
+		delete m_scalar_const;
+		m_scalar_const = nullptr;
+	}
+
+	if(m_int_const)
+	{
+		delete m_int_const;
+		m_int_const = nullptr;
+	}
+
+	if(m_str_const)
+	{
+		delete m_str_const;
+		m_str_const = nullptr;
+	}
+}
 
 
 /**
@@ -166,7 +205,6 @@ std::size_t ZeroACAsm::get_stackframe_size(const Symbol* func) const
 	for(const Symbol* sym : syms)
 		needed_size += get_sym_size(sym);
 
-	needed_size += g_vm_longest_size + 1;  // TODO: remove padding
 	return needed_size;
 }
 
@@ -235,6 +273,7 @@ t_astret ZeroACAsm::visit(const ASTCond* ast)
 
 	// go to end of stream
 	m_ostr->seekp(0, std::ios_base::end);
+
 	return nullptr;
 }
 
@@ -324,6 +363,7 @@ t_astret ZeroACAsm::visit(const ASTLoop* ast)
 	// go to end of stream
 	m_ostr->seekp(0, std::ios_base::end);
 	m_cur_loop.pop_back();
+
 	return nullptr;
 }
 // ----------------------------------------------------------------------------
@@ -333,69 +373,214 @@ t_astret ZeroACAsm::visit(const ASTLoop* ast)
 // ----------------------------------------------------------------------------
 // operations
 // ----------------------------------------------------------------------------
+/**
+ * return common type of a binary operation
+ * @returns [ needs_cast?, first term is common type? ]
+ */
+static std::tuple<bool, bool>
+get_cast_symtype(t_astret term1, t_astret term2)
+{
+	if(!term1 || !term2)
+		return std::make_tuple(false, true);
+
+	SymbolType ty1 = term1->ty;
+	SymbolType ty2 = term2->ty;
+
+	// use return type for function
+	if(ty1 == SymbolType::FUNC)
+		ty1 = term1->retty;
+	if(ty2 == SymbolType::FUNC)
+		ty2 = term2->retty;
+
+	// already same type?
+	if(ty1 == ty2)
+		return std::make_tuple(false, true);
+
+	if(ty1 == SymbolType::INT && ty2 == SymbolType::SCALAR)
+		return std::make_tuple(true, false);
+	if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::INT)
+		return std::make_tuple(true, true);
+
+	if(ty1 == SymbolType::STRING && ty2 == SymbolType::SCALAR)
+		return std::make_tuple(true, true);
+	if(ty1 == SymbolType::STRING && ty2 == SymbolType::INT)
+		return std::make_tuple(true, true);
+	if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::STRING)
+		return std::make_tuple(true, false);
+	if(ty1 == SymbolType::INT && ty2 == SymbolType::STRING)
+		return std::make_tuple(true, false);
+
+	return std::make_tuple(true, true);
+}
+
+
+/**
+ * emit code to cast to given type
+ */
+void ZeroACAsm::cast_to(t_astret ty_to, std::streampos pos)
+{
+	if(!ty_to)
+		return;
+
+	t_vm_byte op = static_cast<t_vm_byte>(OpCode::NOP);
+
+	if(ty_to->ty == SymbolType::STRING)
+		op = static_cast<t_vm_byte>(OpCode::TOS);
+	else if(ty_to->ty == SymbolType::INT)
+		op = static_cast<t_vm_byte>(OpCode::TOI);
+	else if(ty_to->ty == SymbolType::SCALAR)
+		op = static_cast<t_vm_byte>(OpCode::TOF);
+
+	m_ostr->seekp(pos);
+	m_ostr->write(reinterpret_cast<const char*>(&op), sizeof(t_vm_byte));
+	m_ostr->seekp(0, std::ios_base::end);
+}
+
+
 t_astret ZeroACAsm::visit(const ASTUMinus* ast)
 {
-	ast->GetTerm()->accept(this);
+	t_astret term = ast->GetTerm()->accept(this);
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::USUB));
-	return nullptr;
+
+	return term;
 }
 
 
 t_astret ZeroACAsm::visit(const ASTPlus* ast)
 {
-	ast->GetTerm1()->accept(this);
-	ast->GetTerm2()->accept(this);
+	t_astret term1 = ast->GetTerm1()->accept(this);
+	std::streampos term1_pos = m_ostr->tellp();
+	// placeholder for potential cast
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::NOP));
 
-	// TODO: cast if needed
+	t_astret term2 = ast->GetTerm2()->accept(this);
+	std::streampos term2_pos = m_ostr->tellp();
+
+	t_astret common_type = term1;
+
+	// cast if needed
+	if(auto [needs_cast, cast_to_first] = get_cast_symtype(term1, term2); needs_cast)
+	{
+		if(cast_to_first)
+		{
+			cast_to(term1, term2_pos);  // cast second term to first term type
+			common_type = term1;
+		}
+		else
+		{
+			cast_to(term2, term1_pos);  // cast fist term to second term type
+			common_type = term2;
+		}
+	}
 
 	if(ast->IsInverted())
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::SUB));
 	else
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::ADD));
 
-	return nullptr;
+	return common_type;
 }
 
 
 t_astret ZeroACAsm::visit(const ASTMult* ast)
 {
-	ast->GetTerm1()->accept(this);
-	ast->GetTerm2()->accept(this);
+	t_astret term1 = ast->GetTerm1()->accept(this);
+	std::streampos term1_pos = m_ostr->tellp();
+	// placeholder for potential cast
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::NOP));
 
-	// TODO: cast if needed
+	t_astret term2 = ast->GetTerm2()->accept(this);
+	std::streampos term2_pos = m_ostr->tellp();
+
+	t_astret common_type = term1;
+
+	// cast if needed
+	if(auto [needs_cast, cast_to_first] = get_cast_symtype(term1, term2); needs_cast)
+	{
+		if(cast_to_first)
+		{
+			cast_to(term1, term2_pos);  // cast second term to first term type
+			common_type = term1;
+		}
+		else
+		{
+			cast_to(term2, term1_pos);  // cast fist term to second term type
+			common_type = term2;
+		}
+	}
 
 	if(ast->IsInverted())
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::DIV));
 	else
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::MUL));
 
-	return nullptr;
+	return common_type;
 }
 
 
 t_astret ZeroACAsm::visit(const ASTMod* ast)
 {
-	ast->GetTerm1()->accept(this);
-	ast->GetTerm2()->accept(this);
+	t_astret term1 = ast->GetTerm1()->accept(this);
+	std::streampos term1_pos = m_ostr->tellp();
+	// placeholder for potential cast
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::NOP));
 
-	// TODO: cast if needed
+	t_astret term2 = ast->GetTerm2()->accept(this);
+	std::streampos term2_pos = m_ostr->tellp();
+
+	t_astret common_type = term1;
+
+	// cast if needed
+	if(auto [needs_cast, cast_to_first] = get_cast_symtype(term1, term2); needs_cast)
+	{
+		if(cast_to_first)
+		{
+			cast_to(term1, term2_pos);  // cast second term to first term type
+			common_type = term1;
+		}
+		else
+		{
+			cast_to(term2, term1_pos);  // cast fist term to second term type
+			common_type = term2;
+		}
+	}
 
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::MOD));
 
-	return nullptr;
+	return common_type;
 }
 
 
 t_astret ZeroACAsm::visit(const ASTPow* ast)
 {
-	ast->GetTerm1()->accept(this);
-	ast->GetTerm2()->accept(this);
+	t_astret term1 = ast->GetTerm1()->accept(this);
+	std::streampos term1_pos = m_ostr->tellp();
+	// placeholder for potential cast
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::NOP));
 
-	// TODO: cast if needed
+	t_astret term2 = ast->GetTerm2()->accept(this);
+	std::streampos term2_pos = m_ostr->tellp();
+
+	t_astret common_type = term1;
+
+	// cast if needed
+	if(auto [needs_cast, cast_to_first] = get_cast_symtype(term1, term2); needs_cast)
+	{
+		if(cast_to_first)
+		{
+			cast_to(term1, term2_pos);  // cast second term to first term type
+			common_type = term1;
+		}
+		else
+		{
+			cast_to(term2, term1_pos);  // cast fist term to second term type
+			common_type = term2;
+		}
+	}
 
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::POW));
 
-	return nullptr;
+	return common_type;
 }
 
 
@@ -417,8 +602,8 @@ t_astret ZeroACAsm::visit(const ASTNorm* ast)
 
 t_astret ZeroACAsm::visit(const ASTComp* ast)
 {
-	t_astret term1 = ast->GetTerm1()->accept(this);
-	t_astret term2 = ast->GetTerm2()->accept(this);
+	ast->GetTerm1()->accept(this);
+	ast->GetTerm2()->accept(this);
 
 	switch(ast->GetOp())
 	{
@@ -465,10 +650,9 @@ t_astret ZeroACAsm::visit(const ASTComp* ast)
 
 t_astret ZeroACAsm::visit(const ASTBool* ast)
 {
-	t_astret term1 = ast->GetTerm1()->accept(this);
-	t_astret term2 = nullptr;
+	ast->GetTerm1()->accept(this);
 	if(ast->GetTerm2())
-		term2 = ast->GetTerm2()->accept(this);
+		ast->GetTerm2()->accept(this);
 
 	switch(ast->GetOp())
 	{
@@ -514,6 +698,8 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 		throw std::runtime_error("ASTVarDecl: Global variables are not supported.");
 	const t_str& cur_func = *m_curscope.rbegin();
 
+	t_astret sym_ret = nullptr;
+
 	for(const auto& varname : ast->GetVariables())
 	{
 		// get variable from symbol table and assign an address
@@ -525,22 +711,22 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 
 		// start of local stack frame?
 		if(m_local_stack.find(cur_func) == m_local_stack.end())
-		{
-			// padding of maximum data type size, to avoid overwriting top stack value
-			m_local_stack[cur_func] = g_vm_longest_size + 1;  // TODO: remove padding
-		}
+			m_local_stack[cur_func] = 0;
 
-		sym->addr = -m_local_stack[cur_func];
 		m_local_stack[cur_func] += get_sym_size(sym);
+		sym->addr = -m_local_stack[cur_func];
 
 		// optional assignment
 		if(ast->GetAssignment())
 		{
 			ast->GetAssignment()->accept(this);
 		}
+
+		if(!sym_ret)
+			sym_ret = sym;
 	}
 
-	return nullptr;
+	return sym_ret;
 }
 
 
@@ -565,30 +751,37 @@ t_astret ZeroACAsm::visit(const ASTVar* ast)
 	if(sym->ty != SymbolType::FUNC)
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::DEREF));
 
-	return nullptr;
+	return sym;
 }
 
 
 t_astret ZeroACAsm::visit(const ASTAssign* ast)
 {
-	t_str varname = ast->GetIdent();
-	t_astret sym = get_sym(varname);
-	if(!sym)
-		throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" is not in symbol table.");
-	if(!sym->addr)
-		throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" has not been declared.");
-
 	ast->GetExpr()->accept(this);
+	t_astret sym_ret = nullptr;
 
-	// push variable address
-	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
-	t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
-	m_ostr->write(reinterpret_cast<const char*>(&addr), vm_type_size<VMType::ADDR_BP, false>);
+	for(const t_str& varname : ast->GetIdents())
+	{
+		t_astret sym = get_sym(varname);
+		if(!sym)
+			throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" is not in symbol table.");
+		if(!sym->addr)
+			throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" has not been declared.");
 
-	// assign variable
-	m_ostr->put(static_cast<t_vm_byte>(OpCode::WRMEM));
-	return nullptr;
+		// push variable address
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
+		t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
+		m_ostr->write(reinterpret_cast<const char*>(&addr), vm_type_size<VMType::ADDR_BP, false>);
+
+		// assign variable
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRMEM));
+
+		if(!sym_ret)
+			sym_ret = sym;
+	}
+
+	return sym_ret;
 }
 // ----------------------------------------------------------------------------
 
@@ -608,7 +801,7 @@ t_astret ZeroACAsm::visit(const ASTNumConst<t_real>* ast)
 	m_ostr->write(reinterpret_cast<const char*>(&val),
 		vm_type_size<VMType::REAL, false>);
 
-	return nullptr;
+	return m_scalar_const;
 }
 
 
@@ -622,7 +815,7 @@ t_astret ZeroACAsm::visit(const ASTNumConst<t_int>* ast)
 	// write data
 	m_ostr->write(reinterpret_cast<const char*>(&val), vm_type_size<VMType::INT, false>);
 
-	return nullptr;
+	return m_int_const;
 }
 
 
@@ -639,7 +832,7 @@ t_astret ZeroACAsm::visit(const ASTStrConst* ast)
 	// write string data
 	m_ostr->write(val.data(), len);
 
-	return nullptr;
+	return m_str_const;
 }
 // ----------------------------------------------------------------------------
 
@@ -722,6 +915,7 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 
 	m_cur_loop.clear();
 	m_curscope.pop_back();
+
 	return nullptr;
 }
 
@@ -787,7 +981,7 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 			std::make_tuple(*funcname, addr_pos, num_args, ast));
 	}
 
-	return nullptr;
+	return func;
 }
 
 
@@ -801,13 +995,15 @@ t_astret ZeroACAsm::visit(const ASTReturn* ast)
 	if(!func)
 		throw std::runtime_error("ASTReturn: Function \"" + cur_func + "\" is not in symbol table.");*/
 
+	t_astret sym_ret = nullptr;
 
 	// return value(s)
-	const auto& retvals = ast->GetRets()->GetList();
-	std::size_t numRets = retvals.size();
-
-	for(const auto& retast : retvals)
-		retast->accept(this);
+	for(const auto& retast : ast->GetRets()->GetList())
+	{
+		t_astret sym = retast->accept(this);
+		if(!sym_ret)
+			sym_ret = sym;
+	}
 
 	// write jump address to the end of the function
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH)); // push jump address
@@ -819,7 +1015,7 @@ t_astret ZeroACAsm::visit(const ASTReturn* ast)
 	// jump to end of function
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::JMP));
 
-	return nullptr;
+	return sym_ret;
 }
 
 
@@ -855,8 +1051,16 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 
 t_astret ZeroACAsm::visit(const ASTExprList* ast)
 {
-	// TODO
+	t_astret sym_ret = nullptr;
 
-	return nullptr;
+	for(const auto& elem : ast->GetList())
+	{
+		t_astret sym = elem->accept(this);
+
+		if(!sym_ret)
+			sym_ret = sym;
+	}
+
+	return sym_ret;
 }
 // ----------------------------------------------------------------------------

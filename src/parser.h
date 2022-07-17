@@ -44,6 +44,9 @@ namespace yy
 			: yyFlexLexer{istr, std::cerr}, m_context(context) {}
 		virtual ~Lexer() = default;
 
+		Lexer(const Lexer&) = delete;
+		const Lexer& operator=(const Lexer&) = delete;
+
 		virtual yy::Parser::symbol_type lex();
 
 		virtual void LexerOutput(const char* str, int len) override;
@@ -63,17 +66,17 @@ namespace yy
 	class ParserContext
 	{
 	private:
-		yy::Lexer m_lex;
-		std::shared_ptr<ASTStmts> m_statements;
+		yy::Lexer m_lex{};
+		std::shared_ptr<ASTStmts> m_statements{};
 
-		SymTab m_symbols;
+		SymTab m_symbols{};
 		std::unordered_map<t_str, std::variant<t_real, t_int, t_str>> m_consts
 		{{
 			{"pi", t_real(M_PI)},
 		}};
 
 		// information about currently parsed symbol
-		std::vector<t_str> m_curscope;
+		std::vector<t_str> m_curscope{};
 		SymbolType m_symtype = SymbolType::SCALAR;
 		std::array<std::size_t, 2> m_symdims = {1, 1};
 

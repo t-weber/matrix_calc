@@ -124,10 +124,10 @@ public:
 class AST
 {
 public:
+	virtual ~AST() = default;
+
 	virtual t_astret accept(ASTVisitor* visitor) const = 0;
 	virtual ASTType type() = 0;
-
-	virtual ~AST() {}
 };
 
 
@@ -149,8 +149,7 @@ public:
 class ASTUMinus : public ASTAcceptor<ASTUMinus>
 {
 public:
-	ASTUMinus(ASTPtr term)
-	: term{term}
+	ASTUMinus(ASTPtr term) : term{term}
 	{}
 
 	const ASTPtr GetTerm() const { return term; }
@@ -158,15 +157,14 @@ public:
 	virtual ASTType type() override { return ASTType::UMinus; }
 
 private:
-	ASTPtr term;
+	ASTPtr term{};
 };
 
 
 class ASTPlus : public ASTAcceptor<ASTPlus>
 {
 public:
-	ASTPlus(ASTPtr term1, ASTPtr term2,
-		bool invert = 0)
+	ASTPlus(ASTPtr term1, ASTPtr term2, bool invert = false)
 		: term1{term1}, term2{term2}, inverted{invert}
 	{}
 
@@ -177,16 +175,15 @@ public:
 	virtual ASTType type() override { return ASTType::Plus; }
 
 private:
-	ASTPtr term1, term2;
-	bool inverted = 0;
+	ASTPtr term1{}, term2{};
+	bool inverted = false;
 };
 
 
 class ASTMult : public ASTAcceptor<ASTMult>
 {
 public:
-	ASTMult(ASTPtr term1, ASTPtr term2,
-		bool invert = 0)
+	ASTMult(ASTPtr term1, ASTPtr term2, bool invert = false)
 		: term1{term1}, term2{term2}, inverted{invert}
 	{}
 
@@ -197,8 +194,8 @@ public:
 	virtual ASTType type() override { return ASTType::Mult; }
 
 private:
-	ASTPtr term1, term2;
-	bool inverted = 0;
+	ASTPtr term1{}, term2{};
+	bool inverted = false;
 };
 
 
@@ -215,7 +212,7 @@ public:
 	virtual ASTType type() override { return ASTType::Mod; }
 
 private:
-	ASTPtr term1, term2;
+	ASTPtr term1{}, term2{};
 };
 
 
@@ -232,7 +229,7 @@ public:
 	virtual ASTType type() override { return ASTType::Pow; }
 
 private:
-	ASTPtr term1, term2;
+	ASTPtr term1{}, term2{};
 };
 
 
@@ -247,7 +244,7 @@ public:
 	virtual ASTType type() override { return ASTType::Transp; }
 
 private:
-	ASTPtr term;
+	ASTPtr term{};
 };
 
 
@@ -262,7 +259,7 @@ public:
 	virtual ASTType type() override { return ASTType::Norm; }
 
 private:
-	ASTPtr term;
+	ASTPtr term{};
 };
 
 
@@ -278,7 +275,7 @@ public:
 	virtual ASTType type() override { return ASTType::Var; }
 
 private:
-	t_str ident;
+	t_str ident{};
 };
 
 
@@ -301,7 +298,7 @@ public:
 	virtual ASTType type() override { return ASTType::Stmts; }
 
 private:
-	std::list<ASTPtr> stmts;
+	std::list<ASTPtr> stmts{};
 };
 
 
@@ -324,10 +321,10 @@ public:
 	virtual ASTType type() override { return ASTType::VarDecl; }
 
 private:
-	std::list<t_str> vars;
+	std::list<t_str> vars{};
 
 	// optional assignment
-	std::shared_ptr<ASTAssign> optAssign;
+	std::shared_ptr<ASTAssign> optAssign{};
 };
 
 
@@ -368,7 +365,7 @@ public:
 	virtual ASTType type() override { return ASTType::ArgNames; }
 
 private:
-	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> argnames;
+	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> argnames{};
 };
 
 
@@ -396,7 +393,7 @@ public:
 	virtual ASTType type() override { return ASTType::TypeDecl; }
 
 private:
-	SymbolType ty;
+	SymbolType ty{SymbolType::UNKNOWN};
 	std::size_t dim1=1, dim2=1;
 };
 
@@ -428,11 +425,11 @@ public:
 	virtual ASTType type() override { return ASTType::Func; }
 
 private:
-	t_str ident;
-	std::tuple<SymbolType, std::size_t, std::size_t> rettype;
-	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> args;
-	std::shared_ptr<ASTStmts> stmts;
-	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> rets;
+	t_str ident{};
+	std::tuple<SymbolType, std::size_t, std::size_t> rettype{};
+	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> args{};
+	std::shared_ptr<ASTStmts> stmts{};
+	std::list<std::tuple<t_str, SymbolType, std::size_t, std::size_t>> rets{};
 };
 
 
@@ -440,7 +437,7 @@ class ASTReturn : public ASTAcceptor<ASTReturn>
 {
 public:
 	ASTReturn(const std::shared_ptr<ASTExprList>& rets = nullptr,
-		bool multi_return=false)
+		bool multi_return = false)
 		: rets{rets}, multi_return{multi_return}
 	{}
 
@@ -451,7 +448,7 @@ public:
 	virtual ASTType type() override { return ASTType::Return; }
 
 private:
-	std::shared_ptr<ASTExprList> rets;
+	std::shared_ptr<ASTExprList> rets{};
 	bool multi_return = false;
 };
 
@@ -488,7 +485,7 @@ public:
 	virtual ASTType type() override { return ASTType::ExprList; }
 
 private:
-	std::list<ASTPtr> exprs;
+	std::list<ASTPtr> exprs{};
 	bool m_scalararray = false;
 };
 
@@ -510,8 +507,8 @@ public:
 	virtual ASTType type() override { return ASTType::Call; }
 
 private:
-	t_str ident;
-	std::shared_ptr<ASTExprList> args;
+	t_str ident{};
+	std::shared_ptr<ASTExprList> args{};
 };
 
 
@@ -535,8 +532,8 @@ public:
 	virtual ASTType type() override { return ASTType::Assign; }
 
 private:
-	std::vector<t_str> idents;
-	ASTPtr expr;
+	std::vector<t_str> idents{};
+	ASTPtr expr{};
 };
 
 
@@ -565,8 +562,8 @@ public:
 	virtual ASTType type() override { return ASTType::Comp; }
 
 private:
-	ASTPtr term1, term2;
-	CompOp op;
+	ASTPtr term1{}, term2{};
+	CompOp op{};
 };
 
 
@@ -595,8 +592,8 @@ public:
 	virtual ASTType type() override { return ASTType::Bool; }
 
 private:
-	ASTPtr term1, term2;
-	BoolOp op;
+	ASTPtr term1{}, term2{};
+	BoolOp op{};
 };
 
 
@@ -618,8 +615,8 @@ public:
 	virtual ASTType type() override { return ASTType::Cond; }
 
 private:
-	ASTPtr cond;
-	ASTPtr if_stmt, else_stmt;
+	ASTPtr cond{};
+	ASTPtr if_stmt{}, else_stmt{};
 };
 
 
@@ -636,7 +633,7 @@ public:
 	virtual ASTType type() override { return ASTType::Loop; }
 
 private:
-	ASTPtr cond, stmt;
+	ASTPtr cond{}, stmt{};
 };
 
 
@@ -666,8 +663,8 @@ public:
 private:
 	ASTPtr term;
 
-	ASTPtr num1, num2;
-	ASTPtr num3, num4;
+	ASTPtr num1{}, num2{};
+	ASTPtr num3{}, num4{};
 	bool ranged12 = false;
 	bool ranged34 = false;
 };
@@ -698,11 +695,11 @@ public:
 	virtual ASTType type() override { return ASTType::ArrayAssign; }
 
 private:
-	t_str ident;
-	ASTPtr expr;
+	t_str ident{};
+	ASTPtr expr{};
 
-	ASTPtr num1, num2;
-	ASTPtr num3, num4;
+	ASTPtr num1{}, num2{};
+	ASTPtr num3{}, num4{};
 	bool ranged12 = false;
 	bool ranged34 = false;
 };
@@ -735,7 +732,7 @@ public:
 	virtual ASTType type() override { return ASTType::StrConst; }
 
 private:
-	t_str val;
+	t_str val{};
 };
 
 

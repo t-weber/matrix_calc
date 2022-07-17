@@ -17,6 +17,9 @@ public:
 	ASTPrinter(std::ostream* ostr=&std::cout);
 	virtual ~ASTPrinter() = default;
 
+	ASTPrinter(const ASTPrinter&) = delete;
+	const ASTPrinter& operator=(const ASTPrinter&) = delete;
+
 	virtual t_astret visit(const ASTUMinus* ast) override;
 	virtual t_astret visit(const ASTPlus* ast) override;
 	virtual t_astret visit(const ASTMult* ast) override;

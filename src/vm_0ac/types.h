@@ -18,9 +18,6 @@ using t_vm_byte = std::uint8_t;
 using t_vm_bool = t_vm_byte;
 using t_vm_str = std::string;
 
-// maximum size to reserve for static variables
-constexpr const t_vm_addr g_vm_longest_size = 64;
-
 
 
 enum class VMType : t_vm_byte
@@ -82,6 +79,10 @@ constexpr t_str get_vm_type_name(VMType ty)
 
 
 
+// maximum size to reserve for static variables
+constexpr const t_vm_addr g_vm_longest_size = 64;
+
+
 /**
  * get (static) type sizes (including data type and, optionally, descriptor byte)
  */
@@ -111,25 +112,5 @@ static inline t_vm_addr get_vm_str_size(t_vm_addr raw_len, bool with_descr = fal
 {
 	return raw_len*sizeof(t_vm_byte) + (with_descr ? sizeof(t_vm_byte) : 0);
 }
-
-
-
-/**
- * get derived data type for casting
- */
-static inline VMType derive_data_type(VMType ty1, VMType ty2)
-{
-	if(ty1 == ty2)
-		return ty1;
-	else if(ty1 == VMType::STR || ty2 == VMType::STR)
-		return VMType::STR;
-	else if(ty1 == VMType::INT && ty2 == VMType::REAL)
-		return VMType::REAL;
-	else if(ty1 == VMType::REAL && ty2 == VMType::INT)
-		return VMType::REAL;
-
-	return VMType::UNKNOWN;
-}
-
 
 #endif

@@ -7,6 +7,7 @@
 
 #include "vm.h"
 
+#include <vector>
 #include <iostream>
 #include <sstream>
 #include <cstring>
@@ -471,10 +472,10 @@ bool VM::Run()
 				t_int num_args = std::get<m_intidx>(PopData());
 				t_int framesize = std::get<m_intidx>(PopData());
 
-				// if there's still a value on the stack, use it as return value
-				t_data retval;
-				if(m_sp + framesize < m_bp)
-					retval = PopData();
+				// if there are still values on the stack, use then as return values
+				std::vector<t_data> retvals;
+				while(m_sp + framesize < m_bp)
+					retvals.push_back(PopData());
 
 				// zero the stack frame
 				if(m_zeropoppedvals)
@@ -497,7 +498,8 @@ bool VM::Run()
 				for(t_int arg=0; arg<num_args; ++arg)
 					PopData();
 
-				PushData(retval, VMType::UNKNOWN, false);
+				for(const t_data& retval : retvals)
+					PushData(retval, VMType::UNKNOWN, false);
 				break;
 			}
 
@@ -1031,9 +1033,10 @@ VM::t_addr VM::GetDataSize(const t_data& data) const
 void VM::Reset()
 {
 	m_ip = 0;
-	m_sp = m_memsize - 0x100;   // TODO
+	m_sp = m_memsize;
 	m_bp = m_memsize;
-	m_bp -= sizeof(t_data) + 1; // padding of max. data type size to avoid writing beyond memory size
+	// padding of max. data type size to avoid writing beyond memory size
+	m_sp -= sizeof(t_data) + 1;
 
 	std::memset(m_mem.get(), static_cast<t_byte>(OpCode::HALT), m_memsize*m_bytesize);
 	m_code_range[0] = m_code_range[1] = -1;

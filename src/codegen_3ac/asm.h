@@ -75,6 +75,9 @@ public:
 	LLAsm(SymTab* syms, std::ostream* ostr=&std::cout);
 	virtual ~LLAsm() = default;
 
+	LLAsm(const LLAsm&) = delete;
+	const LLAsm& operator=(const LLAsm&) = delete;
+
 	virtual t_astret visit(const ASTUMinus* ast) override;
 	virtual t_astret visit(const ASTPlus* ast) override;
 	virtual t_astret visit(const ASTMult* ast) override;
