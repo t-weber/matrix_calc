@@ -43,6 +43,8 @@ class ASTComp;
 class ASTBool;
 class ASTCond;
 class ASTLoop;
+class ASTLoopBreak;
+class ASTLoopNext;
 class ASTExprList;
 template<class> class ASTNumConst;
 
@@ -72,6 +74,8 @@ enum class ASTType
 	Bool,
 	Cond,
 	Loop,
+	LoopBreak,
+	LoopNext,
 	ExprList,
 	NumConst,
 };
@@ -96,25 +100,34 @@ public:
 	virtual t_astret visit(const ASTPow* ast) = 0;
 	virtual t_astret visit(const ASTTransp* ast) = 0;
 	virtual t_astret visit(const ASTNorm* ast) = 0;
-	virtual t_astret visit(const ASTVar* ast) = 0;
-	virtual t_astret visit(const ASTStmts* ast) = 0;
+
 	virtual t_astret visit(const ASTVarDecl* ast) = 0;
-	virtual t_astret visit(const ASTArgNames* ast) = 0;
-	virtual t_astret visit(const ASTTypeDecl* ast) = 0;
-	virtual t_astret visit(const ASTFunc* ast) = 0;
-	virtual t_astret visit(const ASTReturn* ast) = 0;
-	virtual t_astret visit(const ASTCall* ast) = 0;
+	virtual t_astret visit(const ASTVar* ast) = 0;
 	virtual t_astret visit(const ASTAssign* ast) = 0;
+
 	virtual t_astret visit(const ASTArrayAssign* ast) = 0;
 	virtual t_astret visit(const ASTArrayAccess* ast) = 0;
-	virtual t_astret visit(const ASTComp* ast) = 0;
-	virtual t_astret visit(const ASTBool* ast) = 0;
-	virtual t_astret visit(const ASTCond* ast) = 0;
-	virtual t_astret visit(const ASTLoop* ast) = 0;
-	virtual t_astret visit(const ASTStrConst* ast) = 0;
-	virtual t_astret visit(const ASTExprList* ast) = 0;
+
 	virtual t_astret visit(const ASTNumConst<t_real>* ast) = 0;
 	virtual t_astret visit(const ASTNumConst<t_int>* ast) = 0;
+	virtual t_astret visit(const ASTStrConst* ast) = 0;
+
+	virtual t_astret visit(const ASTFunc* ast) = 0;
+	virtual t_astret visit(const ASTCall* ast) = 0;
+	virtual t_astret visit(const ASTReturn* ast) = 0;
+	virtual t_astret visit(const ASTStmts* ast) = 0;
+
+	virtual t_astret visit(const ASTCond* ast) = 0;
+	virtual t_astret visit(const ASTLoop* ast) = 0;
+	virtual t_astret visit(const ASTLoopBreak* ast) = 0;
+	virtual t_astret visit(const ASTLoopNext* ast) = 0;
+
+	virtual t_astret visit(const ASTComp* ast) = 0;
+	virtual t_astret visit(const ASTBool* ast) = 0;
+	virtual t_astret visit(const ASTExprList* ast) = 0;
+
+	virtual t_astret visit(const ASTArgNames* ast) = 0;
+	virtual t_astret visit(const ASTTypeDecl* ast) = 0;
 };
 
 
@@ -634,6 +647,36 @@ public:
 
 private:
 	ASTPtr cond{}, stmt{};
+};
+
+
+class ASTLoopBreak : public ASTAcceptor<ASTLoopBreak>
+{
+public:
+	ASTLoopBreak(t_int num_loops = 0) : num_loops{num_loops}
+	{}
+
+	virtual ASTType type() override { return ASTType::LoopBreak; }
+
+	t_int GetNumLoops() const { return num_loops; }
+
+private:
+	t_int num_loops{0};
+};
+
+
+class ASTLoopNext : public ASTAcceptor<ASTLoopNext>
+{
+public:
+	ASTLoopNext(t_int num_loops = 0) : num_loops{num_loops}
+	{}
+
+	virtual ASTType type() override { return ASTType::LoopNext; }
+
+	t_int GetNumLoops() const { return num_loops; }
+
+private:
+	t_int num_loops{0};
 };
 
 

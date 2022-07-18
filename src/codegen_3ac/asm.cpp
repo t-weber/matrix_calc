@@ -73,6 +73,42 @@ t_astret LLAsm::visit(const ASTLoop* ast)
 }
 
 
+t_astret LLAsm::visit(const ASTLoopBreak* ast)
+{
+	if(!m_loopEndStack.size())
+		throw std::runtime_error("ASTLoopBreak: Not in a loop.");
+
+	t_int loop_depth = ast->GetNumLoops();
+
+	// reduce to maximum loop depth
+	if(static_cast<std::size_t>(loop_depth) >= m_loopEndStack.size() || loop_depth < 0)
+		loop_depth = static_cast<t_int>(m_loopEndStack.size()-1);
+
+	const t_str& labelEnd = *(m_loopEndStack.rbegin() + loop_depth);
+	(*m_ostr) << "br label %" << labelEnd << "\n";
+
+	return nullptr;
+}
+
+
+t_astret LLAsm::visit(const ASTLoopNext* ast)
+{
+	if(!m_loopStartStack.size())
+		throw std::runtime_error("ASTLoopNext: Not in a loop.");
+
+	t_int loop_depth = ast->GetNumLoops();
+
+	// reduce to maximum loop depth
+	if(static_cast<std::size_t>(loop_depth) >= m_loopStartStack.size() || loop_depth < 0)
+		loop_depth = static_cast<t_int>(m_loopStartStack.size()-1);
+
+	const t_str& labelStart = *(m_loopStartStack.rbegin() + loop_depth);
+	(*m_ostr) << "br label %" << labelStart << "\n";
+
+	return nullptr;
+}
+
+
 // ----------------------------------------------------------------------------
 
 

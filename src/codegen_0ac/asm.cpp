@@ -366,6 +366,60 @@ t_astret ZeroACAsm::visit(const ASTLoop* ast)
 
 	return nullptr;
 }
+
+
+t_astret ZeroACAsm::visit(const ASTLoopBreak* ast)
+{
+	//if(!m_curscope.size())
+	//	throw std::runtime_error("ASTLoopBreak: Not in a function.");
+	if(!m_cur_loop.size())
+		throw std::runtime_error("ASTLoopBreak: Not in a loop.");
+
+	t_int loop_depth = ast->GetNumLoops();
+
+	// reduce to maximum loop depth
+	if(static_cast<std::size_t>(loop_depth) >= m_cur_loop.size() || loop_depth < 0)
+		loop_depth = static_cast<t_int>(m_cur_loop.size()-1);
+
+	// jump to the end of the loop
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));  // push jump address
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+	m_loop_end_comefroms.insert(std::make_pair(
+		m_cur_loop[m_cur_loop.size()-loop_depth-1], m_ostr->tellp()));
+	t_vm_addr dummy_addr = 0;
+	m_ostr->write(reinterpret_cast<const char*>(&dummy_addr),
+		vm_type_size<VMType::ADDR_IP, false>);
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::JMP));
+
+	return nullptr;
+}
+
+
+t_astret ZeroACAsm::visit(const ASTLoopNext* ast)
+{
+	//if(!m_curscope.size())
+	//	throw std::runtime_error("ASTLoopNext: Not in a function.");
+	if(!m_cur_loop.size())
+		throw std::runtime_error("ASTLoopNext: Not in a loop.");
+
+	t_int loop_depth = ast->GetNumLoops();
+
+	// reduce to maximum loop depth
+	if(static_cast<std::size_t>(loop_depth) >= m_cur_loop.size() || loop_depth < 0)
+		loop_depth = static_cast<t_int>(m_cur_loop.size()-1);
+
+	// jump to the beginning of the loop
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));  // push jump address
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+	m_loop_begin_comefroms.insert(std::make_pair(
+		m_cur_loop[m_cur_loop.size()-loop_depth-1], m_ostr->tellp()));
+	t_vm_addr dummy_addr = 0;
+	m_ostr->write(reinterpret_cast<const char*>(&dummy_addr),
+		vm_type_size<VMType::ADDR_IP, false>);
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::JMP));
+
+	return nullptr;
+}
 // ----------------------------------------------------------------------------
 
 

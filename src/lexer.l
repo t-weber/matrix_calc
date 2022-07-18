@@ -85,7 +85,10 @@ ident	[A-Za-z_]+[A-Za-z0-9_]*
 "if"		{ return yy::Parser::make_IF(); }
 "then"		{ return yy::Parser::make_THEN(); }
 "else"		{ return yy::Parser::make_ELSE(); }
+
 "loop"		{ return yy::Parser::make_LOOP(); }
+"break"		{ return yy::Parser::make_BREAK(); }
+"next"		{ return yy::Parser::make_NEXT(); }
 "do"		{ return yy::Parser::make_DO(); }
 
 

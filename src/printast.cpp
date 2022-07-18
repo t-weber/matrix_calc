@@ -424,6 +424,22 @@ t_astret ASTPrinter::visit(const ASTLoop* ast)
 }
 
 
+t_astret ASTPrinter::visit(const ASTLoopBreak* ast)
+{
+	(*m_ostr) << "<Break num=\"" << ast->GetNumLoops() << "\" />\n";
+
+	return nullptr;
+}
+
+
+t_astret ASTPrinter::visit(const ASTLoopNext* ast)
+{
+	(*m_ostr) << "<Next num=\"" << ast->GetNumLoops() << "\" />\n";
+
+	return nullptr;
+}
+
+
 t_astret ASTPrinter::visit(const ASTStrConst* ast)
 {
 	(*m_ostr) << "<Const type=\"str\" val=\"" << ast->GetVal() << "\" />\n";

@@ -85,23 +85,31 @@ public:
 	virtual t_astret visit(const ASTPow* ast) override;
 	virtual t_astret visit(const ASTTransp* ast) override;
 	virtual t_astret visit(const ASTNorm* ast) override;
-	virtual t_astret visit(const ASTVar* ast) override;
-	virtual t_astret visit(const ASTCall* ast) override;
-	virtual t_astret visit(const ASTStmts* ast) override;
+
 	virtual t_astret visit(const ASTVarDecl* ast) override;
-	virtual t_astret visit(const ASTFunc* ast) override;
-	virtual t_astret visit(const ASTReturn* ast) override;
+	virtual t_astret visit(const ASTVar* ast) override;
 	virtual t_astret visit(const ASTAssign* ast) override;
+
 	virtual t_astret visit(const ASTArrayAccess* ast) override;
 	virtual t_astret visit(const ASTArrayAssign* ast) override;
-	virtual t_astret visit(const ASTComp* ast) override;
-	virtual t_astret visit(const ASTCond* ast) override;
-	virtual t_astret visit(const ASTBool* ast) override;
-	virtual t_astret visit(const ASTLoop* ast) override;
-	virtual t_astret visit(const ASTStrConst* ast) override;
-	virtual t_astret visit(const ASTExprList* ast) override;
+
 	virtual t_astret visit(const ASTNumConst<t_real>* ast) override;
 	virtual t_astret visit(const ASTNumConst<t_int>* ast) override;
+	virtual t_astret visit(const ASTStrConst* ast) override;
+
+	virtual t_astret visit(const ASTFunc* ast) override;
+	virtual t_astret visit(const ASTCall* ast) override;
+	virtual t_astret visit(const ASTReturn* ast) override;
+	virtual t_astret visit(const ASTStmts* ast) override;
+
+	virtual t_astret visit(const ASTCond* ast) override;
+	virtual t_astret visit(const ASTLoop* ast) override;
+	virtual t_astret visit(const ASTLoopBreak* ast) override;
+	virtual t_astret visit(const ASTLoopNext* ast) override;
+
+	virtual t_astret visit(const ASTComp* ast) override;
+	virtual t_astret visit(const ASTBool* ast) override;
+	virtual t_astret visit(const ASTExprList* ast) override;
 
 	// ------------------------------------------------------------------------
 	// internally handled dummy nodes
@@ -219,6 +227,9 @@ private:
 	// stack only needed for (future) nested functions
 	std::stack<const ASTFunc*> m_funcstack{};
 
+	// stack of nested loops in a function
+	std::vector<t_str> m_loopStartStack{}, m_loopEndStack{};
+
 	// type names
 	static const t_str m_real;
 	static const t_str m_int;
@@ -286,6 +297,9 @@ void LLAsm::generate_loop(t_funcCond funcCond, t_funcBody funcBody)
 	t_str labelEnd = get_label();
 	t_str block = get_block_label();
 
+	m_loopStartStack.push_back(labelStart);
+	m_loopEndStack.push_back(labelEnd);
+
 	(*m_ostr) << "\n;-------------------------------------------------------------\n";
 	(*m_ostr) << "; loop head\n";
 	(*m_ostr) << ";-------------------------------------------------------------\n";
@@ -308,6 +322,9 @@ void LLAsm::generate_loop(t_funcCond funcCond, t_funcBody funcBody)
 	(*m_ostr) << labelEnd << ":\n";
 	(*m_ostr) << "call void @llvm.stackrestore(i8* %" << block << ")\n";
 	(*m_ostr) << ";-------------------------------------------------------------\n\n";
+
+	m_loopEndStack.pop_back();
+	m_loopStartStack.pop_back();
 }
 
 

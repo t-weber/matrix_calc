@@ -66,7 +66,7 @@
 %token FUNC RET ASSIGN
 %token SCALARDECL VECTORDECL MATRIXDECL STRINGDECL INTDECL
 %token IF THEN ELSE
-%token LOOP DO
+%token LOOP DO BREAK NEXT
 %token EQU NEQ GT LT GEQ LEQ
 %token AND XOR OR NOT
 %token RANGE
@@ -229,6 +229,26 @@ statement[res]
 	// loop
 	| LOOP expr[cond] DO statement[stmt] {
 		$res = std::make_shared<ASTLoop>($cond, $stmt); }
+
+	// break multiple loops
+	| BREAK INT[num] ';' {
+			$res = std::make_shared<ASTLoopBreak>($num);
+		}
+
+	// break current loop
+	| BREAK ';' {
+			$res = std::make_shared<ASTLoopBreak>();
+		}
+
+	// continue multiple loops
+	| NEXT INT[num] ';' {
+			$res = std::make_shared<ASTLoopNext>($num);
+		}
+
+	// continue current loop
+	| NEXT ';' {
+			$res = std::make_shared<ASTLoopNext>();
+		}
 	;
 
 

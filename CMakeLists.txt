@@ -15,6 +15,7 @@ add_definitions(-Wall -Wextra)
 
 find_package(FLEX 2 REQUIRED)
 find_package(BISON 3 REQUIRED)
+find_package(Threads REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options)
 
 add_definitions(${Boost_CXX_FLAGS})
@@ -107,5 +108,7 @@ add_executable(vm_0ac
 	src/vm_0ac/vm_memdump.cpp
 )
 
-target_link_libraries(vm_0ac ${Boost_LIBRARIES})
+target_link_libraries(vm_0ac ${Boost_LIBRARIES}
+	$<$<TARGET_EXISTS:Threads::Threads>:Threads::Threads>
+)
 # -----------------------------------------------------------------------------
