@@ -106,9 +106,7 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 	if(ast->IsMultiAssign())
 	{
 		if(expr->ty != SymbolType::COMP)
-		{
 			throw std::runtime_error("ASTAssign: Need a compound symbol for multi-assignment.");
-		}
 
 		const auto& vars = ast->GetIdents();
 

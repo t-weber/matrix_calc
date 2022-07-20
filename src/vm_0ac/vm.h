@@ -38,14 +38,18 @@ public:
 	using t_real = ::t_vm_real;
 	using t_byte = ::t_vm_byte;
 	using t_bool = ::t_vm_byte;
+
 	using t_str = ::t_vm_str;
+	using t_vec = ::t_vm_vec;
+	using t_mat = ::t_vm_mat;
+
 	using t_uint = typename std::make_unsigned<t_int>::type;
 	using t_char = typename t_str::value_type;
 
 	// variant of all data types
 	using t_data = std::variant<
 		std::monostate /*prevents default-construction of first type (t_real)*/,
-		t_real, t_int, t_bool, t_addr, t_str>;
+		t_real, t_int, t_bool, t_addr, t_str, t_vec, t_mat>;
 
 	// use variant type indices and std::in_place_index instead of direct types
 	// because two types might be identical (e.g. t_int and t_addr)
@@ -54,6 +58,8 @@ public:
 	static constexpr const std::size_t m_boolidx = 3;
 	static constexpr const std::size_t m_addridx = 4;
 	static constexpr const std::size_t m_stridx  = 5;
+	static constexpr const std::size_t m_vecidx  = 6;
+	static constexpr const std::size_t m_matidx  = 7;
 
 	// data type sizes
 	static constexpr const t_addr m_bytesize = sizeof(t_byte);
@@ -91,80 +97,66 @@ public:
 	void SetBP(t_addr bp) { m_bp = bp; }
 	void SetIP(t_addr ip) { m_ip = ip; }
 
-	/**
-	 * get top data from the stack
-	 */
+	//get top data from the stack
 	t_data TopData() const;
 
-	/**
-	 * pop data from the stack
-	 */
+	//pop data from the stack
 	t_data PopData();
 
-	/**
-	 * signals an interrupt
-	 */
+	//signals an interrupt
 	void RequestInterrupt(t_addr num);
 
-	/**
-	 * visualises vm memory utilisation
-	 */
+	//visualises vm memory utilisation
 	void DrawMemoryImage();
 
 
 protected:
-	/**
-	 * return the size of the held data
-	 */
+	//return the size of the held data
 	t_addr GetDataSize(const t_data& data) const;
 
-
-	/**
-	 * call external function
-	 */
+	//call external function
 	t_data CallExternal(const t_str& func_name);
 
-
-	/**
-	 * pop an address from the stack
-	 */
+	//pop an address from the stack
 	t_addr PopAddress();
 
-
-	/**
-	 * push an address to stack
-	 */
+	// push an address to stack
 	void PushAddress(t_addr addr, VMType ty = VMType::ADDR_MEM);
 
-	/**
-	 * pop a string from the stack
-	 */
+	// pop a string from the stack
 	t_str PopString();
 
-	/**
-	 * get the string on top of the stack
-	 */
+	// get the string on top of the stack
 	t_str TopString(t_addr sp_offs = 0) const;
 
-	/**
-	 * push a string to the stack
-	 */
+	// push a string to the stack
 	void PushString(const t_str& str);
 
-	/**
-	 * push data onto the stack
-	 */
+	// pop a vector from the stack
+	t_vec PopVector();
+
+	// get the vector on top of the stack
+	t_vec TopVector(t_addr sp_offs = 0) const;
+
+	// push a vector to the stack
+	void PushVector(const t_vec& vec);
+
+	// pop a matrix from the stack
+	t_mat PopMatrix();
+
+	// get the matrix on top of the stack
+	t_mat TopMatrix(t_addr sp_offs = 0) const;
+
+	// push a matrix to the stack
+	void PushMatrix(const t_mat& vec);
+
+	// push data onto the stack
 	void PushData(const t_data& data, VMType ty = VMType::UNKNOWN, bool err_on_unknown = true);
 
-
-	/**
-	 * read data from memory
-	 */
+	// read data from memory
 	std::tuple<VMType, t_data> ReadMemData(t_addr addr);
 
-	/**
-	 * write data to memory
-	 */
+	// write data to memory
 	void WriteMemData(t_addr addr, const t_data& data);
 
 
@@ -181,10 +173,38 @@ protected:
 			addr += m_addrsize;
 
 			CheckMemoryBounds(addr, len);
-			t_char* begin = reinterpret_cast<t_char*>(&m_mem[addr]);
+			const t_char* begin = reinterpret_cast<t_char*>(&m_mem[addr]);
 
 			t_str str(begin, len);
 			return str;
+		}
+
+		// vector type
+		else if constexpr(std::is_same_v<std::decay_t<t_val>, t_vec>)
+		{
+			t_addr num_elems = ReadMemRaw<t_addr>(addr);
+			addr += m_addrsize;
+
+			CheckMemoryBounds(addr, num_elems*m_realsize);
+			const t_real* begin = reinterpret_cast<t_real*>(&m_mem[addr]);
+
+			t_vec vec(begin, num_elems);
+			return vec;
+		}
+
+		// matrix type
+		else if constexpr(std::is_same_v<std::decay_t<t_val>, t_mat>)
+		{
+			t_addr num_elems_1 = ReadMemRaw<t_addr>(addr);
+			addr += m_addrsize;
+			t_addr num_elems_2 = ReadMemRaw<t_addr>(addr);
+			addr += m_addrsize;
+
+			CheckMemoryBounds(addr, num_elems_1*num_elems_2*m_realsize);
+			const t_real* begin = reinterpret_cast<t_real*>(&m_mem[addr]);
+
+			t_mat mat(begin, num_elems_1, num_elems_2);
+			return mat;
 		}
 
 		// primitive types
@@ -217,6 +237,39 @@ protected:
 			// write string
 			t_char* begin = reinterpret_cast<t_char*>(&m_mem[addr]);
 			std::memcpy(begin, val.data(), len*sizeof(t_char));
+		}
+
+		// vector type
+		if constexpr(std::is_same_v<std::decay_t<t_val>, t_vec>)
+		{
+			t_addr num_elems = static_cast<t_addr>(val.size());
+			CheckMemoryBounds(addr, m_addrsize + num_elems*m_realsize);
+
+			// write vector length
+			WriteMemRaw<t_addr>(addr, num_elems);
+			addr += m_addrsize;
+
+			// write vector
+			t_real* begin = reinterpret_cast<t_real*>(&m_mem[addr]);
+			std::memcpy(begin, val.data(), num_elems*m_realsize);
+		}
+
+		// matrix type
+		if constexpr(std::is_same_v<std::decay_t<t_val>, t_mat>)
+		{
+			t_addr num_elems_1 = static_cast<t_addr>(val.size1());
+			t_addr num_elems_2 = static_cast<t_addr>(val.size2());
+			CheckMemoryBounds(addr, m_addrsize + num_elems_1*num_elems_2*m_realsize);
+
+			// write matrix lengths
+			WriteMemRaw<t_addr>(addr, num_elems_1);
+			addr += m_addrsize;
+			WriteMemRaw<t_addr>(addr, num_elems_2);
+			addr += m_addrsize;
+
+			// write matrix
+			t_real* begin = reinterpret_cast<t_real*>(&m_mem[addr]);
+			std::memcpy(begin, val.data(), num_elems_1*num_elems_2*m_realsize);
 		}
 
 		// primitive types
@@ -297,8 +350,7 @@ protected:
 				std::ostringstream ostr;
 				ostr << val;
 				PopData();
-				PushData(t_data{std::in_place_index<m_stridx>,
-					ostr.str()});
+				PushData(t_data{std::in_place_index<m_stridx>, ostr.str()});
 			}
 
 			// convert to primitive type
@@ -322,8 +374,7 @@ protected:
 				std::ostringstream ostr;
 				ostr << val;
 				PopData();
-				PushData(t_data{std::in_place_index<m_stridx>,
-					ostr.str()});
+				PushData(t_data{std::in_place_index<m_stridx>, ostr.str()});
 			}
 
 			// convert to primitive type
@@ -344,8 +395,7 @@ protected:
 			t_to conv_val{};
 			std::istringstream{val} >> conv_val;
 			PopData();
-			PushData(t_data{std::in_place_index<toidx>,
-				conv_val});
+			PushData(t_data{std::in_place_index<toidx>, conv_val});
 		}
 	}
 
@@ -365,8 +415,27 @@ protected:
 				result = val1 + val2;
 		}
 
+		// vector operators
+		else if constexpr(std::is_same_v<std::decay_t<t_val>, t_vec>)
+		{
+			if constexpr(op == '+')
+				result = val1 + val2;
+			else if constexpr(op == '-')
+				result = val1 - val2;
+		}
+
+		// matrix operators
+		else if constexpr(std::is_same_v<std::decay_t<t_val>, t_mat>)
+		{
+			if constexpr(op == '+')
+				result = val1 + val2;
+			else if constexpr(op == '-')
+				result = val1 - val2;
+		}
+
 		// int / real operators
-		else
+		else if constexpr(std::is_same_v<std::decay_t<t_val>, t_int> ||
+			std::is_same_v<std::decay_t<t_val>, t_real>)
 		{
 			if constexpr(op == '+')
 				result = val1 + val2;
@@ -420,6 +489,16 @@ protected:
 		{
 			result = t_data{std::in_place_index<m_stridx>, OpArithmetic<t_str, op>(
 				std::get<m_stridx>(val1), std::get<m_stridx>(val2))};
+		}
+		else if(val1.index() == m_vecidx)
+		{
+			result = t_data{std::in_place_index<m_vecidx>, OpArithmetic<t_vec, op>(
+				std::get<m_vecidx>(val1), std::get<m_vecidx>(val2))};
+		}
+		else if(val1.index() == m_matidx)
+		{
+			result = t_data{std::in_place_index<m_matidx>, OpArithmetic<t_mat, op>(
+				std::get<m_matidx>(val1), std::get<m_matidx>(val2))};
 		}
 		else
 		{
@@ -534,6 +613,16 @@ protected:
 				result = (val1 != val2);
 		}
 
+		// vector or matrix comparison
+		else if constexpr(std::is_same_v<std::decay_t<t_val>, t_vec> ||
+			std::is_same_v<std::decay_t<t_val>, t_mat>)
+		{
+			if constexpr(op == OpCode::EQU)
+				result = m::equals(val1, val2, m_eps);
+			else if constexpr(op == OpCode::NEQU)
+				result = !m::equals(val1, val2, m_eps);
+		}
+
 		// integer /  real comparison
 		else
 		{
@@ -598,6 +687,16 @@ protected:
 			result = OpComparison<t_str, op>(
 				std::get<m_stridx>(val1), std::get<m_stridx>(val2));
 		}
+		else if(val1.index() == m_vecidx)
+		{
+			result = OpComparison<t_vec, op>(
+				std::get<m_vecidx>(val1), std::get<m_vecidx>(val2));
+		}
+		else if(val1.index() == m_matidx)
+		{
+			result = OpComparison<t_mat, op>(
+				std::get<m_matidx>(val1), std::get<m_matidx>(val2));
+		}
 		else
 		{
 			throw std::runtime_error("Invalid type in comparison operation.");
@@ -607,9 +706,7 @@ protected:
 	}
 
 
-	/**
-	 * sets the address of an interrupt service routine
-	 */
+	// sets the address of an interrupt service routine
 	void SetISR(t_addr num, t_addr addr);
 
 	void StartTimer();

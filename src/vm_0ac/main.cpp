@@ -23,6 +23,8 @@
 
 static bool run_vm(const char* _prog = nullptr)
 {
+	using namespace m_ops;
+
 	fs::path prog = _prog;
 	std::size_t filesize = fs::file_size(prog);
 

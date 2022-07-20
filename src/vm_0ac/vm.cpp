@@ -173,23 +173,6 @@ bool VM::Run()
 				break;
 			}
 
-			// pop an address and push the value it points to
-			case OpCode::DEREF:
-			{
-				t_addr addr = PopAddress();
-				auto [ty, val] = ReadMemData(addr);
-				PushData(val, ty);
-
-				if(m_debug)
-				{
-					std::cout << "dereferenced address "
-						<< addr << ": "
-						//<< std::get<m_realidx>(val)
-						<< "." << std::endl;
-				}
-				break;
-			}
-
 			case OpCode::USUB:
 			{
 				t_data val = PopData();
@@ -204,6 +187,18 @@ bool VM::Run()
 				{
 					result = t_data{std::in_place_index<m_intidx>,
 						-std::get<m_intidx>(val)};
+				}
+				else if(val.index() == m_vecidx)
+				{
+					using namespace m_ops;
+					result = t_data{std::in_place_index<m_vecidx>,
+						-std::get<m_vecidx>(val)};
+				}
+				else if(val.index() == m_matidx)
+				{
+					using namespace m_ops;
+					result = t_data{std::in_place_index<m_matidx>,
+						-std::get<m_matidx>(val)};
 				}
 				else
 				{
@@ -631,6 +626,116 @@ void VM::PushString(const VM::t_str& str)
 
 
 /**
+ * pop a vector from the stack
+ * a vector consists of an t_addr giving the length
+ * following by the vector elements
+ */
+VM::t_vec VM::PopVector()
+{
+	t_addr num_elems = PopRaw<t_addr, m_addrsize>();
+	CheckMemoryBounds(m_sp, num_elems*m_realsize);
+
+	t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
+	t_vec vec(begin, num_elems);
+	m_sp += num_elems*m_realsize;
+
+	if(m_zeropoppedvals)
+		std::memset(begin, 0, num_elems*m_realsize);
+
+	return vec;
+}
+
+
+/**
+ * get a vector from the top of the stack
+ */
+VM::t_vec VM::TopVector(t_addr sp_offs) const
+{
+	t_addr num_elems = TopRaw<t_addr, m_addrsize>(sp_offs);
+	t_addr addr = m_sp + sp_offs + m_addrsize;
+
+	CheckMemoryBounds(addr, num_elems*m_realsize);
+	const t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + addr);
+	t_vec vec(begin, num_elems);
+
+	return vec;
+}
+
+
+/**
+ * push a vector to the stack
+ */
+void VM::PushVector(const VM::t_vec& vec)
+{
+	t_addr num_elems = static_cast<t_addr>(vec.size());
+	CheckMemoryBounds(m_sp, num_elems*m_realsize);
+
+	m_sp -= num_elems*m_realsize;
+	t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
+	std::memcpy(begin, vec.data(), num_elems*m_realsize);
+
+	PushRaw<t_addr, m_addrsize>(num_elems);
+}
+
+
+/**
+ * pop a matrix from the stack
+ * a matrix consists of two t_addr fields giving the lengths
+ * following by the matrix elements
+ */
+VM::t_mat VM::PopMatrix()
+{
+	t_addr num_elems_1 = PopRaw<t_addr, m_addrsize>();
+	t_addr num_elems_2 = PopRaw<t_addr, m_addrsize>();
+	CheckMemoryBounds(m_sp, num_elems_1*num_elems_2*m_realsize);
+
+	t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
+	t_mat mat(begin, num_elems_1, num_elems_2);
+	m_sp += num_elems_1*num_elems_2*m_realsize;
+
+	if(m_zeropoppedvals)
+		std::memset(begin, 0, num_elems_1*num_elems_2*m_realsize);
+
+	return mat;
+}
+
+
+/**
+ * get a matrix from the top of the stack
+ */
+VM::t_mat VM::TopMatrix(t_addr sp_offs) const
+{
+	t_addr num_elems_1 = TopRaw<t_addr, m_addrsize>(sp_offs);
+	t_addr num_elems_2 = TopRaw<t_addr, m_addrsize>(sp_offs + m_addridx);
+	t_addr addr = m_sp + sp_offs + 2*m_addrsize;
+
+	CheckMemoryBounds(addr, num_elems_1*num_elems_2*m_realsize);
+	const t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + addr);
+	t_mat mat(begin, num_elems_1, num_elems_2);
+
+	return mat;
+}
+
+
+/**
+ * push a matrix to the stack
+ */
+void VM::PushMatrix(const VM::t_mat& mat)
+{
+	t_addr num_elems_1 = static_cast<t_addr>(mat.size1());
+	t_addr num_elems_2 = static_cast<t_addr>(mat.size2());
+	CheckMemoryBounds(m_sp, num_elems_1*num_elems_2*m_realsize);
+
+	m_sp -= num_elems_1*num_elems_2*m_realsize;
+	t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
+	std::memcpy(begin, mat.data(), num_elems_1*num_elems_2*m_realsize);
+
+	PushRaw<t_addr, m_addrsize>(num_elems_2);
+	PushRaw<t_addr, m_addrsize>(num_elems_1);
+}
+
+
+/**
  * get top data from the stack, which is prefixed
  * with a type descriptor byte
  */
@@ -775,6 +880,7 @@ VM::t_data VM::PopData()
  */
 void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 {
+	// real data
 	if(data.index() == m_realidx)
 	{
 		if(m_debug)
@@ -790,6 +896,8 @@ void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 		// push descriptor
 		PushRaw<t_byte, m_bytesize>(static_cast<t_byte>(VMType::REAL));
 	}
+
+	// integer data
 	else if(data.index() == m_intidx)
 	{
 		if(m_debug)
@@ -805,6 +913,8 @@ void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 		// push descriptor
 		PushRaw<t_byte, m_bytesize>(static_cast<t_byte>(VMType::INT));
 	}
+
+	// address data
 	else if(data.index() == m_addridx)
 	{
 		if(m_debug)
@@ -820,6 +930,8 @@ void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 		// push descriptor
 		PushRaw<t_byte, m_bytesize>(static_cast<t_byte>(ty));
 	}
+
+	// string data
 	else if(data.index() == m_stridx)
 	{
 		if(m_debug)
@@ -835,6 +947,44 @@ void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 		// push descriptor
 		PushRaw<t_byte, m_bytesize>(static_cast<t_byte>(VMType::STR));
 	}
+
+	// vector data
+	else if(data.index() == m_vecidx)
+	{
+		if(m_debug)
+		{
+			using namespace m_ops;
+			std::cout << "pushing vector \""
+				<< std::get<m_vecidx>(data) << "\"."
+				<< std::endl;
+		}
+
+		// push the actual vector
+		PushVector(std::get<m_vecidx>(data));
+
+		// push descriptor
+		PushRaw<t_byte, m_bytesize>(static_cast<t_byte>(VMType::VEC));
+	}
+
+	// matrix data
+	else if(data.index() == m_matidx)
+	{
+		if(m_debug)
+		{
+			using namespace m_ops;
+			std::cout << "pushing matrix \""
+				<< std::get<m_matidx>(data) << "\"."
+				<< std::endl;
+		}
+
+		// push the actual matrix
+		PushMatrix(std::get<m_matidx>(data));
+
+		// push descriptor
+		PushRaw<t_byte, m_bytesize>(static_cast<t_byte>(VMType::MAT));
+	}
+
+	// unknown data
 	else if(err_on_unknown)
 	{
 		std::ostringstream msg;
@@ -919,6 +1069,38 @@ std::tuple<VMType, VM::t_data> VM::ReadMemData(VM::t_addr addr)
 			break;
 		}
 
+		case VMType::VEC:
+		{
+			t_vec vec = ReadMemRaw<t_vec>(addr);
+			dat = t_data{std::in_place_index<m_vecidx>, vec};
+
+			if(m_debug)
+			{
+				using namespace m_ops;
+
+				std::cout << "read vector \"" << vec
+					<< "\" from address " << (addr-1)
+					<< "." << std::endl;
+			}
+			break;
+		}
+
+		case VMType::MAT:
+		{
+			t_mat mat = ReadMemRaw<t_mat>(addr);
+			dat = t_data{std::in_place_index<m_matidx>, mat};
+
+			if(m_debug)
+			{
+				using namespace m_ops;
+
+				std::cout << "read matrix \"" << mat
+					<< "\" from address " << (addr-1)
+					<< "." << std::endl;
+			}
+			break;
+		}
+
 		default:
 		{
 			std::ostringstream msg;
@@ -939,6 +1121,7 @@ std::tuple<VMType, VM::t_data> VM::ReadMemData(VM::t_addr addr)
  */
 void VM::WriteMemData(VM::t_addr addr, const VM::t_data& data)
 {
+	// real type
 	if(data.index() == m_realidx)
 	{
 		if(m_debug)
@@ -956,6 +1139,8 @@ void VM::WriteMemData(VM::t_addr addr, const VM::t_data& data)
 		// write the actual data
 		WriteMemRaw<t_real>(addr, std::get<m_realidx>(data));
 	}
+
+	// integer type
 	else if(data.index() == m_intidx)
 	{
 		if(m_debug)
@@ -973,6 +1158,8 @@ void VM::WriteMemData(VM::t_addr addr, const VM::t_data& data)
 		// write the actual data
 		WriteMemRaw<t_int>(addr, std::get<m_intidx>(data));
 	}
+
+	// address type
 	/*else if(data.index() == m_addridx)
 	{
 		if(m_debug)
@@ -990,6 +1177,8 @@ void VM::WriteMemData(VM::t_addr addr, const VM::t_data& data)
 		// write the actual data
 		WriteMemRaw<t_int>(addr, std::get<m_addridx>(data));
 	}*/
+
+	// string type
 	else if(data.index() == m_stridx)
 	{
 		if(m_debug)
@@ -1007,6 +1196,50 @@ void VM::WriteMemData(VM::t_addr addr, const VM::t_data& data)
 		// write the actual data
 		WriteMemRaw<t_str>(addr, std::get<m_stridx>(data));
 	}
+
+	// vector type
+	else if(data.index() == m_vecidx)
+	{
+		if(m_debug)
+		{
+			using namespace m_ops;
+
+			std::cout << "writing vector \""
+				<< std::get<m_vecidx>(data)
+				<< "\" to address " << addr
+				<< "." << std::endl;
+		}
+
+		// write descriptor prefix
+		WriteMemRaw<t_byte>(addr, static_cast<t_byte>(VMType::VEC));
+		addr += m_bytesize;
+
+		// write the actual data
+		WriteMemRaw<t_vec>(addr, std::get<m_vecidx>(data));
+	}
+
+	// matrix type
+	else if(data.index() == m_matidx)
+	{
+		if(m_debug)
+		{
+			using namespace m_ops;
+
+			std::cout << "writing matrix \""
+				<< std::get<m_matidx>(data)
+				<< "\" to address " << addr
+				<< "." << std::endl;
+		}
+
+		// write descriptor prefix
+		WriteMemRaw<t_byte>(addr, static_cast<t_byte>(VMType::MAT));
+		addr += m_bytesize;
+
+		// write the actual data
+		WriteMemRaw<t_mat>(addr, std::get<m_matidx>(data));
+	}
+
+	// unknown type
 	else
 	{
 		throw std::runtime_error("WriteMem: Data type not yet implemented.");
@@ -1097,9 +1330,13 @@ const char* VM::GetDataTypeName(const t_data& dat)
 	{
 		case m_realidx: return "real";
 		case m_intidx: return "integer";
-		case m_stridx: return "string";
 		case m_addridx: return "address";
 		case m_boolidx: return "boolean";
+
+		case m_stridx: return "string";
+		case m_vecidx: return "vector";
+		case m_matidx: return "matrix";
+
 		default: return "unknown";
 	}
 }

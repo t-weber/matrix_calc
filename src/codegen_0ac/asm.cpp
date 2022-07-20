@@ -181,7 +181,15 @@ std::size_t ZeroACAsm::get_sym_size(const Symbol* sym) const
 	}
 	else if(sym->ty == SymbolType::STRING)
 	{
-		return get_vm_str_size(std::get<0>(sym->dims), true);
+		return get_vm_str_size(std::get<0>(sym->dims), true, true);
+	}
+	else if(sym->ty == SymbolType::VECTOR)
+	{
+		return get_vm_vec_size(std::get<0>(sym->dims), true, true);
+	}
+	else if(sym->ty == SymbolType::MATRIX)
+	{
+		return get_vm_mat_size(std::get<0>(sym->dims), std::get<1>(sym->dims), true, true);
 	}
 	else
 	{
@@ -772,9 +780,7 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 
 		// optional assignment
 		if(ast->GetAssignment())
-		{
 			ast->GetAssignment()->accept(this);
-		}
 
 		if(!sym_ret)
 			sym_ret = sym;
@@ -803,7 +809,7 @@ t_astret ZeroACAsm::visit(const ASTVar* ast)
 
 	// dereference the variable
 	if(sym->ty != SymbolType::FUNC)
-		m_ostr->put(static_cast<t_vm_byte>(OpCode::DEREF));
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDMEM));
 
 	return sym;
 }
@@ -1089,16 +1095,14 @@ t_astret ZeroACAsm::visit(const ASTStmts* ast)
 // ----------------------------------------------------------------------------
 t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 {
-	// TODO
-
+	std::cout << "TODO: ASTArrayAccess" << std::endl;
 	return nullptr;
 }
 
 
 t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 {
-	// TODO
-
+	std::cout << "TODO: ASTArrayAssign" << std::endl;
 	return nullptr;
 }
 
