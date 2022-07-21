@@ -19,8 +19,10 @@
 #include "types.h"
 
 
+
 struct Symbol;
 using SymbolPtr = std::shared_ptr<Symbol>;
+
 
 
 enum class SymbolType
@@ -37,6 +39,7 @@ enum class SymbolType
 
 	UNKNOWN,
 };
+
 
 
 struct Symbol
@@ -95,6 +98,7 @@ struct Symbol
 		return sep;
 	}
 };
+
 
 
 class SymTab
@@ -253,6 +257,33 @@ public:
 private:
 	std::unordered_map<t_str, Symbol> m_syms{};
 };
+
+
+
+// ----------------------------------------------------------------------------
+// helper functions
+// ----------------------------------------------------------------------------
+/**
+ * multiplies the elements of a container
+ */
+template<class t_cont, std::size_t ...seq>
+constexpr typename t_cont::value_type multiply_elements(
+	const t_cont& cont, const std::index_sequence<seq...>&)
+{
+	return (std::get<seq>(cont) * ...);
+}
+
+
+
+/**
+ * multiplies all dimensions of an array type
+ */
+template<std::size_t NUM_DIMS = 2>
+std::size_t get_arraydim(const std::array<std::size_t, NUM_DIMS>& dims)
+{
+	return multiply_elements(dims, std::make_index_sequence<NUM_DIMS>());
+}
+// ----------------------------------------------------------------------------
 
 
 #endif

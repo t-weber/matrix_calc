@@ -48,27 +48,6 @@ t_str get_lltype_name()
 }
 
 
-/**
- * multiply the elements of a container
- */
-template<class t_cont, std::size_t ...seq>
-constexpr typename t_cont::value_type multiply_elements(
-	const t_cont& cont, const std::index_sequence<seq...>&)
-{
-	return (std::get<seq>(cont) * ...);
-}
-
-
-/**
- * multiply all dimensions of an array type
- */
-template<std::size_t NUM_DIMS=2>
-std::size_t get_arraydim(const std::array<std::size_t, NUM_DIMS>& dims)
-{
-	return multiply_elements(dims, std::make_index_sequence<NUM_DIMS>());
-}
-
-
 class LLAsm : public ASTVisitor
 {
 public:

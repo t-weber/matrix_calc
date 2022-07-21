@@ -69,6 +69,9 @@ enum class OpCode : t_vm_byte
 	SHR      = 0x85,  // >>
 	ROTL     = 0x86,  // rotate left
 	ROTR     = 0x87,  // rotate right
+
+	MAKEVEC  = 0x90,  // create a vector
+	MAKEMAT  = 0x91,  // create a matrix
 };
 
 
@@ -120,6 +123,8 @@ constexpr t_str get_vm_opcode_name(OpCode op)
 		case OpCode::SHR:       return "shr";
 		case OpCode::ROTL:      return "rotl";
 		case OpCode::ROTR:      return "rotr";
+		case OpCode::MAKEVEC:   return "makevec";
+		case OpCode::MAKEMAT:   return "makemat";
 		default:                return "<unknown>";
 	}
 }

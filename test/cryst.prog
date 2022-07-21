@@ -17,9 +17,9 @@ func mat 3 3 B_matrix(scalar a, scalar b, scalar c, scalar alpha, scalar beta, s
 	scalar rr = sqrt(1. + 2.*ca*cb*cc - (ca*ca + cb*cb + cc*cc));
 
 	mat 3 3 B;
-	B[0,0] = 1./a;						B[0,1] = 0.;						B[0,2] = 0.;
-	B[1,0] = -1./a * cc/sc;				B[1,1] = 1./b * 1./sc;				B[1,2] = 0.;
-	B[2,0] = (cc*ca - cb)/(a*sc*rr);	B[2,1] = (cb*cc-ca)/(b*sc*rr);		B[2,2] = sc/(c*rr);
+	B[0,0] = 1./a;                     B[0,1] = 0.;                     B[0,2] = 0.;
+	B[1,0] = -1./a * cc/sc;            B[1,1] = 1./b * 1./sc;           B[1,2] = 0.;
+	B[2,0] = (cc*ca - cb)/(a*sc*rr);   B[2,1] = (cb*cc-ca)/(b*sc*rr);   B[2,2] = sc/(c*rr);
 
 	B = B*(2*pi);
 	ret B;
@@ -40,6 +40,9 @@ func mat 3 3 rotate_z(scalar phi)
 }
 
 
+#
+# from: https://en.wikipedia.org/wiki/Fractional_coordinates
+#
 func mat 3 3 A_matrix(scalar a, scalar b, scalar c, scalar alpha, scalar beta, scalar gamma)
 {
 	mat 3 3 rot_z_gamma = rotate_z(gamma);

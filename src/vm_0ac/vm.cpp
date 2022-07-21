@@ -508,6 +508,20 @@ bool VM::Run()
 				break;
 			}
 
+			case OpCode::MAKEVEC:
+			{
+				t_vec vec = PopVector(false);
+				PushData(t_data{std::in_place_index<m_vecidx>, vec});
+				break;
+			}
+
+			case OpCode::MAKEMAT:
+			{
+				t_mat mat = PopMatrix(false);
+				PushData(t_data{std::in_place_index<m_matidx>, mat});
+				break;
+			}
+
 			default:
 			{
 				std::cerr << "Error: Invalid instruction " << std::hex
@@ -630,19 +644,48 @@ void VM::PushString(const VM::t_str& str)
  * a vector consists of an t_addr giving the length
  * following by the vector elements
  */
-VM::t_vec VM::PopVector()
+VM::t_vec VM::PopVector(bool raw_elems)
 {
-	t_addr num_elems = PopRaw<t_addr, m_addrsize>();
-	CheckMemoryBounds(m_sp, num_elems*m_realsize);
+	// raw real array and vector size follow without descriptors
+	if(raw_elems)
+	{
+		t_addr num_elems = PopRaw<t_addr, m_addrsize>();
+		CheckMemoryBounds(m_sp, num_elems*m_realsize);
 
-	t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
-	t_vec vec(begin, num_elems);
-	m_sp += num_elems*m_realsize;
+		t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
+		t_vec vec(begin, num_elems);
+		m_sp += num_elems*m_realsize;
 
-	if(m_zeropoppedvals)
-		std::memset(begin, 0, num_elems*m_realsize);
+		if(m_zeropoppedvals)
+			std::memset(begin, 0, num_elems*m_realsize);
 
-	return vec;
+		return vec;
+	}
+
+	// individual elements and vector size with descriptor are on the stack
+	else
+	{
+		t_addr num_elems = PopAddress();
+		t_vec vec(num_elems);
+
+		for(t_addr i=0; i<num_elems; ++i)
+		{
+			t_data val = PopData();
+			if(val.index() != m_realidx)
+				throw std::runtime_error("Vector expects real elements.");
+
+			t_real elem = std::get<m_realidx>(val);
+			vec[num_elems - i - 1] = elem;
+		}
+
+		if(m_debug)
+		{
+			using namespace m_ops;
+			std::cout << "popped non-raw vector " << vec << "." << std::endl;
+		}
+
+		return vec;
+	}
 }
 
 
@@ -683,20 +726,54 @@ void VM::PushVector(const VM::t_vec& vec)
  * a matrix consists of two t_addr fields giving the lengths
  * following by the matrix elements
  */
-VM::t_mat VM::PopMatrix()
+VM::t_mat VM::PopMatrix(bool raw_elems)
 {
-	t_addr num_elems_1 = PopRaw<t_addr, m_addrsize>();
-	t_addr num_elems_2 = PopRaw<t_addr, m_addrsize>();
-	CheckMemoryBounds(m_sp, num_elems_1*num_elems_2*m_realsize);
+	// raw real array and matrix sizes follow without descriptors
+	if(raw_elems)
+	{
+		t_addr num_elems_1 = PopRaw<t_addr, m_addrsize>();
+		t_addr num_elems_2 = PopRaw<t_addr, m_addrsize>();
+		CheckMemoryBounds(m_sp, num_elems_1*num_elems_2*m_realsize);
 
-	t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
-	t_mat mat(begin, num_elems_1, num_elems_2);
-	m_sp += num_elems_1*num_elems_2*m_realsize;
+		t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
+		t_mat mat(begin, num_elems_1, num_elems_2);
+		m_sp += num_elems_1*num_elems_2*m_realsize;
 
-	if(m_zeropoppedvals)
-		std::memset(begin, 0, num_elems_1*num_elems_2*m_realsize);
+		if(m_zeropoppedvals)
+			std::memset(begin, 0, num_elems_1*num_elems_2*m_realsize);
 
-	return mat;
+		return mat;
+	}
+
+	// individual elements and matrix sizes with descriptor are on the stack
+	else
+	{
+		t_addr num_elems_1 = PopAddress();
+		t_addr num_elems_2 = PopAddress();
+
+		t_mat mat(num_elems_1, num_elems_2);
+
+		for(t_addr i=0; i<num_elems_1; ++i)
+		{
+			for(t_addr j=0; j<num_elems_2; ++j)
+			{
+				t_data val = PopData();
+				if(val.index() != m_realidx)
+					throw std::runtime_error("Matrix expects real elements.");
+
+				t_real elem = std::get<m_realidx>(val);
+				mat(num_elems_1 - i - 1, num_elems_2 - j - 1) = elem;
+			}
+		}
+
+		if(m_debug)
+		{
+			using namespace m_ops;
+			std::cout << "popped non-raw matrix " << mat << "." << std::endl;
+		}
+
+		return mat;
+	}
 }
 
 
@@ -780,6 +857,20 @@ VM::t_data VM::TopData() const
 			break;
 		}
 
+		case VMType::VEC:
+		{
+			dat = t_data{std::in_place_index<m_vecidx>,
+				TopVector(m_bytesize)};
+				break;
+		}
+
+		case VMType::MAT:
+		{
+			dat = t_data{std::in_place_index<m_matidx>,
+				TopMatrix(m_bytesize)};
+				break;
+		}
+
 		default:
 		{
 			std::ostringstream msg;
@@ -850,12 +941,35 @@ VM::t_data VM::PopData()
 
 		case VMType::STR:
 		{
-			dat = t_data{std::in_place_index<m_stridx>,
-				PopString()};
+			dat = t_data{std::in_place_index<m_stridx>, PopString()};
 			if(m_debug)
 			{
 				std::cout << "popped string \"" << std::get<m_stridx>(dat)
 					<< "\"." << std::endl;
+			}
+			break;
+		}
+
+		case VMType::VEC:
+		{
+			dat = t_data{std::in_place_index<m_vecidx>, PopVector()};
+			if(m_debug)
+			{
+				using namespace m_ops;
+				std::cout << "popped vector " << std::get<m_vecidx>(dat)
+					<< "." << std::endl;
+			}
+			break;
+		}
+
+		case VMType::MAT:
+		{
+			dat = t_data{std::in_place_index<m_matidx>, PopMatrix()};
+			if(m_debug)
+			{
+				using namespace m_ops;
+				std::cout << "popped matrix " << std::get<m_matidx>(dat)
+					<< "." << std::endl;
 			}
 			break;
 		}
@@ -954,8 +1068,8 @@ void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 		if(m_debug)
 		{
 			using namespace m_ops;
-			std::cout << "pushing vector \""
-				<< std::get<m_vecidx>(data) << "\"."
+			std::cout << "pushing vector "
+				<< std::get<m_vecidx>(data) << "."
 				<< std::endl;
 		}
 
@@ -972,8 +1086,8 @@ void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 		if(m_debug)
 		{
 			using namespace m_ops;
-			std::cout << "pushing matrix \""
-				<< std::get<m_matidx>(data) << "\"."
+			std::cout << "pushing matrix "
+				<< std::get<m_matidx>(data) << "."
 				<< std::endl;
 		}
 
@@ -1324,9 +1438,9 @@ void VM::SetMem(t_addr addr, const VM::t_byte* data, std::size_t size, bool is_c
 }
 
 
-const char* VM::GetDataTypeName(const t_data& dat)
+const char* VM::GetDataTypeName(std::size_t type_idx)
 {
-	switch(dat.index())
+	switch(type_idx)
 	{
 		case m_realidx: return "real";
 		case m_intidx: return "integer";
@@ -1339,6 +1453,12 @@ const char* VM::GetDataTypeName(const t_data& dat)
 
 		default: return "unknown";
 	}
+}
+
+
+const char* VM::GetDataTypeName(const t_data& dat)
+{
+	return GetDataTypeName(dat.index());
 }
 
 

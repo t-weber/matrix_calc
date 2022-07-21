@@ -80,6 +80,8 @@ public:
 	void SetDrawMemImages(bool b) { m_drawmemimages = b; }
 	void SetChecks(bool b) { m_checks = b; }
 	void SetZeroPoppedVals(bool b) { m_zeropoppedvals = b; }
+
+	static const char* GetDataTypeName(std::size_t type_idx);
 	static const char* GetDataTypeName(const t_data& dat);
 
 	void Reset();
@@ -133,7 +135,7 @@ protected:
 	void PushString(const t_str& str);
 
 	// pop a vector from the stack
-	t_vec PopVector();
+	t_vec PopVector(bool raw_elems = true);
 
 	// get the vector on top of the stack
 	t_vec TopVector(t_addr sp_offs = 0) const;
@@ -142,7 +144,7 @@ protected:
 	void PushVector(const t_vec& vec);
 
 	// pop a matrix from the stack
-	t_mat PopMatrix();
+	t_mat PopMatrix(bool raw_elems = true);
 
 	// get the matrix on top of the stack
 	t_mat TopMatrix(t_addr sp_offs = 0) const;
@@ -240,7 +242,7 @@ protected:
 		}
 
 		// vector type
-		if constexpr(std::is_same_v<std::decay_t<t_val>, t_vec>)
+		else if constexpr(std::is_same_v<std::decay_t<t_val>, t_vec>)
 		{
 			t_addr num_elems = static_cast<t_addr>(val.size());
 			CheckMemoryBounds(addr, m_addrsize + num_elems*m_realsize);
@@ -255,7 +257,7 @@ protected:
 		}
 
 		// matrix type
-		if constexpr(std::is_same_v<std::decay_t<t_val>, t_mat>)
+		else if constexpr(std::is_same_v<std::decay_t<t_val>, t_mat>)
 		{
 			t_addr num_elems_1 = static_cast<t_addr>(val.size1());
 			t_addr num_elems_2 = static_cast<t_addr>(val.size2());
@@ -337,6 +339,7 @@ protected:
 		using t_to = std::variant_alternative_t<toidx, t_data>;
 		t_data data = TopData();
 
+		// casting from real
 		if(data.index() == m_realidx)
 		{
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_real>)
@@ -361,6 +364,8 @@ protected:
 					static_cast<t_to>(val)});
 			}
 		}
+
+		// casting from int
 		else if(data.index() == m_intidx)
 		{
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_int>)
@@ -385,6 +390,8 @@ protected:
 					static_cast<t_to>(val)});
 			}
 		}
+
+		// casting from string
 		else if(data.index() == m_stridx)
 		{
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
@@ -396,6 +403,58 @@ protected:
 			std::istringstream{val} >> conv_val;
 			PopData();
 			PushData(t_data{std::in_place_index<toidx>, conv_val});
+		}
+
+		// casting from vector
+		else if(data.index() == m_vecidx)
+		{
+			if constexpr(std::is_same_v<std::decay_t<t_to>, t_vec>)
+				return;  // don't need to cast to the same type
+
+			const t_vec& val = std::get<m_vecidx>(data);
+
+			// convert to string
+			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
+			{
+				using namespace m_ops;
+
+				std::ostringstream ostr;
+				ostr << val;
+				PopData();
+				PushData(t_data{std::in_place_index<m_stridx>, ostr.str()});
+			}
+			else
+			{
+				std::ostringstream msg;
+				msg << "Invalid cast from vector to " << GetDataTypeName(toidx) << ".";
+				throw std::runtime_error(msg.str());
+			}
+		}
+
+		// casting from matrix
+		else if(data.index() == m_matidx)
+		{
+			if constexpr(std::is_same_v<std::decay_t<t_to>, t_mat>)
+				return;  // don't need to cast to the same type
+
+			const t_mat& val = std::get<m_matidx>(data);
+
+			// convert to string
+			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
+			{
+				using namespace m_ops;
+
+				std::ostringstream ostr;
+				ostr << val;
+				PopData();
+				PushData(t_data{std::in_place_index<m_stridx>, ostr.str()});
+			}
+			else
+			{
+				std::ostringstream msg;
+				msg << "Invalid cast from matrix to " << GetDataTypeName(toidx) << ".";
+				throw std::runtime_error(msg.str());
+			}
 		}
 	}
 

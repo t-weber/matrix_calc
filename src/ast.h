@@ -19,6 +19,7 @@
 #include "sym.h"
 
 
+
 class AST;
 class ASTUMinus;
 class ASTPlus;
@@ -47,6 +48,7 @@ class ASTLoopBreak;
 class ASTLoopNext;
 class ASTExprList;
 template<class> class ASTNumConst;
+
 
 
 enum class ASTType
@@ -81,8 +83,10 @@ enum class ASTType
 };
 
 
+
 using ASTPtr = std::shared_ptr<AST>;
 using t_astret = Symbol*;
+
 
 
 /**
@@ -131,6 +135,7 @@ public:
 };
 
 
+
 /**
  * ast node base
  */
@@ -142,6 +147,7 @@ public:
 	virtual t_astret accept(ASTVisitor* visitor) const = 0;
 	virtual ASTType type() = 0;
 };
+
 
 
 /**
@@ -159,6 +165,7 @@ public:
 };
 
 
+
 class ASTUMinus : public ASTAcceptor<ASTUMinus>
 {
 public:
@@ -172,6 +179,7 @@ public:
 private:
 	ASTPtr term{};
 };
+
 
 
 class ASTPlus : public ASTAcceptor<ASTPlus>
@@ -193,6 +201,7 @@ private:
 };
 
 
+
 class ASTMult : public ASTAcceptor<ASTMult>
 {
 public:
@@ -212,6 +221,7 @@ private:
 };
 
 
+
 class ASTMod : public ASTAcceptor<ASTMod>
 {
 public:
@@ -229,6 +239,7 @@ private:
 };
 
 
+
 class ASTPow : public ASTAcceptor<ASTPow>
 {
 public:
@@ -244,6 +255,7 @@ public:
 private:
 	ASTPtr term1{}, term2{};
 };
+
 
 
 class ASTTransp : public ASTAcceptor<ASTTransp>
@@ -276,6 +288,7 @@ private:
 };
 
 
+
 class ASTVar : public ASTAcceptor<ASTVar>
 {
 public:
@@ -290,6 +303,7 @@ public:
 private:
 	t_str ident{};
 };
+
 
 
 class ASTStmts : public ASTAcceptor<ASTStmts>
@@ -313,6 +327,7 @@ public:
 private:
 	std::list<ASTPtr> stmts{};
 };
+
 
 
 class ASTVarDecl : public ASTAcceptor<ASTVarDecl>
@@ -339,6 +354,7 @@ private:
 	// optional assignment
 	std::shared_ptr<ASTAssign> optAssign{};
 };
+
 
 
 class ASTArgNames : public ASTAcceptor<ASTArgNames>
@@ -382,6 +398,7 @@ private:
 };
 
 
+
 class ASTTypeDecl : public ASTAcceptor<ASTTypeDecl>
 {
 public:
@@ -409,6 +426,7 @@ private:
 	SymbolType ty{SymbolType::UNKNOWN};
 	std::size_t dim1=1, dim2=1;
 };
+
 
 
 class ASTFunc : public ASTAcceptor<ASTFunc>
@@ -446,6 +464,7 @@ private:
 };
 
 
+
 class ASTReturn : public ASTAcceptor<ASTReturn>
 {
 public:
@@ -464,6 +483,7 @@ private:
 	std::shared_ptr<ASTExprList> rets{};
 	bool multi_return = false;
 };
+
 
 
 class ASTExprList : public ASTAcceptor<ASTExprList>
@@ -503,6 +523,7 @@ private:
 };
 
 
+
 class ASTCall : public ASTAcceptor<ASTCall>
 {
 public:
@@ -523,6 +544,7 @@ private:
 	t_str ident{};
 	std::shared_ptr<ASTExprList> args{};
 };
+
 
 
 class ASTAssign : public ASTAcceptor<ASTAssign>
@@ -548,6 +570,7 @@ private:
 	std::vector<t_str> idents{};
 	ASTPtr expr{};
 };
+
 
 
 class ASTComp : public ASTAcceptor<ASTComp>
@@ -580,6 +603,7 @@ private:
 };
 
 
+
 class ASTBool : public ASTAcceptor<ASTBool>
 {
 public:
@@ -610,6 +634,7 @@ private:
 };
 
 
+
 class ASTCond : public ASTAcceptor<ASTCond>
 {
 public:
@@ -633,6 +658,7 @@ private:
 };
 
 
+
 class ASTLoop : public ASTAcceptor<ASTLoop>
 {
 public:
@@ -650,6 +676,7 @@ private:
 };
 
 
+
 class ASTLoopBreak : public ASTAcceptor<ASTLoopBreak>
 {
 public:
@@ -665,6 +692,7 @@ private:
 };
 
 
+
 class ASTLoopNext : public ASTAcceptor<ASTLoopNext>
 {
 public:
@@ -678,6 +706,7 @@ public:
 private:
 	t_int num_loops{0};
 };
+
 
 
 class ASTArrayAccess : public ASTAcceptor<ASTArrayAccess>
@@ -711,6 +740,7 @@ private:
 	bool ranged12 = false;
 	bool ranged34 = false;
 };
+
 
 
 class ASTArrayAssign : public ASTAcceptor<ASTArrayAssign>
@@ -748,6 +778,7 @@ private:
 };
 
 
+
 template<class t_num>
 class ASTNumConst : public ASTAcceptor<ASTNumConst<t_num>>
 {
@@ -762,6 +793,7 @@ public:
 private:
 	t_num val{};
 };
+
 
 
 class ASTStrConst : public ASTAcceptor<ASTStrConst>

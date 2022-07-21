@@ -230,22 +230,29 @@ t_astret LLAsm::visit(const ASTAssign* ast)
 			generate_loop(0, dimDst, [this, expr, sym, dimDst, dimSrc](t_astret ctrval)
 			{
 				// loop statements
+
+				// source element pointer
 				t_astret elemptr_src = get_tmp_var(SymbolType::SCALAR);
 				(*m_ostr) << "%" << elemptr_src->name << " = getelementptr ["
 					<< dimSrc << " x " << m_real << "], ["
 					<< dimSrc << " x " << m_real << "]* %"
 					<< expr->name << ", " << m_int << " 0, " << m_int
 					<< " %" << ctrval->name << "\n";
+
+				// destination element pointer
 				t_astret elemptr_dst = get_tmp_var(SymbolType::SCALAR);
 				(*m_ostr) << "%" << elemptr_dst->name << " = getelementptr ["
 					<< dimDst << " x " << m_real << "], ["
 					<< dimDst << " x " << m_real << "]* %"
 					<< sym->name << ", " << m_int << " 0, " << m_int
 					<< " %" << ctrval->name << "\n";
+
+				// load source element
 				t_astret elem_src = get_tmp_var(SymbolType::SCALAR);
 				(*m_ostr) << "%" << elem_src->name << " = load " << m_real
 					<< ", " << m_realptr << " %" << elemptr_src->name << "\n";
 
+				// assign destination element
 				(*m_ostr) << "store " << m_real << " %" << elem_src->name
 					<< ", " << m_realptr << " %" << elemptr_dst->name << "\n";
 			});
