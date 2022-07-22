@@ -73,25 +73,26 @@ public:
 
 
 protected:
-	/**
-	 * find the symbol with a specific name in the symbol table
-	 */
+	// finds the symbol with a specific name in the symbol table
 	t_astret get_sym(const t_str& name) const;
 
-	/**
-	 * finds the size of the symbol for the stack frame
-	 */
+	// finds the size of the symbol for the stack frame
 	std::size_t get_sym_size(const Symbol* sym) const;
 
-	/**
-	 * finds the size of the local function variables for the stack frame
-	 */
+	// finds the size of the local function variables for the stack frame
 	std::size_t get_stackframe_size(const Symbol* func) const;
 
-	/**
-	 * emit code to cast to given type
-	 */
+	// emits code to cast to given type
 	void cast_to(t_astret ty_to, std::streampos pos);
+
+	// push constants
+	void PushRealConst(t_vm_real);
+	void PushIntConst(t_vm_int);
+	void PushStrConst(const t_vm_str& str);
+	void PushVecConst(const std::vector<t_vm_real>& vec);
+	void PushMatConst(t_vm_addr rows, t_vm_addr cols, const std::vector<t_vm_real>& mat);
+
+	void AssignVar(t_astret sym);
 
 
 private:

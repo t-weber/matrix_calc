@@ -778,9 +778,47 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 		m_local_stack[cur_func] += get_sym_size(sym);
 		sym->addr = -m_local_stack[cur_func];
 
-		// optional assignment
 		if(ast->GetAssignment())
+		{
+			// initialise variable using given assignment
 			ast->GetAssignment()->accept(this);
+		}
+		else
+		{
+			// initialise variable to 0 if no assignment is given
+			if(sym->ty == SymbolType::INT)
+			{
+				PushIntConst(t_vm_int(0));
+				AssignVar(sym);
+			}
+			else if(sym->ty == SymbolType::SCALAR)
+			{
+				PushRealConst(t_vm_real(0));
+				AssignVar(sym);
+			}
+			else if(sym->ty == SymbolType::STRING)
+			{
+				PushStrConst(t_vm_str(""));
+				AssignVar(sym);
+			}
+			else if(sym->ty == SymbolType::VECTOR)
+			{
+				std::vector<t_vm_real> vec(std::get<0>(sym->dims));
+				PushVecConst(vec);
+				AssignVar(sym);
+			}
+			else if(sym->ty == SymbolType::MATRIX)
+			{
+				t_vm_addr rows = static_cast<t_vm_addr>(
+					std::get<0>(sym->dims));
+				t_vm_addr cols = static_cast<t_vm_addr>(
+					std::get<1>(sym->dims));
+
+				std::vector<t_vm_real> mat(rows * cols);
+				PushMatConst(rows, cols, mat);
+				AssignVar(sym);
+			}
+		}
 
 		if(!sym_ret)
 			sym_ret = sym;
@@ -815,6 +853,23 @@ t_astret ZeroACAsm::visit(const ASTVar* ast)
 }
 
 
+/**
+ * assign symbol variable to current value on the stack
+ */
+void ZeroACAsm::AssignVar(t_astret sym)
+{
+	// push variable address
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
+	t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
+	m_ostr->write(reinterpret_cast<const char*>(&addr),
+		vm_type_size<VMType::ADDR_BP, false>);
+
+	// assign variable
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::WRMEM));
+}
+
+
 t_astret ZeroACAsm::visit(const ASTAssign* ast)
 {
 	ast->GetExpr()->accept(this);
@@ -828,14 +883,7 @@ t_astret ZeroACAsm::visit(const ASTAssign* ast)
 		if(!sym->addr)
 			throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" has not been declared.");
 
-		// push variable address
-		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
-		t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
-		m_ostr->write(reinterpret_cast<const char*>(&addr), vm_type_size<VMType::ADDR_BP, false>);
-
-		// assign variable
-		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRMEM));
+		AssignVar(sym);
 
 		if(!sym_ret)
 			sym_ret = sym;
@@ -850,17 +898,87 @@ t_astret ZeroACAsm::visit(const ASTAssign* ast)
 // ----------------------------------------------------------------------------
 // constants
 // ----------------------------------------------------------------------------
-t_astret ZeroACAsm::visit(const ASTNumConst<t_real>* ast)
-{
-	t_vm_real val = static_cast<t_vm_real>(ast->GetVal());
 
+void ZeroACAsm::PushRealConst(t_vm_real val)
+{
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 	// write type descriptor byte
 	m_ostr->put(static_cast<t_vm_byte>(VMType::REAL));
 	// write value
 	m_ostr->write(reinterpret_cast<const char*>(&val),
 		vm_type_size<VMType::REAL, false>);
+}
 
+
+void ZeroACAsm::PushIntConst(t_vm_int val)
+{
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	// write type descriptor byte
+	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
+	// write data
+	m_ostr->write(reinterpret_cast<const char*>(&val),
+		vm_type_size<VMType::INT, false>);
+}
+
+
+void ZeroACAsm::PushStrConst(const t_vm_str& val)
+{
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	// write type descriptor byte
+	m_ostr->put(static_cast<t_vm_byte>(VMType::STR));
+	// write string length
+	t_vm_addr len = static_cast<t_vm_addr>(val.length());
+	m_ostr->write(reinterpret_cast<const char*>(&len),
+		vm_type_size<VMType::ADDR_MEM, false>);
+	// write string data
+	m_ostr->write(val.data(), len);
+}
+
+
+void ZeroACAsm::PushVecConst(const std::vector<t_vm_real>& vec)
+{
+	// push elements
+	for(t_vm_real val : vec)
+		PushRealConst(val);
+
+	// push number of elements
+	t_vm_addr num_elems = static_cast<t_vm_addr>(vec.size());
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_MEM));
+	m_ostr->write(reinterpret_cast<const char*>(&num_elems),
+		vm_type_size<VMType::ADDR_MEM, false>);
+
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::MAKEVEC));
+}
+
+
+void ZeroACAsm::PushMatConst(t_vm_addr rows, t_vm_addr cols, const std::vector<t_vm_real>& mat)
+{
+	// push elements
+	for(t_vm_addr i=0; i<rows; ++i)
+		for(t_vm_addr j=0; j<cols; ++j)
+			PushRealConst(mat[i*cols + j]);
+
+	// push number of columns
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_MEM));
+	m_ostr->write(reinterpret_cast<const char*>(&cols),
+		vm_type_size<VMType::ADDR_MEM, false>);
+
+	// push number of rows
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_MEM));
+	m_ostr->write(reinterpret_cast<const char*>(&rows),
+		vm_type_size<VMType::ADDR_MEM, false>);
+
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::MAKEMAT));
+}
+
+
+t_astret ZeroACAsm::visit(const ASTNumConst<t_real>* ast)
+{
+	t_vm_real val = static_cast<t_vm_real>(ast->GetVal());
+	PushRealConst(val);
 	return m_scalar_const;
 }
 
@@ -868,13 +986,7 @@ t_astret ZeroACAsm::visit(const ASTNumConst<t_real>* ast)
 t_astret ZeroACAsm::visit(const ASTNumConst<t_int>* ast)
 {
 	t_vm_int val = static_cast<t_vm_int>(ast->GetVal());
-
-	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-	// write type descriptor byte
-	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
-	// write data
-	m_ostr->write(reinterpret_cast<const char*>(&val), vm_type_size<VMType::INT, false>);
-
+	PushIntConst(val);
 	return m_int_const;
 }
 
@@ -882,16 +994,7 @@ t_astret ZeroACAsm::visit(const ASTNumConst<t_int>* ast)
 t_astret ZeroACAsm::visit(const ASTStrConst* ast)
 {
 	const t_str& val = ast->GetVal();
-
-	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-	// write type descriptor byte
-	m_ostr->put(static_cast<t_vm_byte>(VMType::STR));
-	// write string length
-	t_vm_addr len = static_cast<t_vm_addr>(val.length());
-	m_ostr->write(reinterpret_cast<const char*>(&len), vm_type_size<VMType::ADDR_MEM, false>);
-	// write string data
-	m_ostr->write(val.data(), len);
-
+	PushStrConst(val);
 	return m_str_const;
 }
 // ----------------------------------------------------------------------------
@@ -1133,7 +1236,8 @@ t_astret ZeroACAsm::visit(const ASTExprList* ast)
 		// push number of elements
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_MEM));
-		m_ostr->write(reinterpret_cast<const char*>(&num_elems), vm_type_size<VMType::ADDR_MEM, false>);
+		m_ostr->write(reinterpret_cast<const char*>(&num_elems),
+			vm_type_size<VMType::ADDR_MEM, false>);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::MAKEVEC));
 	}

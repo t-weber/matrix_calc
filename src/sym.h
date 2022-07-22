@@ -27,12 +27,14 @@ using SymbolPtr = std::shared_ptr<Symbol>;
 
 enum class SymbolType
 {
+	VOID,
+
 	SCALAR,
+	INT,
+	STRING,
+
 	VECTOR,
 	MATRIX,
-	STRING,
-	INT,
-	VOID,
 
 	COMP,     // compound
 	FUNC,     // function pointer
@@ -50,7 +52,7 @@ struct Symbol
 	std::optional<t_str> ext_name{};  // name of external symbol (if different from internal name)
 
 	SymbolType ty { SymbolType::VOID };
-	std::array<std::size_t, 2> dims{{1,1}};
+	std::array<std::size_t, 2> dims{{ 1, 1 }};
 
 	// for functions
 	std::vector<SymbolType> argty{{}};
