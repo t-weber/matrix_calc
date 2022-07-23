@@ -224,17 +224,28 @@ t_astret ZeroACAsm::visit(const ASTPow* ast)
 
 t_astret ZeroACAsm::visit(const ASTTransp* ast)
 {
-	// TODO
+	t_astret term = ast->GetTerm()->accept(this);
 
-	return nullptr;
+	if(term->ty == SymbolType::MATRIX)
+	{
+		CallExternal("transpose");
+	}
+	else
+	{
+		throw std::runtime_error(
+			"ASTTrans: Transposing is not possible for \""
+				+ term->name + "\".");
+	}
+
+	return term;
 }
 
 
 t_astret ZeroACAsm::visit(const ASTNorm* ast)
 {
-	// TODO
-
-	return nullptr;
+	t_astret term = ast->GetTerm()->accept(this);
+	CallExternal("norm");
+	return term;
 }
 
 

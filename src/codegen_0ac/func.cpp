@@ -108,6 +108,25 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 }
 
 
+/**
+ * calls an external function
+ */
+void ZeroACAsm::CallExternal(const t_str& funcname)
+{
+	// push external function name
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	// write type descriptor byte
+	m_ostr->put(static_cast<t_vm_byte>(VMType::STR));
+	// write function name
+	t_vm_addr len = static_cast<t_vm_addr>(funcname.length());
+	m_ostr->write(reinterpret_cast<const char*>(&len),
+		vm_type_size<VMType::ADDR_MEM, false>);
+	// write string data
+	m_ostr->write(funcname.data(), len);
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::EXTCALL));
+}
+
+
 t_astret ZeroACAsm::visit(const ASTCall* ast)
 {
 	const t_str* funcname = &ast->GetIdent();
@@ -129,17 +148,7 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 		if(func->ext_name)
 			funcname = &(*func->ext_name);
 
-		// push external function name
-		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-		// write type descriptor byte
-		m_ostr->put(static_cast<t_vm_byte>(VMType::STR));
-		// write function name
-		t_vm_addr len = static_cast<t_vm_addr>(funcname->length());
-		m_ostr->write(reinterpret_cast<const char*>(&len),
-			vm_type_size<VMType::ADDR_MEM, false>);
-		// write string data
-		m_ostr->write(funcname->data(), len);
-		m_ostr->put(static_cast<t_vm_byte>(OpCode::EXTCALL));
+		CallExternal(*funcname);
 	}
 
 	// call internal function

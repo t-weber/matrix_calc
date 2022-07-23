@@ -31,27 +31,30 @@ ZeroACAsm::ZeroACAsm(SymTab* syms, std::ostream* ostr)
 	m_str_const->ty = SymbolType::STRING;
 	m_str_const->is_tmp = true;
 	m_str_const->name = "<str>";
+
+	// dummy symbol for vector constants
+	m_vec_const = new Symbol();
+	m_vec_const->ty = SymbolType::VECTOR;
+	m_vec_const->is_tmp = true;
+	m_vec_const->name = "<vec>";
+
+	// dummy symbol for matrix constants
+	m_mat_const = new Symbol();
+	m_mat_const->ty = SymbolType::MATRIX;
+	m_mat_const->is_tmp = true;
+	m_mat_const->name = "<mat>";
 }
 
 
 ZeroACAsm::~ZeroACAsm()
 {
-	if(m_scalar_const)
+	for(Symbol** sym : {
+		&m_scalar_const, &m_int_const,
+		&m_str_const, &m_vec_const,
+		&m_mat_const })
 	{
-		delete m_scalar_const;
-		m_scalar_const = nullptr;
-	}
-
-	if(m_int_const)
-	{
-		delete m_int_const;
-		m_int_const = nullptr;
-	}
-
-	if(m_str_const)
-	{
-		delete m_str_const;
-		m_str_const = nullptr;
+		delete *sym;
+		*sym = nullptr;
 	}
 }
 

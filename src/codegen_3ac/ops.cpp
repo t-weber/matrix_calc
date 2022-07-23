@@ -759,9 +759,14 @@ t_astret LLAsm::visit(const ASTTransp* ast)
 
 		return result_mem;
 	}
+	else
+	{
+		throw std::runtime_error(
+			"ASTTrans: Transposing is not possible for \""
+				+ term->name + "\".");
+	}
 
-	throw std::runtime_error("ASTTrans: Transposing is not possible for \"" + term->name + "\".");
-	//return nullptr;
+	return nullptr;
 }
 
 
@@ -850,7 +855,7 @@ t_astret LLAsm::visit(const ASTNorm* ast)
 		return dot_sqrt;
 	}
 	else if(term->ty == SymbolType::MATRIX)
-	{
+	{	// determinant
 		std::size_t dim1 = std::get<0>(term->dims);
 		std::size_t dim2 = std::get<1>(term->dims);
 		std::size_t dim = dim1*dim2;

@@ -22,7 +22,45 @@ VM::t_data VM::CallExternal(const t_str& func_name)
 			<< std::endl;
 	}
 
-	if(func_name == "sqrt")
+	if(func_name == "abs" || func_name == "fabs" ||
+		func_name == "norm" || func_name == "determinant")
+	{
+		t_data dat = PopData();
+
+		if(dat.index() == m_realidx)
+		{
+			t_real arg = std::get<m_realidx>(dat);
+			if(arg < t_real(0))
+				arg = -arg;
+			retval = t_data{std::in_place_index<m_realidx>, arg};
+		}
+		else if(dat.index() == m_intidx)
+		{
+			t_real arg = std::get<m_realidx>(dat);
+			if(arg < 0)
+				arg = -arg;
+			retval = t_data{std::in_place_index<m_intidx>, arg};
+		}
+		else if(dat.index() == m_vecidx)
+		{	// 2-norm for vectors
+			t_vec arg = std::get<m_vecidx>(dat);
+			t_real len = m::norm<t_vec>(arg);
+			retval = t_data{std::in_place_index<m_realidx>, len};
+		}
+		else if(dat.index() == m_matidx)
+		{	// determinant for matrices
+			const t_mat arg = std::get<m_matidx>(dat);
+			t_real det = m::det<t_mat, t_vec>(arg);
+
+			retval = t_data{std::in_place_index<m_realidx>, det};
+		}
+		else
+		{
+			// keep original data for other types
+			retval = dat;
+		}
+	}
+	else if(func_name == "sqrt")
 	{
 		OpCast<m_realidx>();
 		t_real arg = std::get<m_realidx>(PopData());
@@ -58,6 +96,23 @@ VM::t_data VM::CallExternal(const t_str& func_name)
 		t_real arg = std::get<m_realidx>(PopData());
 
 		retval = t_data{std::in_place_index<m_realidx>, std::tan(arg)};
+	}
+	else if(func_name == "transpose")
+	{
+		t_data dat = PopData();
+		if(dat.index() == m_matidx)
+		{
+			// transpose matrix
+			const t_mat arg = std::get<m_matidx>(dat);
+			t_mat transposed = m::trans(arg);
+
+			retval = t_data{std::in_place_index<m_matidx>, transposed};
+		}
+		else
+		{
+			// keep original data for non-matrix types
+			retval = dat;
+		}
 	}
 	else if(func_name == "set_eps")
 	{

@@ -55,6 +55,7 @@ t_astret ZeroACAsm::visit(const ASTExprList* ast)
 			vm_type_size<VMType::ADDR_MEM, false>);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::MAKEVEC));
+		sym_ret = m_vec_const;
 	}
 
 	return sym_ret;

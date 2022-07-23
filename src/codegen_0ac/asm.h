@@ -93,6 +93,7 @@ protected:
 	void PushMatConst(t_vm_addr rows, t_vm_addr cols, const std::vector<t_vm_real>& mat);
 
 	void AssignVar(t_astret sym);
+	void CallExternal(const t_str& funcname);
 
 
 private:
@@ -118,6 +119,7 @@ private:
 
 	// dummy symbols for constants
 	Symbol *m_scalar_const{}, *m_int_const{}, *m_str_const{};
+	Symbol *m_vec_const{}, *m_mat_const{};
 };
 
 

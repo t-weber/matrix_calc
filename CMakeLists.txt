@@ -71,8 +71,8 @@ target_link_libraries(mcalc ${Boost_LIBRARIES})
 
 
 # build runtime for 3-ac code generator
-execute_process(COMMAND clang -O2 -S -emit-llvm -o runtime_opt.asm "${PROJECT_SOURCE_DIR}/src/runtime.c")
-execute_process(COMMAND clang -S -emit-llvm -o runtime.asm "${PROJECT_SOURCE_DIR}/src/runtime.c")
+execute_process(COMMAND clang -O2 -S -emit-llvm -o runtime_opt.asm "${PROJECT_SOURCE_DIR}/src/codegen_3ac/runtime.c")
+execute_process(COMMAND clang -S -emit-llvm -o runtime.asm "${PROJECT_SOURCE_DIR}/src/codegen_3ac/runtime.c")
 # -----------------------------------------------------------------------------
 
 

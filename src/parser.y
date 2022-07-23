@@ -18,8 +18,8 @@
 
 %define api.parser.class { Parser }
 %define api.namespace { yy }
-%define api.value.type variant	// instead of union
-%define api.token.constructor	// symbol constructors
+%define api.value.type variant  // instead of union
+%define api.token.constructor   // symbol constructors
 
 
 // code for parser_impl.cpp
@@ -120,7 +120,7 @@
  * program start symbol
  */
 program
-	: statements[stmts]		{ context.SetStatements($stmts); }
+	: statements[stmts]                     { context.SetStatements($stmts); }
 	;
 
 
@@ -128,8 +128,8 @@ program
  * a list of statements
  */
 statements[res]
-	: statement[stmt] statements[lst]	{ $lst->AddStatement($stmt); $res = $lst; }
-	| %empty							{ $res = std::make_shared<ASTStmts>(); }
+	: statement[stmt] statements[lst]       { $lst->AddStatement($stmt); $res = $lst; }
+	| %empty                                { $res = std::make_shared<ASTStmts>(); }
 	;
 
 
@@ -164,11 +164,11 @@ variables[res]
  * statement
  */
 statement[res]
-	: expr[term] ';'	{ $res = $term; }
-	| block[blk]		{ $res = $blk; }
+	: expr[term] ';'             { $res = $term; }
+	| block[blk]                 { $res = $blk; }
 
 	// function
-	| function[func]	{ $res = $func;  }
+	| function[func]             { $res = $func;  }
 	
 	// (multiple) return(s)
 	| RET exprlist[terms] ';' {
@@ -180,7 +180,7 @@ statement[res]
 	| SCALARDECL {
 			context.SetSymType(SymbolType::SCALAR);
 		}
-		variables[vars] ';'	{ $res = $vars; }
+		variables[vars] ';'  { $res = $vars; }
 
 	// vector
 	| VECTORDECL INT[dim] {
@@ -205,20 +205,20 @@ statement[res]
 			context.SetSymType(SymbolType::STRING);
 			context.SetSymDims(std::size_t(DEFAULT_STRING_SIZE));
 		}
-		variables[vars] ';'	{ $res = $vars; }
+		variables[vars] ';'  { $res = $vars; }
 
 	// string with a given (static) size
 	| STRINGDECL INT[dim] {
 			context.SetSymType(SymbolType::STRING);
 			context.SetSymDims(std::size_t(std::size_t($dim)));
 		}
-		variables[vars] ';'	{ $res = $vars; }
+		variables[vars] ';'  { $res = $vars; }
 
 	// int
 	| INTDECL {
 			context.SetSymType(SymbolType::INT);
 		}
-		variables[vars] ';'	{ $res = $vars; }
+		variables[vars] ';'  { $res = $vars; }
 
 	// conditional
 	| IF expr[cond] THEN statement[if_stmt] {
@@ -388,8 +388,8 @@ typedecl[res]
 
 
 full_argumentlist[res]
-	: argumentlist[args]	{ $res = $args; }
-	| %empty				{ $res = std::make_shared<ASTArgNames>(); }
+	: argumentlist[args]        { $res = $args; }
+	| %empty                    { $res = std::make_shared<ASTArgNames>(); }
 	;
 
 
@@ -457,7 +457,7 @@ exprlist[res]
  * a block of statements
  */
 block[res]
-	: '{' statements[stmts] '}'		{ $res = $stmts; }
+	: '{' statements[stmts] '}'      { $res = $stmts; }
 	;
 
 
@@ -465,49 +465,49 @@ block[res]
  * expression
  */
 expr[res]
-	: '(' expr[term] ')'	{ $res = $term; }
+	: '(' expr[term] ')'             { $res = $term; }
 
 	// unary expressions
-	| '+' expr[term] %prec UNARY_OP		{ $res = $term; }
-	| '-' expr[term] %prec UNARY_OP		{ $res = std::make_shared<ASTUMinus>($term); }
-	| '|' expr[term] '|'	{ $res = std::make_shared<ASTNorm>($term); }
-	| expr[term] '\''	{ $res = std::make_shared<ASTTransp>($term); }
+	| '+' expr[term] %prec UNARY_OP  { $res = $term; }
+	| '-' expr[term] %prec UNARY_OP  { $res = std::make_shared<ASTUMinus>($term); }
+	| '|' expr[term] '|'             { $res = std::make_shared<ASTNorm>($term); }
+	| expr[term] '\''                { $res = std::make_shared<ASTTransp>($term); }
 
 	// unary boolean expression
-	| NOT expr[term]	{ $res = std::make_shared<ASTBool>($term, ASTBool::NOT); }
+	| NOT expr[term]                 { $res = std::make_shared<ASTBool>($term, ASTBool::NOT); }
 
 	// binary expressions
-	| expr[term1] '+' expr[term2]	{ $res = std::make_shared<ASTPlus>($term1, $term2, 0); }
-	| expr[term1] '-' expr[term2]	{ $res = std::make_shared<ASTPlus>($term1, $term2, 1); }
-	| expr[term1] '*' expr[term2]	{ $res = std::make_shared<ASTMult>($term1, $term2, 0); }
-	| expr[term1] '/' expr[term2]	{ $res = std::make_shared<ASTMult>($term1, $term2, 1); }
-	| expr[term1] '%' expr[term2]	{ $res = std::make_shared<ASTMod>($term1, $term2); }
-	| expr[term1] '^' expr[term2]	{ $res = std::make_shared<ASTPow>($term1, $term2); }
+	| expr[term1] '+' expr[term2]    { $res = std::make_shared<ASTPlus>($term1, $term2, 0); }
+	| expr[term1] '-' expr[term2]    { $res = std::make_shared<ASTPlus>($term1, $term2, 1); }
+	| expr[term1] '*' expr[term2]    { $res = std::make_shared<ASTMult>($term1, $term2, 0); }
+	| expr[term1] '/' expr[term2]    { $res = std::make_shared<ASTMult>($term1, $term2, 1); }
+	| expr[term1] '%' expr[term2]    { $res = std::make_shared<ASTMod>($term1, $term2); }
+	| expr[term1] '^' expr[term2]    { $res = std::make_shared<ASTPow>($term1, $term2); }
 
 	// binary boolean expressions
-	| expr[term1] AND expr[term2]	{ $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::AND); }
-	| expr[term1] OR expr[term2]	{ $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::OR); }
-	| expr[term1] XOR expr[term2]	{ $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::XOR); }
+	| expr[term1] AND expr[term2]    { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::AND); }
+	| expr[term1] OR expr[term2]     { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::OR); }
+	| expr[term1] XOR expr[term2]    { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::XOR); }
 
 	// comparison expressions
-	| expr[term1] EQU expr[term2]	{ $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::EQU); }
-	| expr[term1] NEQ expr[term2]	{ $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::NEQ); }
-	| expr[term1] GT expr[term2]	{ $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::GT); }
-	| expr[term1] LT expr[term2]	{ $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LT); }
-	| expr[term1] GEQ expr[term2]	{ $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::GEQ); }
-	| expr[term1] LEQ expr[term2]	{ $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LEQ); }
+	| expr[term1] EQU expr[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::EQU); }
+	| expr[term1] NEQ expr[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::NEQ); }
+	| expr[term1] GT expr[term2]     { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::GT); }
+	| expr[term1] LT expr[term2]     { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LT); }
+	| expr[term1] GEQ expr[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::GEQ); }
+	| expr[term1] LEQ expr[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LEQ); }
 
 	// constants
-	| REAL[num]		{ $res = std::make_shared<ASTNumConst<t_real>>($num); }
-	| INT[num]		{ $res = std::make_shared<ASTNumConst<t_int>>($num); }
-	| STRING[str]	{ $res = std::make_shared<ASTStrConst>($str); }
-	| '[' exprlist[arr] ']'	{	// scalar array
+	| REAL[num]                      { $res = std::make_shared<ASTNumConst<t_real>>($num); }
+	| INT[num]                       { $res = std::make_shared<ASTNumConst<t_int>>($num); }
+	| STRING[str]                    { $res = std::make_shared<ASTStrConst>($str); }
+	| '[' exprlist[arr] ']'	{  // scalar array
 			$arr->SetScalarArray(true); 
 			$res = $arr; 
 		}
 
 	// variable
-	| IDENT[ident] %prec IDENT	{
+	| IDENT[ident] %prec IDENT {
 			// does the identifier name a constant?
 			auto pair = context.GetConst($ident);
 			if(std::get<0>(pair))
@@ -670,8 +670,8 @@ expr[res]
  * optional assignment
  */
 opt_assign[res]
-	: '=' expr[term]	{ $res = $term; }
-	| %empty			{ $res = nullptr; }
+	: '=' expr[term]       { $res = $term; }
+	| %empty               { $res = nullptr; }
 	;
 
 %%
