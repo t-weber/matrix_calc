@@ -84,6 +84,8 @@ add_executable(mcalc_0ac
 	src/codegen_0ac/main.cpp src/main.h
 	src/parser.cpp src/parser.h src/ast.h src/sym.h
 	src/codegen_0ac/asm.cpp src/codegen_0ac/asm.h
+	src/codegen_0ac/func.cpp src/codegen_0ac/var.cpp
+	src/codegen_0ac/ops.cpp src/codegen_0ac/arr.cpp
 	src/printast.cpp src/printast.h
 	src/semantics.cpp src/semantics.h
 	src/types.h
