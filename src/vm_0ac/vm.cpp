@@ -384,6 +384,21 @@ bool VM::Run()
 				break;
 			}
 
+			case OpCode::TOV: // converts value to t_vec
+			{
+				t_addr vec_size = PopAddress();
+				OpArrayCast<m_vecidx>(vec_size);
+				break;
+			}
+
+			case OpCode::TOM: // converts value to t_mat
+			{
+				t_addr size1 = PopAddress();
+				t_addr size2 = PopAddress();
+				OpArrayCast<m_matidx>(size1, size2);
+				break;
+			}
+
 			case OpCode::JMP: // jump to direct address
 			{
 				// get address from stack and set ip

@@ -83,7 +83,9 @@ protected:
 	std::size_t get_stackframe_size(const Symbol* func) const;
 
 	// emits code to cast to given type
-	void cast_to(t_astret ty_to, std::streampos pos);
+	void cast_to(t_astret ty_to,
+		const std::optional<std::streampos>& pos = std::nullopt,
+		bool allow_array_cast = false);
 
 	// push constants
 	void PushRealConst(t_vm_real);

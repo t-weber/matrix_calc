@@ -36,10 +36,12 @@ enum class OpCode : t_vm_byte
 	TOI      = 0x30,  // cast to int
 	TOF      = 0x31,  // cast to real
 	TOS      = 0x32,  // cast to string
+	TOV      = 0x33,  // cast to vector
+	TOM      = 0x34,  // cast to matrix
 
 	// jumps
-	JMP      = 0x40,  // unconditional jump to direct address
-	JMPCND   = 0x41,  // conditional jump to direct address
+	JMP      = 0x40,  // unconditional jump
+	JMPCND   = 0x41,  // conditional jump
 
 	// logical operations
 	AND      = 0x50,  // &&
@@ -100,6 +102,8 @@ constexpr t_str get_vm_opcode_name(OpCode op)
 		case OpCode::TOI:       return "toi";
 		case OpCode::TOF:       return "tof";
 		case OpCode::TOS:       return "tos";
+		case OpCode::TOV:       return "tov";
+		case OpCode::TOM:       return "tom";
 		case OpCode::JMP:       return "jmp";
 		case OpCode::JMPCND:    return "jmpcnd";
 		case OpCode::AND:       return "and";

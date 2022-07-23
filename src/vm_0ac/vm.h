@@ -460,6 +460,113 @@ protected:
 
 
 	/**
+	 * cast to an array variable type (matrix or vector)
+	 */
+	template<std::size_t toidx>
+	void OpArrayCast(t_addr size1, t_addr size2 = 0)
+	{
+		using t_to = std::variant_alternative_t<toidx, t_data>;
+		t_data data = TopData();
+
+		// casting to vector
+		if constexpr(toidx == m_vecidx)
+		{
+			// casting from vector
+			if(data.index() == m_vecidx)
+				return;  // no action needed, TODO: check sizes
+
+			// casting from real
+			else if(data.index() == m_realidx)
+			{
+				t_real val = std::get<m_realidx>(data);
+				PopData();
+
+				// set every element of the vector to the real value
+				t_vec vec = m::create<t_vec>(size1);
+				for(t_addr i=0; i<size1; ++i)
+					vec[i] = val;
+				PushData(t_data{std::in_place_index<m_vecidx>, vec});
+			}
+
+			// casting from int
+			else if(data.index() == m_intidx)
+			{
+				t_real val = std::get<m_intidx>(data);
+				PopData();
+
+				// set every element of the vector to the int value
+				t_vec vec = m::create<t_vec>(size1);
+				for(t_addr i=0; i<size1; ++i)
+					vec[i] = t_real(val);
+				PushData(t_data{std::in_place_index<m_vecidx>, vec});
+			}
+
+			// casting from matrix
+			else if(data.index() == m_matidx)
+			{
+				const t_mat& val = std::get<m_matidx>(data);
+				PopData();
+
+				// flatten the matrix
+				t_vec vec = m::create<t_vec>(size1);
+				for(t_addr i=0; i<size1; ++i)
+					vec[i] = val(i/val.size2(), i%val.size2());
+				PushData(t_data{std::in_place_index<m_vecidx>, vec});
+			}
+		}
+
+		// casting to matrix
+		else if constexpr(toidx == m_matidx)
+		{
+			// casting from matrix
+			if(data.index() == m_matidx)
+				return;  // no action needed, TODO: check sizes
+
+			// casting from real
+			else if(data.index() == m_realidx)
+			{
+				t_real val = std::get<m_realidx>(data);
+				PopData();
+
+				// set every element of the matrix to the real value
+				t_mat mat = m::create<t_mat>(size1, size2);
+				for(t_addr i=0; i<size1; ++i)
+					for(t_addr j=0; j<size2; ++j)
+						mat(i, j) = val;
+				PushData(t_data{std::in_place_index<m_matidx>, mat});
+			}
+
+			// casting from int
+			else if(data.index() == m_intidx)
+			{
+				t_real val = std::get<m_intidx>(data);
+				PopData();
+
+				// set every element of the matrix to the int value
+				t_mat mat = m::create<t_mat>(size1, size2);
+				for(t_addr i=0; i<size1; ++i)
+					for(t_addr j=0; j<size2; ++j)
+						mat(i, j) = t_real(val);
+				PushData(t_data{std::in_place_index<m_matidx>, mat});
+			}
+
+			// casting from vector
+			else if(data.index() == m_vecidx)
+			{
+				const t_vec& val = std::get<m_vecidx>(data);
+				PopData();
+
+				t_mat mat = m::create<t_mat>(size1, size2);
+				for(t_addr i=0; i<size1; ++i)
+					for(t_addr j=0; j<size2; ++j)
+						mat(i, j) = val[i*size2 + j];
+				PushData(t_data{std::in_place_index<m_matidx>, mat});
+			}
+		}
+	}
+
+
+	/**
 	 * arithmetic operation
 	 */
 	template<class t_val, char op>

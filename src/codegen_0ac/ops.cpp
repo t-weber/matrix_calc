@@ -55,7 +55,9 @@ get_cast_symtype(t_astret term1, t_astret term2)
 /**
  * emit code to cast to given type
  */
-void ZeroACAsm::cast_to(t_astret ty_to, std::streampos pos)
+void ZeroACAsm::cast_to(t_astret ty_to,
+	const std::optional<std::streampos>& pos,
+	bool allow_array_cast)
 {
 	if(!ty_to)
 		return;
@@ -63,15 +65,55 @@ void ZeroACAsm::cast_to(t_astret ty_to, std::streampos pos)
 	t_vm_byte op = static_cast<t_vm_byte>(OpCode::NOP);
 
 	if(ty_to->ty == SymbolType::STRING)
+	{
 		op = static_cast<t_vm_byte>(OpCode::TOS);
+	}
 	else if(ty_to->ty == SymbolType::INT)
+	{
 		op = static_cast<t_vm_byte>(OpCode::TOI);
+	}
 	else if(ty_to->ty == SymbolType::SCALAR)
+	{
 		op = static_cast<t_vm_byte>(OpCode::TOF);
+	}
+	else if(ty_to->ty == SymbolType::VECTOR && allow_array_cast)
+	{
+		op = static_cast<t_vm_byte>(OpCode::TOV);
 
-	m_ostr->seekp(pos);
+		// TODO: this doesn't work if "pos" is also given
+		// push vector length
+		t_vm_addr cols = static_cast<t_vm_addr>(std::get<0>(ty_to->dims));
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_MEM));
+		m_ostr->write(reinterpret_cast<const char*>(&cols),
+			vm_type_size<VMType::ADDR_MEM, false>);
+	}
+	else if(ty_to->ty == SymbolType::MATRIX && allow_array_cast)
+	{
+		op = static_cast<t_vm_byte>(OpCode::TOM);
+
+		// TODO: this doesn't work if "pos" is also given
+		// push number of columns
+		t_vm_addr cols = static_cast<t_vm_addr>(std::get<0>(ty_to->dims));
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_MEM));
+		m_ostr->write(reinterpret_cast<const char*>(&cols),
+			vm_type_size<VMType::ADDR_MEM, false>);
+
+		// push number of rows
+		t_vm_addr rows = static_cast<t_vm_addr>(std::get<1>(ty_to->dims));
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+		m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_MEM));
+		m_ostr->write(reinterpret_cast<const char*>(&rows),
+			vm_type_size<VMType::ADDR_MEM, false>);
+	}
+
+	if(pos)
+		m_ostr->seekp(*pos);
 	m_ostr->write(reinterpret_cast<const char*>(&op), sizeof(t_vm_byte));
-	m_ostr->seekp(0, std::ios_base::end);
+	if(pos)
+		m_ostr->seekp(0, std::ios_base::end);
 }
 
 

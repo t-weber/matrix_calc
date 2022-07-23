@@ -205,6 +205,7 @@ t_astret ZeroACAsm::visit(const ASTAssign* ast)
 		if(!sym->addr)
 			throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" has not been declared.");
 
+		cast_to(sym, std::nullopt, true);
 		AssignVar(sym);
 
 		if(!sym_ret)

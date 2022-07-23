@@ -37,7 +37,7 @@ t_astret ZeroACAsm::visit(const ASTExprList* ast)
 
 		// make sure all array elements are real
 		if(is_arr)
-			cast_to(m_scalar_const, m_ostr->tellp());
+			cast_to(m_scalar_const);
 
 		if(!sym_ret)
 			sym_ret = sym;
