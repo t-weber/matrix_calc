@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <memory>
 #include <array>
+#include <vector>
 #include <optional>
 #include <variant>
 #include <iostream>
@@ -465,7 +466,7 @@ protected:
 	template<std::size_t toidx>
 	void OpArrayCast(t_addr size1, t_addr size2 = 0)
 	{
-		using t_to = std::variant_alternative_t<toidx, t_data>;
+		//using t_to = std::variant_alternative_t<toidx, t_data>;
 		t_data data = TopData();
 
 		// casting to vector

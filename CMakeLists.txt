@@ -106,7 +106,8 @@ add_executable(vm_0ac
 	src/vm_0ac/main.cpp
 	src/types.h src/vm_0ac/types.h
 	src/vm_0ac/opcodes.h src/vm_0ac/vm.h
-	src/vm_0ac/vm.cpp src/vm_0ac/vm_extfuncs.cpp
+	src/vm_0ac/vm.cpp src/vm_0ac/vm_run.cpp
+	src/vm_0ac/vm_extfuncs.cpp
 	src/vm_0ac/vm_memdump.cpp
 )
 

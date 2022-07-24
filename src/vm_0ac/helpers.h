@@ -35,4 +35,19 @@ t_val pow(t_val val1, t_val val2)
 }
 
 
+
+/**
+ * keeps indices inside the given range
+ */
+template<class t_int>
+t_int safe_array_index(t_int idx, t_int size)
+{
+	idx %= size;
+	if(idx < 0)
+		idx += size;
+
+	return idx;
+}
+
+
 #endif

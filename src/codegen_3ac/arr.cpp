@@ -48,7 +48,11 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 	if(term->ty == SymbolType::VECTOR && !ast->IsRanged12())
 	{
 		if(num2 || num3 || num4)	// no further arguments needed
-			throw std::runtime_error("ASTArrayAccess: Invalid access operator for vector \"" + term->name + "\".");
+		{
+			throw std::runtime_error(
+				"ASTArrayAccess: Invalid access operator for vector \""
+					+ term->name + "\".");
+		}
 
 		std::size_t dim = std::get<0>(term->dims);
 		num1 = safe_array_index(num1, dim);
@@ -72,7 +76,11 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 	else if(term->ty == SymbolType::STRING && !ast->IsRanged12())
 	{
 		if(num2 || num3 || num4)	// no further arguments needed
-			throw std::runtime_error("ASTArrayAccess: Invalid access operator for string \"" + term->name + "\".");
+		{
+			throw std::runtime_error(
+				"ASTArrayAccess: Invalid access operator for string \""
+					+ term->name + "\".");
+		}
 
 		std::size_t dim = std::get<0>(term->dims);
 		num1 = safe_array_index(num1, dim);
@@ -98,7 +106,8 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 		// store the char
 		t_astret ptr0 = get_tmp_var();
 		(*m_ostr) << "%" << ptr0->name << " = getelementptr [" << std::get<0>(retdims) << " x i8], ["
-			<< std::get<0>(retdims) << " x i8]* %" << str_mem->name << ", " << m_int << " 0, " << m_int << " 0\n";
+			<< std::get<0>(retdims) << " x i8]* %" << str_mem->name
+			<< ", " << m_int << " 0, " << m_int << " 0\n";
 
 		(*m_ostr) << "store i8 %" << elem->name << ", i8* %" << ptr0->name << "\n";
 
@@ -117,7 +126,11 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 	else if((term->ty == SymbolType::VECTOR || term->ty == SymbolType::STRING) && ast->IsRanged12())
 	{
 		if(num3 || num4)	// no further arguments needed
-			throw std::runtime_error("ASTArrayAccess: Invalid access operator for \"" + term->name + "\".");
+		{
+			throw std::runtime_error(
+				"ASTArrayAccess: Invalid access operator for \""
+					+ term->name + "\".");
+		}
 
 		t_str strty, strptrty;
 		if(term->ty == SymbolType::VECTOR)
@@ -286,7 +299,11 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 	else if(term->ty == SymbolType::MATRIX && !ast->IsRanged12() && !ast->IsRanged34())
 	{
 		if(!num2 || num3 || num4)	// second argument needed
-			throw std::runtime_error("ASTArrayAccess: Invalid access operator for matrix \"" + term->name + "\".");
+		{
+			throw std::runtime_error(
+				"ASTArrayAccess: Invalid access operator for matrix \""
+					+ term->name + "\".");
+		}
 
 		std::size_t dim1 = std::get<0>(term->dims);
 		std::size_t dim2 = std::get<1>(term->dims);
@@ -494,14 +511,16 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 				// source matrix element pointer
 				t_astret srcelemptr = get_tmp_var();
 				(*m_ostr) << "%" << srcelemptr->name << " = getelementptr [" 
-					<< dim1*dim2 << " x " << m_real << "], [" << dim1*dim2 << " x " << m_real << "]* %"
+					<< dim1*dim2 << " x " << m_real << "], ["
+					<< dim1*dim2 << " x " << m_real << "]* %"
 					<< term->name << ", " << m_int << " 0, " << m_int
 					<< " %" << idx->name << "\n";
 
 				// destination matrix element pointer
 				t_astret dstelemptr = get_tmp_var();
 				(*m_ostr) << "%" << dstelemptr->name << " = getelementptr [" 
-					<< dim1*dim2 << " x " << m_real << "], [" << dim1*dim2 << " x " << m_real << "]* %"
+					<< dim1*dim2 << " x " << m_real << "], ["
+					<< dim1*dim2 << " x " << m_real << "]* %"
 					<< vec_mem->name << ", " << m_int << " 0, " << m_int
 					<< " %" << ctrdstval->name << "\n";
 
@@ -573,8 +592,8 @@ t_astret LLAsm::visit(const ASTArrayAccess* ast)
 	}
 
 	throw std::runtime_error("ASTArrayAccess: Invalid array access to \"" + term->name + "\".");
-	//return nullptr;
 }
+
 
 
 t_astret LLAsm::visit(const ASTArrayAssign* ast)

@@ -13,8 +13,92 @@
 // ----------------------------------------------------------------------------
 t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 {
-	std::cout << "TODO: ASTArrayAccess" << std::endl;
-	return nullptr;
+	t_astret term = ast->GetTerm()->accept(this);
+
+	bool ranged12 = ast->IsRanged12();
+	bool ranged34 = ast->IsRanged34();
+
+	const ASTPtr num1 = ast->GetNum1();
+	const ASTPtr num2 = ast->GetNum2();
+	const ASTPtr num3 = ast->GetNum3();
+	const ASTPtr num4 = ast->GetNum4();
+
+	// single-element 1d array access
+	if(!ranged12 && !ranged34 && num1 && !num2 && !num3 && !num4)
+	{
+		t_astret num1sym = num1->accept(this);
+		if(num1sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR1D));
+
+		if(term->ty == SymbolType::STRING)
+			return m_str_const;
+		else if(term->ty == SymbolType::MATRIX)
+			return m_vec_const;
+		else
+			return m_scalar_const;
+	}
+
+	// ranged 1d array access
+	else if(ranged12 && !ranged34 && num1 && num2 && !num3 && !num4)
+	{
+		t_astret num1sym = num1->accept(this);
+		if(num1sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+		t_astret num2sym = num2->accept(this);
+		if(num2sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR1DR));
+
+		if(term->ty == SymbolType::STRING)
+			return m_str_const;
+		else if(term->ty == SymbolType::MATRIX)
+			return m_mat_const;
+		else
+			return m_vec_const;
+	}
+
+	// single-element 2d array access
+	else if(!ranged12 && !ranged34 && num1 && num2 && !num3 && !num4)
+	{
+		t_astret num1sym = num1->accept(this);
+		if(num1sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+		t_astret num2sym = num2->accept(this);
+		if(num2sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR2D));
+
+		if(term->ty == SymbolType::MATRIX)
+			return m_scalar_const;
+	}
+
+	// ranged 2d array access
+	else if(ranged12 && ranged34 && num1 && num2 && num3 && num4)
+	{
+		t_astret num1sym = num1->accept(this);
+		if(num1sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+		t_astret num2sym = num2->accept(this);
+		if(num2sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+		t_astret num3sym = num3->accept(this);
+		if(num3sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+		t_astret num4sym = num4->accept(this);
+		if(num4sym->ty != SymbolType::INT)
+			cast_to(m_scalar_const);
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR2DR));
+
+		if(term->ty == SymbolType::MATRIX)
+			return m_scalar_const;
+	}
+
+	throw std::runtime_error("ASTArrayAccess: Invalid array access to \"" + term->name + "\".");
 }
 
 

@@ -803,8 +803,7 @@ t_astret LLAsm::safe_array_index(t_astret idx, std::size_t size)
 	t_astret modidx2 = get_tmp_var(SymbolType::INT);
 	(*m_ostr) << "%" << modidx2->name << " = alloca " << m_int << "\n";
 
-	generate_cond(
-	[this, modidx]() -> t_astret
+	generate_cond([this, modidx]() -> t_astret
 	{
 		t_astret _cond = get_tmp_var(SymbolType::INT);
 		(*m_ostr) << "%" << _cond->name << " = icmp slt " << m_int

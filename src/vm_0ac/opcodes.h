@@ -22,6 +22,10 @@ enum class OpCode : t_vm_byte
 	PUSH     = 0x10,  // push direct data
 	WRMEM    = 0x11,  // write memory
 	RDMEM    = 0x12,  // read memory
+	RDARR1D  = 0x13,  // read element from a 1d array type
+	RDARR1DR = 0x14,  // read range from a 1d array type
+	RDARR2D  = 0x15,  // read element from a 2d array type
+	RDARR2DR = 0x16,  // read range from a 2d array type
 
 	// arithmetic operations
 	USUB     = 0x20,  // unary -
@@ -92,6 +96,10 @@ constexpr t_str get_vm_opcode_name(OpCode op)
 		case OpCode::PUSH:      return "push";
 		case OpCode::WRMEM:     return "wrmem";
 		case OpCode::RDMEM:     return "rdmem";
+		case OpCode::RDARR1D:   return "rdarr1d";
+		case OpCode::RDARR1DR:  return "rdarr1dr";
+		case OpCode::RDARR2D:   return "rdarr2d";
+		case OpCode::RDARR2DR:  return "rdarr2dr";
 		case OpCode::USUB:      return "usub";
 		case OpCode::ADD:       return "add";
 		case OpCode::SUB:       return "sub";
