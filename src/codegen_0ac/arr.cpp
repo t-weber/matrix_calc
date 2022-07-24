@@ -28,7 +28,7 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR1D));
 
@@ -45,10 +45,10 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR1DR));
 
@@ -65,10 +65,10 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR2D));
 
@@ -81,16 +81,16 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 		t_astret num3sym = num3->accept(this);
 		if(num3sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 		t_astret num4sym = num4->accept(this);
 		if(num4sym->ty != SymbolType::INT)
-			cast_to(m_scalar_const);
+			cast_to(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR2DR));
 
@@ -104,8 +104,61 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 
 t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 {
-	std::cout << "TODO: ASTArrayAssign" << std::endl;
-	return nullptr;
+	// get variable from symbol table
+	const t_str& varname = ast->GetIdent();
+	t_astret sym = get_sym(varname);
+	if(!sym)
+		throw std::runtime_error("ASTArrayAssign: Variable \"" + varname + "\" is not in symbol table.");
+	if(!sym->addr)
+		throw std::runtime_error("ASTArrayAssign: Variable \"" + varname + "\" has not been declared.");
+
+	// push variable address
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_BP));
+	t_vm_addr addr = static_cast<t_vm_addr>(*sym->addr);
+	m_ostr->write(reinterpret_cast<const char*>(&addr), vm_type_size<VMType::ADDR_BP, false>);
+
+	// evaluate the rhs expression
+	t_astret expr = ast->GetExpr()->accept(this);
+
+	bool ranged12 = ast->IsRanged12();
+	bool ranged34 = ast->IsRanged34();
+
+	const ASTPtr num1 = ast->GetNum1();
+	const ASTPtr num2 = ast->GetNum2();
+	const ASTPtr num3 = ast->GetNum3();
+	const ASTPtr num4 = ast->GetNum4();
+
+	// single-element 1d array assignment
+	if(!ranged12 && !ranged34 && num1 && !num2 && !num3 && !num4)
+	{
+		if(expr->ty != SymbolType::SCALAR)
+			cast_to(m_scalar_const);
+
+		t_astret num1sym = num1->accept(this);
+		if(num1sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR1D));
+	}
+
+	// single-element 2d array access
+	else if(!ranged12 && !ranged34 && num1 && num2 && !num3 && !num4)
+	{
+		if(expr->ty != SymbolType::SCALAR)
+			cast_to(m_scalar_const);
+
+		t_astret num1sym = num1->accept(this);
+		if(num1sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+		t_astret num2sym = num2->accept(this);
+		if(num2sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR2D));
+	}
+
+	return expr;
 }
 
 

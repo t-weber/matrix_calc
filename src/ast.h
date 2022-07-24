@@ -716,7 +716,8 @@ public:
 		ASTPtr num1, ASTPtr num2 = nullptr,
 		ASTPtr num3 = nullptr, ASTPtr num4 = nullptr,
 		bool ranged12 = false, bool ranged34 = false)
-		: term{term}, num1{num1}, num2{num2}, num3{num3}, num4{num4},
+		: term{term},
+			num1{num1}, num2{num2}, num3{num3}, num4{num4},
 			ranged12{ranged12}, ranged34{ranged34}
 	{}
 
@@ -750,8 +751,10 @@ public:
 		ASTPtr num1, ASTPtr num2 = nullptr,
 		ASTPtr num3 = nullptr, ASTPtr num4 = nullptr,
 		bool ranged12 = false, bool ranged34 = false)
-		: ident{ident}, expr{expr}, num1{num1}, num2{num2},
-			num3{num3}, num4{num4}, ranged12{ranged12}, ranged34{ranged34}
+		: ident{ident}, expr{expr},
+			num1{num1}, num2{num2},
+			num3{num3}, num4{num4},
+			ranged12{ranged12}, ranged34{ranged34}
 	{}
 
 	const t_str& GetIdent() const { return ident; }

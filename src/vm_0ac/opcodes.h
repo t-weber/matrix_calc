@@ -22,10 +22,6 @@ enum class OpCode : t_vm_byte
 	PUSH     = 0x10,  // push direct data
 	WRMEM    = 0x11,  // write memory
 	RDMEM    = 0x12,  // read memory
-	RDARR1D  = 0x13,  // read element from a 1d array type
-	RDARR1DR = 0x14,  // read range from a 1d array type
-	RDARR2D  = 0x15,  // read element from a 2d array type
-	RDARR2DR = 0x16,  // read range from a 2d array type
 
 	// arithmetic operations
 	USUB     = 0x20,  // unary -
@@ -76,8 +72,20 @@ enum class OpCode : t_vm_byte
 	ROTL     = 0x86,  // rotate left
 	ROTR     = 0x87,  // rotate right
 
+	// array operations
 	MAKEVEC  = 0x90,  // create a vector
 	MAKEMAT  = 0x91,  // create a matrix
+
+	// array memory operations
+	RDARR1D  = 0xa0,  // read element from a 1d array type
+	RDARR1DR = 0xa1,  // read range from a 1d array type
+	RDARR2D  = 0xa2,  // read element from a 2d array type
+	RDARR2DR = 0xa3,  // read range from a 2d array type
+
+	WRARR1D  = 0xa4,  // write element to a 1d array type
+	WRARR1DR = 0xa5,  // write range to a 1d array type
+	WRARR2D  = 0xa6,  // write element to a 2d array type
+	WRARR2DR = 0xa7,  // write range to a 2d array type
 };
 
 
@@ -96,10 +104,6 @@ constexpr t_str get_vm_opcode_name(OpCode op)
 		case OpCode::PUSH:      return "push";
 		case OpCode::WRMEM:     return "wrmem";
 		case OpCode::RDMEM:     return "rdmem";
-		case OpCode::RDARR1D:   return "rdarr1d";
-		case OpCode::RDARR1DR:  return "rdarr1dr";
-		case OpCode::RDARR2D:   return "rdarr2d";
-		case OpCode::RDARR2DR:  return "rdarr2dr";
 		case OpCode::USUB:      return "usub";
 		case OpCode::ADD:       return "add";
 		case OpCode::SUB:       return "sub";
@@ -137,6 +141,14 @@ constexpr t_str get_vm_opcode_name(OpCode op)
 		case OpCode::ROTR:      return "rotr";
 		case OpCode::MAKEVEC:   return "makevec";
 		case OpCode::MAKEMAT:   return "makemat";
+		case OpCode::RDARR1D:   return "rdarr1d";
+		case OpCode::RDARR1DR:  return "rdarr1dr";
+		case OpCode::RDARR2D:   return "rdarr2d";
+		case OpCode::RDARR2DR:  return "rdarr2dr";
+		case OpCode::WRARR1D:   return "wrarr1d";
+		case OpCode::WRARR1DR:  return "wrarr1dr";
+		case OpCode::WRARR2D:   return "wrarr2d";
+		case OpCode::WRARR2DR:  return "wrarr2dr";
 		default:                return "<unknown>";
 	}
 }

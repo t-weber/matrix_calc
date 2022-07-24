@@ -648,14 +648,24 @@ void VM::PushData(const VM::t_data& data, VMType ty, bool err_on_unknown)
 
 
 /**
+ * read the data type prefix from data in memory
+ */
+VMType VM::ReadMemType(VM::t_addr addr)
+{
+	// get data type info from memory
+	t_byte tyval = ReadMemRaw<t_byte>(addr);
+	return static_cast<VMType>(tyval);
+}
+
+
+/**
  * read type-prefixed data from memory
  */
 std::tuple<VMType, VM::t_data> VM::ReadMemData(VM::t_addr addr)
 {
 	// get data type info from memory
-	t_byte tyval = ReadMemRaw<t_byte>(addr);
+	VMType ty = ReadMemType(addr);
 	addr += m_bytesize;
-	VMType ty = static_cast<VMType>(tyval);
 
 	t_data dat;
 
@@ -755,7 +765,7 @@ std::tuple<VMType, VM::t_data> VM::ReadMemData(VM::t_addr addr)
 		default:
 		{
 			std::ostringstream msg;
-			msg << "ReadMem: Data type " << (int)tyval
+			msg << "ReadMem: Data type " << (int)ty
 				<< " (" << get_vm_type_name(ty) << ")"
 				<< " not yet implemented.";
 			throw std::runtime_error(msg.str());

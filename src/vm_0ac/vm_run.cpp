@@ -256,6 +256,91 @@ bool VM::Run()
 				break;
 			}
 
+			case OpCode::WRARR1D:
+			{
+				t_int idx = std::get<m_intidx>(PopData());
+
+				t_data data = PopData();
+				t_addr addr = PopAddress();
+
+				// get variable data type
+				VMType ty = ReadMemType(addr);
+				// skip type descriptor byte
+				addr += m_bytesize;
+
+				if(ty == VMType::VEC)
+				{
+					if(data.index() != m_realidx)
+					{
+						throw std::runtime_error(
+							"Vector element has to be of scalar type.");
+					}
+
+					// get vector length indicator
+					t_addr veclen = ReadMemRaw<t_addr>(addr);
+					addr += m_addrsize;
+
+					idx = safe_array_index<t_addr>(idx, veclen);
+					if(idx >= veclen || idx < 0)
+						throw std::runtime_error("Vector index out of bounds.");
+
+					// skip to element and overwrite it
+					addr += idx * m_realsize;
+					WriteMemRaw(addr, std::get<m_realidx>(data));
+				}
+				else
+				{
+					throw std::runtime_error("Cannot index non-array type.");
+				}
+
+				break;
+			}
+
+			case OpCode::WRARR2D:
+			{
+				t_int idx2 = std::get<m_intidx>(PopData());
+				t_int idx1 = std::get<m_intidx>(PopData());
+
+				t_data data = PopData();
+				t_addr addr = PopAddress();
+
+				// get variable data type
+				VMType ty = ReadMemType(addr);
+				// skip type descriptor byte
+				addr += m_bytesize;
+
+				if(ty == VMType::MAT)
+				{
+					if(data.index() != m_realidx)
+					{
+						throw std::runtime_error(
+							"Matrix element has to be of scalar type.");
+					}
+
+					// get matrix length indicators
+					t_addr num_rows = ReadMemRaw<t_addr>(addr);
+					addr += m_addrsize;
+					t_addr num_cols = ReadMemRaw<t_addr>(addr);
+					addr += m_addrsize;
+
+					idx1 = safe_array_index<t_addr>(idx1, num_rows);
+					idx2 = safe_array_index<t_addr>(idx2, num_cols);
+					if(idx1 >= num_rows || idx2 >= num_cols || idx1 < 0 || idx2 < 0)
+						throw std::runtime_error("Matrix index out of bounds.");
+
+					// skip to element and overwrite it
+					addr += (idx1*num_cols + idx2) * m_realsize;
+					//std::cout << ReadMemRaw<t_real>(addr) << std::endl;
+					WriteMemRaw(addr, std::get<m_realidx>(data));
+				}
+				else
+				{
+					throw std::runtime_error("Cannot double-index non-matrix type.");
+				}
+
+				break;
+			}
+
 			case OpCode::USUB:
 			{
 				t_data val = PopData();

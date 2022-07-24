@@ -156,6 +156,9 @@ protected:
 	// push data onto the stack
 	void PushData(const t_data& data, VMType ty = VMType::UNKNOWN, bool err_on_unknown = true);
 
+	// read the data type prefix from data in memory
+	VMType ReadMemType(t_addr addr);
+
 	// read data from memory
 	std::tuple<VMType, t_data> ReadMemData(t_addr addr);
 
@@ -279,7 +282,6 @@ protected:
 		else
 		{
 			CheckMemoryBounds(addr, sizeof(t_val));
-
 			*reinterpret_cast<t_val*>(&m_mem[addr]) = val;
 		}
 	}

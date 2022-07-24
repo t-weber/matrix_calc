@@ -9,6 +9,7 @@
 #include "../ast.h"
 #include "../printast.h"
 #include "../semantics.h"
+#include "../version.h"
 #include "asm.h"
 
 #include <fstream>
@@ -37,15 +38,19 @@ int main(int argc, char** argv)
 		std::locale loc{};
 		std::locale::global(loc);
 
-		std::cout << "Matrix expression compiler version 0.3"
+		std::cout << "Matrix expression 0ac compiler version " << MCALC_VER
 			<< " by Tobias Weber <tobias.weber@tum.de>, 2022."
+			<< std::endl;
+		std::cout << "Internal data type lengths:"
+			<< " real: " << sizeof(t_real)*8 << " bits,"
+			<< " int: " << sizeof(t_int)*8 << " bits."
 			<< std::endl;
 
 
 		// --------------------------------------------------------------------
 		// get program arguments
 		// --------------------------------------------------------------------
-		std::vector<std::string> vecProgs;
+		std::vector<std::string> progs;
 		bool show_symbols = false;
 		bool show_ast = false;
 		bool verbose = false;
@@ -57,7 +62,7 @@ int main(int argc, char** argv)
 			("symbols,s", args::bool_switch(&show_symbols), "output symbol table")
 			("ast,a", args::bool_switch(&show_ast), "output syntax tree")
 			("verbose,v", args::bool_switch(&verbose), "verbose output")
-			("program", args::value<decltype(vecProgs)>(&vecProgs), "input program to compile");
+			("program", args::value<decltype(progs)>(&progs), "input program to compile");
 
 		args::positional_options_description posarg_descr;
 		posarg_descr.add("program", -1);
@@ -72,7 +77,7 @@ int main(int argc, char** argv)
 		args::store(parsedArgs, mapArgs);
 		args::notify(mapArgs);
 
-		if(vecProgs.size() == 0)
+		if(progs.size() == 0)
 		{
 			std::cerr << "Please specify an input program.\n" << std::endl;
 			std::cout << arg_descr << std::endl;
@@ -80,7 +85,7 @@ int main(int argc, char** argv)
 		}
 
 		// input file
-		const std::string& inprog = vecProgs[0];
+		const std::string& inprog = progs[0];
 
 		// output files
 		if(outprog == "")
