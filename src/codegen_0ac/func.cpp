@@ -145,9 +145,8 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 	if(func->is_external)
 	{
 		// if the function has an alternate external name assigned, use it
-		if(func->ext_name)
-			funcname = &(*func->ext_name);
-
+		//if(func->ext_name)
+		//	funcname = &(*func->ext_name);
 		CallExternal(*funcname);
 	}
 

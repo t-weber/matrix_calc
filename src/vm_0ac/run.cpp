@@ -444,6 +444,38 @@ bool VM::Run()
 						}
 					}
 
+					// assign from matrix
+					else if(rhsdata.index() == m_matidx)
+					{
+						const t_mat& rhsmat = std::get<m_matidx>(rhsdata);
+
+						idx1 = safe_array_index<t_addr>(idx1, num_rows);
+						idx2 = safe_array_index<t_addr>(idx2, num_rows) + 1;
+						idx3 = safe_array_index<t_addr>(idx3, num_cols);
+						idx4 = safe_array_index<t_addr>(idx4, num_cols) + 1;
+
+						for(t_int i=idx1; i!=idx2; ++i)
+						{
+							t_int i_rhs = i-idx1;
+
+							for(t_int j=idx3; j!=idx4; ++j)
+							{
+								t_int j_rhs = j-idx3;
+
+								if(std::size_t(i_rhs) >= rhsmat.size1() ||
+									std::size_t(j_rhs) >= rhsmat.size2())
+								{
+									throw std::runtime_error(
+										"Matrix index out of bounds.");
+								}
+
+								t_int elem_idx = i*num_cols + j;
+								t_real elem = rhsmat(i_rhs, j_rhs);
+								WriteMemRaw(addr + elem_idx*m_realsize, elem);
+							}
+						}
+					}
+
 					else
 					{
 						throw std::runtime_error(
