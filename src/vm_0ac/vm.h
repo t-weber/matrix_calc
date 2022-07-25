@@ -353,6 +353,9 @@ protected:
 			// convert to string
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
 			{
+				if(m::equals_0<t_real>(val, m_eps))
+					val = t_real(0);
+
 				std::ostringstream ostr;
 				ostr << val;
 				PopData();
@@ -419,10 +422,20 @@ protected:
 			// convert to string
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
 			{
-				using namespace m_ops;
-
 				std::ostringstream ostr;
-				ostr << val;
+				ostr << "[ ";
+				for(std::size_t i=0; i<val.size(); ++i)
+				{
+					t_real elem = val[i];
+					if(m::equals_0<t_real>(elem, m_eps))
+						elem = t_real(0);
+
+					ostr << elem;
+					if(i != val.size()-1)
+						ostr << ", ";
+				}
+				ostr << " ]";
+
 				PopData();
 				PushData(t_data{std::in_place_index<m_stridx>, ostr.str()});
 			}
@@ -445,10 +458,25 @@ protected:
 			// convert to string
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
 			{
-				using namespace m_ops;
-
 				std::ostringstream ostr;
-				ostr << val;
+				ostr << "[ ";
+				for(std::size_t i=0; i<val.size1(); ++i)
+				{
+					for(std::size_t j=0; j<val.size2(); ++j)
+					{
+						t_real elem = val(i, j);
+						if(m::equals_0<t_real>(elem, m_eps))
+							elem = t_real(0);
+
+						ostr << elem;
+						if(j != val.size2()-1)
+							ostr << ", ";
+					}
+						if(i != val.size1()-1)
+							ostr << "; ";
+				}
+				ostr << " ]";
+
 				PopData();
 				PushData(t_data{std::in_place_index<m_stridx>, ostr.str()});
 			}
@@ -600,6 +628,8 @@ protected:
 				result = val1 + val2;
 			else if constexpr(op == '-')
 				result = val1 - val2;
+			else if constexpr(op == '*')
+				result = val1 * val2;
 		}
 
 		// int / real operators
@@ -634,44 +664,107 @@ protected:
 	{
 		t_data val2 = PopData();
 		t_data val1 = PopData();
-
-		if(val1.index() != val2.index())
-		{
-			throw std::runtime_error("Type mismatch in arithmetic operation. "
-				"Type indices: " + std::to_string(val1.index()) +
-					", " + std::to_string(val2.index()) + ".");
-		}
-
 		t_data result;
 
-		if(val1.index() == m_realidx)
+		// matrix-vector product
+		if(val1.index() == m_matidx && val2.index() == m_vecidx && op == '*')
 		{
-			result = t_data{std::in_place_index<m_realidx>, OpArithmetic<t_real, op>(
-				std::get<m_realidx>(val1), std::get<m_realidx>(val2))};
+			using namespace m_ops;
+			const t_mat& mat = std::get<m_matidx>(val1);
+			const t_vec& vec = std::get<m_vecidx>(val2);
+			result = t_data{std::in_place_index<m_vecidx>, mat*vec};
 		}
-		else if(val1.index() == m_intidx)
+
+		// scale vector
+		else if(val1.index() == m_vecidx && val2.index() == m_realidx && op == '*')
 		{
-			result = t_data{std::in_place_index<m_intidx>, OpArithmetic<t_int, op>(
-				std::get<m_intidx>(val1), std::get<m_intidx>(val2))};
+			using namespace m_ops;
+			const t_vec& vec = std::get<m_vecidx>(val1);
+			const t_real s = std::get<m_realidx>(val2);
+			result = t_data{std::in_place_index<m_vecidx>, s * vec};
 		}
-		else if(val1.index() == m_stridx)
+
+		// scale vector
+		else if(val1.index() == m_vecidx && val2.index() == m_realidx && op == '/')
 		{
-			result = t_data{std::in_place_index<m_stridx>, OpArithmetic<t_str, op>(
-				std::get<m_stridx>(val1), std::get<m_stridx>(val2))};
+			using namespace m_ops;
+			const t_vec& vec = std::get<m_vecidx>(val1);
+			const t_real s = std::get<m_realidx>(val2);
+			result = t_data{std::in_place_index<m_vecidx>, vec / s};
 		}
-		else if(val1.index() == m_vecidx)
+
+		// scale vector
+		else if(val2.index() == m_vecidx && val1.index() == m_realidx && op == '*')
 		{
-			result = t_data{std::in_place_index<m_vecidx>, OpArithmetic<t_vec, op>(
-				std::get<m_vecidx>(val1), std::get<m_vecidx>(val2))};
+			using namespace m_ops;
+			const t_vec& vec = std::get<m_vecidx>(val2);
+			const t_real s = std::get<m_realidx>(val1);
+			result = t_data{std::in_place_index<m_vecidx>, s * vec};
 		}
-		else if(val1.index() == m_matidx)
+
+		// scale matrix
+		else if(val1.index() == m_matidx && val2.index() == m_realidx && op == '*')
 		{
-			result = t_data{std::in_place_index<m_matidx>, OpArithmetic<t_mat, op>(
-				std::get<m_matidx>(val1), std::get<m_matidx>(val2))};
+			using namespace m_ops;
+			const t_mat& mat = std::get<m_matidx>(val1);
+			const t_real s = std::get<m_realidx>(val2);
+			result = t_data{std::in_place_index<m_matidx>, s * mat};
+		}
+
+		// scale matrix
+		else if(val1.index() == m_matidx && val2.index() == m_realidx && op == '/')
+		{
+			using namespace m_ops;
+			const t_mat& mat = std::get<m_matidx>(val1);
+			const t_real s = std::get<m_realidx>(val2);
+			result = t_data{std::in_place_index<m_matidx>, mat / s};
+		}
+
+		// scale matrix
+		else if(val2.index() == m_matidx && val1.index() == m_realidx && op == '*')
+		{
+			using namespace m_ops;
+			const t_mat& mat = std::get<m_matidx>(val2);
+			const t_real s = std::get<m_realidx>(val1);
+			result = t_data{std::in_place_index<m_matidx>, s * mat};
+		}
+
+		// same-type operations
+		else if(val1.index() == val2.index())
+		{
+			if(val1.index() == m_realidx)
+			{
+				result = t_data{std::in_place_index<m_realidx>, OpArithmetic<t_real, op>(
+					std::get<m_realidx>(val1), std::get<m_realidx>(val2))};
+			}
+			else if(val1.index() == m_intidx)
+			{
+				result = t_data{std::in_place_index<m_intidx>, OpArithmetic<t_int, op>(
+					std::get<m_intidx>(val1), std::get<m_intidx>(val2))};
+			}
+			else if(val1.index() == m_stridx)
+			{
+				result = t_data{std::in_place_index<m_stridx>, OpArithmetic<t_str, op>(
+					std::get<m_stridx>(val1), std::get<m_stridx>(val2))};
+			}
+			else if(val1.index() == m_vecidx)
+			{
+				result = t_data{std::in_place_index<m_vecidx>, OpArithmetic<t_vec, op>(
+					std::get<m_vecidx>(val1), std::get<m_vecidx>(val2))};
+			}
+			else if(val1.index() == m_matidx)
+			{
+				result = t_data{std::in_place_index<m_matidx>, OpArithmetic<t_mat, op>(
+					std::get<m_matidx>(val1), std::get<m_matidx>(val2))};
+			}
 		}
 		else
 		{
-			throw std::runtime_error("Invalid type in arithmetic operation.");
+			std::ostringstream err;
+			err << "Unknown arithmetic operation. "
+				<< "Types: " << GetDataTypeName(val1.index())
+				<< ", " << GetDataTypeName(val2.index()) << ".";
+			throw std::runtime_error(err.str());
 		}
 
 		PushData(result);
@@ -744,9 +837,11 @@ protected:
 
 		if(val1.index() != val2.index())
 		{
-			throw std::runtime_error("Type mismatch in binary operation. "
-				"Type indices: " + std::to_string(val1.index()) +
-					", " + std::to_string(val2.index()) + ".");
+			std::ostringstream err;
+			err << "Type mismatch in binary operation. "
+				<< "Types: " << GetDataTypeName(val1.index())
+				<< ", " << GetDataTypeName(val2.index()) << ".";
+			throw std::runtime_error(err.str());
 		}
 
 		t_data result;
@@ -834,9 +929,11 @@ protected:
 
 		if(val1.index() != val2.index())
 		{
-			throw std::runtime_error("Type mismatch in comparison operation. "
-				"Type indices: " + std::to_string(val1.index()) +
-					", " + std::to_string(val2.index()) + ".");
+			std::ostringstream err;
+			err << "Type mismatch in comparison operation. "
+				<< "Types: " << GetDataTypeName(val1.index())
+				<< ", " << GetDataTypeName(val2.index()) << ".";
+			throw std::runtime_error(err.str());
 		}
 
 		t_bool result;

@@ -21,7 +21,7 @@ func mat 3 3 B_matrix(scalar a, scalar b, scalar c, scalar alpha, scalar beta, s
 	B[1,0] = -1./a * cc/sc;            B[1,1] = 1./b * 1./sc;           B[1,2] = 0.;
 	B[2,0] = (cc*ca - cb)/(a*sc*rr);   B[2,1] = (cb*cc-ca)/(b*sc*rr);   B[2,2] = sc/(c*rr);
 
-	B = B*(2*pi);
+	B = B*(2.*pi);
 	ret B;
 }
 
@@ -32,9 +32,9 @@ func mat 3 3 rotate_z(scalar phi)
 	scalar sin_phi = sin(phi);
 
 	mat 3 3 rot;
-	rot[0,0] = +cos_phi;	rot[0,1] = -sin_phi;	rot[0,2]=0;
-	rot[1,0] = +sin_phi;	rot[1,1] = +cos_phi;	rot[1,2]=0;
-	rot[2,0] = 0;			rot[2,1] = 0;			rot[2,2]=1;
+	rot[0,0] = +cos_phi;    rot[0,1] = -sin_phi;    rot[0,2] = 0.;
+	rot[1,0] = +sin_phi;    rot[1,1] = +cos_phi;    rot[1,2] = 0.;
+	rot[2,0] = 0.;          rot[2,1] = 0.;          rot[2,2] = 1.;
 
 	ret rot;
 }
@@ -50,7 +50,7 @@ func mat 3 3 A_matrix(scalar a, scalar b, scalar c, scalar alpha, scalar beta, s
 	#
 	# define the va vector along x
 	#
-	vec 3 va = [a, 0, 0];
+	vec 3 va = [a, 0., 0.];
 
 	#
 	# rotate vb vector around the va vector in the xy plane
@@ -97,14 +97,14 @@ func start()
 	scalar beta = getflt("beta = ");
 	scalar gamma = getflt("gamma = ");
 
-	alpha = alpha/180*pi;
-	beta = beta/180*pi;
-	gamma = gamma/180*pi;
+	alpha = alpha/180.*pi;
+	beta = beta/180.*pi;
+	gamma = gamma/180.*pi;
 
 
 	# own calculation
 	mat 3 3 A = A_matrix(a,b,c, alpha,beta,gamma);
-	mat 3 3 B = 2*pi*A'^(-1);
+	mat 3 3 B = 2.*pi*A'^(-1);
 	putstr("A matrix: " + A);
 	putstr("B matrix: " + B);
 

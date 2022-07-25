@@ -46,6 +46,8 @@ t_int safe_array_index(t_int idx, t_int size)
 	if(idx < 0)
 		idx += size;
 
+	if(idx >= size || idx < 0)
+		throw std::runtime_error("Array index out of bounds.");
 	return idx;
 }
 

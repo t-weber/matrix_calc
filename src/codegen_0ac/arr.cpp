@@ -142,7 +142,20 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR1D));
 	}
 
-	// single-element 2d array access
+	// ranged 1d array assignment
+	else if(ranged12 && !ranged34 && num1 && num2 && !num3 && !num4)
+	{
+		t_astret num1sym = num1->accept(this);
+		if(num1sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+		t_astret num2sym = num2->accept(this);
+		if(num2sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR1DR));
+	}
+
+	// single-element 2d array assignment
 	else if(!ranged12 && !ranged34 && num1 && num2 && !num3 && !num4)
 	{
 		if(expr->ty != SymbolType::SCALAR)
@@ -156,6 +169,25 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 			cast_to(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR2D));
+	}
+
+	// ranged 2d array assignment
+	else if(ranged12 && ranged34 && num1 && num2 && num3 && num4)
+	{
+		t_astret num1sym = num1->accept(this);
+		if(num1sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+		t_astret num2sym = num2->accept(this);
+		if(num2sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+		t_astret num3sym = num3->accept(this);
+		if(num3sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+		t_astret num4sym = num4->accept(this);
+		if(num4sym->ty != SymbolType::INT)
+			cast_to(m_int_const);
+
+		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR2DR));
 	}
 
 	return expr;

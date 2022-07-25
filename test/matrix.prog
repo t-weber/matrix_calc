@@ -1,0 +1,25 @@
+func mat 3 3 rotate_z(scalar phi)
+{
+	scalar cos_phi = cos(phi);
+	scalar sin_phi = sin(phi);
+
+	mat 3 3 rot;
+	rot[0,0] = +cos_phi;    rot[0,1] = -sin_phi;    rot[0,2] = 0.;
+	rot[1,0] = +sin_phi;    rot[1,1] = +cos_phi;    rot[1,2] = 0.;
+	rot[2,0] = 0.;          rot[2,1] = 0.;          rot[2,2] = 1.;
+
+	ret rot;
+}
+
+
+func start()
+{
+	mat 3 3 rot0 = rotate_z(0.);
+	mat 3 3 rot90 = rotate_z(pi/2.);
+	mat 3 3 rot180 = rotate_z(pi);
+
+	putstr("rot0 = " + rot0);
+	putstr("rot90 = " + rot90);
+	putstr("rot180 = " + rot180);
+	putstr("rot90 * rot90 = " + (rot90*rot90));
+}

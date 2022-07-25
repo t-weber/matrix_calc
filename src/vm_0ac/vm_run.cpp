@@ -281,8 +281,6 @@ bool VM::Run()
 					addr += m_addrsize;
 
 					idx = safe_array_index<t_addr>(idx, veclen);
-					if(idx >= veclen || idx < 0)
-						throw std::runtime_error("Vector index out of bounds.");
 
 					// skip to element and overwrite it
 					addr += idx * m_realsize;
@@ -325,8 +323,6 @@ bool VM::Run()
 
 					idx1 = safe_array_index<t_addr>(idx1, num_rows);
 					idx2 = safe_array_index<t_addr>(idx2, num_cols);
-					if(idx1 >= num_rows || idx2 >= num_cols || idx1 < 0 || idx2 < 0)
-						throw std::runtime_error("Matrix index out of bounds.");
 
 					// skip to element and overwrite it
 					addr += (idx1*num_cols + idx2) * m_realsize;
@@ -336,6 +332,127 @@ bool VM::Run()
 				else
 				{
 					throw std::runtime_error("Cannot double-index non-matrix type.");
+				}
+
+				break;
+			}
+
+			case OpCode::WRARR1DR:
+			{
+				// TODO: inverted ranges with idx2 < idx1
+				t_int idx2 = std::get<m_intidx>(PopData());
+				t_int idx1 = std::get<m_intidx>(PopData());
+
+				t_data data = PopData();
+				t_addr addr = PopAddress();
+
+				// get variable data type
+				VMType ty = ReadMemType(addr);
+				// skip type descriptor byte
+				addr += m_bytesize;
+
+				if(ty == VMType::VEC)
+				{
+					if(data.index() != m_vecidx)
+					{
+						throw std::runtime_error(
+							"Vector range has to be of vector type.");
+					}
+
+					// get vector length indicator
+					t_addr veclen = ReadMemRaw<t_addr>(addr);
+					addr += m_addrsize;
+
+					const t_vec& rhsvec = std::get<m_vecidx>(data);
+
+					idx1 = safe_array_index<t_addr>(idx1, veclen);
+					idx2 = safe_array_index<t_addr>(idx2, veclen) + 1;
+
+					// skip to element range and overwrite it
+					addr += idx1 * m_realsize;
+					for(t_int idx=idx1; idx!=idx2; ++idx)
+					{
+						t_addr cur_idx = idx - idx1;
+						if(std::size_t(cur_idx) >= rhsvec.size())
+						{
+							throw std::runtime_error(
+								"Vector index out of bounds.");
+						}
+
+						WriteMemRaw(addr, rhsvec[cur_idx]);
+						addr += m_realsize;
+					}
+				}
+				else
+				{
+					throw std::runtime_error("Cannot index non-array type.");
+				}
+
+				break;
+			}
+
+			case OpCode::WRARR2DR:
+			{
+				// TODO: inverted ranges with idx2 < idx1 or idx4 < idx3
+				t_int idx4 = std::get<m_intidx>(PopData());
+				t_int idx3 = std::get<m_intidx>(PopData());
+				t_int idx2 = std::get<m_intidx>(PopData());
+				t_int idx1 = std::get<m_intidx>(PopData());
+
+				t_data rhsdata = PopData();
+				t_addr addr = PopAddress();
+
+				// get variable data type
+				VMType ty = ReadMemType(addr);
+				// skip type descriptor byte
+				addr += m_bytesize;
+
+				// assign to matrix
+				if(ty == VMType::MAT)
+				{
+					// get matrix length indicators
+					t_addr num_rows = ReadMemRaw<t_addr>(addr);
+					addr += m_addrsize;
+					t_addr num_cols = ReadMemRaw<t_addr>(addr);
+					addr += m_addrsize;
+
+					// assign from vector
+					if(rhsdata.index() == m_vecidx)
+					{
+						const t_vec& rhsvec = std::get<m_vecidx>(rhsdata);
+
+						idx1 = safe_array_index<t_addr>(idx1, num_rows);
+						idx2 = safe_array_index<t_addr>(idx2, num_rows) + 1;
+						idx3 = safe_array_index<t_addr>(idx3, num_cols);
+						idx4 = safe_array_index<t_addr>(idx4, num_cols) + 1;
+
+						t_addr vecidx = 0;
+						for(t_int i=idx1; i!=idx2; ++i)
+						{
+							for(t_int j=idx3; j!=idx4; ++j)
+							{
+								if(std::size_t(vecidx) >= rhsvec.size())
+								{
+									throw std::runtime_error(
+										"Vector index out of bounds.");
+								}
+
+								t_int elem_idx = i*num_cols + j;
+								t_real elem = rhsvec[vecidx++];
+								WriteMemRaw(addr + elem_idx*m_realsize, elem);
+							}
+						}
+					}
+
+					else
+					{
+						throw std::runtime_error(
+							"Invalid matrix range assignment.");
+					}
+				}
+				else
+				{
+					throw std::runtime_error("Cannot index non-array type.");
 				}
 
 				break;
