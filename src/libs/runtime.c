@@ -297,7 +297,7 @@ void ext_mult(const t_real* M1, const t_real* M2, t_real *RES, t_int I, t_int J,
  */
 t_int ext_power(const t_real* M, t_real* P, t_int N, t_int POW)
 {
-	t_int POW_pos = POW<0 ? -POW : POW;
+	t_int POW_pos = POW < 0 ? -POW : POW;
 	t_int status = 1;
 
 	// temporary matrices

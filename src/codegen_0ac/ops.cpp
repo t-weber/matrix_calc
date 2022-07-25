@@ -34,18 +34,36 @@ get_cast_symtype(t_astret term1, t_astret term2)
 	if(ty1 == ty2)
 		return std::make_tuple(false, true);
 
-	if(ty1 == SymbolType::INT && ty2 == SymbolType::SCALAR)
+	else if(ty1 == SymbolType::INT && ty2 == SymbolType::SCALAR)
 		return std::make_tuple(true, false);
-	if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::INT)
+	else if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::INT)
 		return std::make_tuple(true, true);
 
-	if(ty1 == SymbolType::STRING && ty2 == SymbolType::SCALAR)
+	else if(ty1 == SymbolType::STRING && ty2 == SymbolType::SCALAR)
 		return std::make_tuple(true, true);
-	if(ty1 == SymbolType::STRING && ty2 == SymbolType::INT)
+	else if(ty1 == SymbolType::STRING && ty2 == SymbolType::INT)
 		return std::make_tuple(true, true);
-	if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::STRING)
+	else if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::STRING)
 		return std::make_tuple(true, false);
-	if(ty1 == SymbolType::INT && ty2 == SymbolType::STRING)
+	else if(ty1 == SymbolType::INT && ty2 == SymbolType::STRING)
+		return std::make_tuple(true, false);
+
+	else if(ty1 == SymbolType::MATRIX && ty2 == SymbolType::SCALAR)
+		return std::make_tuple(true, true);
+	else if(ty1 == SymbolType::MATRIX && ty2 == SymbolType::INT)
+		return std::make_tuple(true, true);
+	else if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::MATRIX)
+		return std::make_tuple(true, false);
+	else if(ty1 == SymbolType::INT && ty2 == SymbolType::MATRIX)
+		return std::make_tuple(true, false);
+
+	else if(ty1 == SymbolType::VECTOR && ty2 == SymbolType::SCALAR)
+		return std::make_tuple(true, true);
+	else if(ty1 == SymbolType::VECTOR && ty2 == SymbolType::INT)
+		return std::make_tuple(true, true);
+	else if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::VECTOR)
+		return std::make_tuple(true, false);
+	else if(ty1 == SymbolType::INT && ty2 == SymbolType::VECTOR)
 		return std::make_tuple(true, false);
 
 	return std::make_tuple(true, true);

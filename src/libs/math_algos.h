@@ -1867,6 +1867,29 @@ requires is_mat<t_mat> && is_vec<t_vec>
 
 
 /**
+ * matrix power
+ * @see https://en.wikipedia.org/wiki/Invertible_matrix#In_relation_to_its_adjugate
+ * @see https://en.wikipedia.org/wiki/Adjugate_matrix
+ */
+template<class t_mat, class t_vec, class t_int = int>
+std::tuple<t_mat, bool> pow(const t_mat& mat, t_int POW)
+requires is_mat<t_mat> && is_vec<t_vec>
+{
+	t_int POW_pos = POW < 0 ? -POW : POW;
+
+	t_mat matpow = mat;
+	for(t_int i=0; i<POW_pos-1; ++i)
+		matpow = matpow * mat;
+
+	bool ok = true;
+	if(POW < 0)
+		std::tie(matpow, ok) = inv<t_mat, t_vec>(matpow);
+
+	return std::make_tuple(matpow, ok);
+}
+
+
+/**
  * gets reciprocal basis vectors |b_i> from real basis vectors |a_i> (and vice versa)
  * c: multiplicative constant (c=2*pi for physical lattices, c=1 for mathematics)
  *

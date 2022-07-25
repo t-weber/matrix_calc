@@ -357,6 +357,7 @@ protected:
 					val = t_real(0);
 
 				std::ostringstream ostr;
+				ostr.precision(m_prec);
 				ostr << val;
 				PopData();
 				PushData(t_data{std::in_place_index<m_stridx>, ostr.str()});
@@ -383,6 +384,7 @@ protected:
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
 			{
 				std::ostringstream ostr;
+				ostr.precision(m_prec);
 				ostr << val;
 				PopData();
 				PushData(t_data{std::in_place_index<m_stridx>, ostr.str()});
@@ -423,6 +425,7 @@ protected:
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
 			{
 				std::ostringstream ostr;
+				ostr.precision(m_prec);
 				ostr << "[ ";
 				for(std::size_t i=0; i<val.size(); ++i)
 				{
@@ -442,7 +445,8 @@ protected:
 			else
 			{
 				std::ostringstream msg;
-				msg << "Invalid cast from vector to " << GetDataTypeName(toidx) << ".";
+				msg << "Invalid cast from vector to "
+					<< GetDataTypeName(toidx) << ".";
 				throw std::runtime_error(msg.str());
 			}
 		}
@@ -459,6 +463,7 @@ protected:
 			if constexpr(std::is_same_v<std::decay_t<t_to>, t_str>)
 			{
 				std::ostringstream ostr;
+				ostr.precision(m_prec);
 				ostr << "[ ";
 				for(std::size_t i=0; i<val.size1(); ++i)
 				{
@@ -483,7 +488,8 @@ protected:
 			else
 			{
 				std::ostringstream msg;
-				msg << "Invalid cast from matrix to " << GetDataTypeName(toidx) << ".";
+				msg << "Invalid cast from matrix to "
+					<< GetDataTypeName(toidx) << ".";
 				throw std::runtime_error(msg.str());
 			}
 		}
@@ -673,6 +679,26 @@ protected:
 			const t_mat& mat = std::get<m_matidx>(val1);
 			const t_vec& vec = std::get<m_vecidx>(val2);
 			result = t_data{std::in_place_index<m_vecidx>, mat*vec};
+		}
+
+		// matrix power
+		else if(val1.index() == m_matidx && val2.index() == m_intidx && op == '^')
+		{
+			const t_mat& mat = std::get<m_matidx>(val1);
+			t_int pow = std::get<m_intidx>(val2);
+			auto [matpow, ok] = m::pow<t_mat, t_vec, t_int>(mat, pow);
+			if(!ok)
+				throw std::runtime_error("Matrix power could not be calculated.");
+			result = t_data{std::in_place_index<m_matidx>, matpow};
+		}
+
+		// dot product
+		else if(val1.index() == m_vecidx && val2.index() == m_vecidx && op == '*')
+		{
+			const t_vec& vec1 = std::get<m_vecidx>(val1);
+			const t_vec& vec2 = std::get<m_vecidx>(val2);
+			t_real dot = m::inner<t_vec>(vec1, vec2);
+			result = t_data{std::in_place_index<m_realidx>, dot};
 		}
 
 		// scale vector
@@ -993,6 +1019,7 @@ private:
 	bool m_drawmemimages{false};       // write memory dump images
 	bool m_zeropoppedvals{false};      // zero memory of popped values
 	t_real m_eps{std::numeric_limits<t_real>::epsilon()};
+	t_int m_prec{6};
 
 	std::unique_ptr<t_byte[]> m_mem{}; // ram
 	t_addr m_code_range[2]{-1, -1};    // address range where the code resides

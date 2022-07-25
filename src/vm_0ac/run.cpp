@@ -487,7 +487,8 @@ bool VM::Run()
 				}
 				else
 				{
-					throw std::runtime_error("Type mismatch in arithmetic operation.");
+					throw std::runtime_error(
+						"Type mismatch in arithmetic operation.");
 				}
 
 				PushData(result);

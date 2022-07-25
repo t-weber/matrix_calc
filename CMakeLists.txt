@@ -71,8 +71,8 @@ target_link_libraries(mcalc ${Boost_LIBRARIES})
 
 
 # build runtime for 3-ac code generator
-execute_process(COMMAND clang -O2 -S -emit-llvm -o runtime_opt.asm "${PROJECT_SOURCE_DIR}/src/codegen_3ac/runtime.c")
-execute_process(COMMAND clang -S -emit-llvm -o runtime.asm "${PROJECT_SOURCE_DIR}/src/codegen_3ac/runtime.c")
+execute_process(COMMAND clang -O2 -S -emit-llvm -o runtime_opt.asm "${PROJECT_SOURCE_DIR}/src/libs/runtime.c")
+execute_process(COMMAND clang -S -emit-llvm -o runtime.asm "${PROJECT_SOURCE_DIR}/src/libs/runtime.c")
 # -----------------------------------------------------------------------------
 
 
@@ -106,9 +106,9 @@ add_executable(vm_0ac
 	src/vm_0ac/main.cpp
 	src/types.h src/vm_0ac/types.h
 	src/vm_0ac/opcodes.h src/vm_0ac/vm.h
-	src/vm_0ac/vm.cpp src/vm_0ac/vm_run.cpp
-	src/vm_0ac/vm_extfuncs.cpp
-	src/vm_0ac/vm_memdump.cpp
+	src/vm_0ac/vm.cpp src/vm_0ac/run.cpp
+	src/vm_0ac/extfuncs.cpp
+	src/vm_0ac/memdump.cpp
 )
 
 target_link_libraries(vm_0ac ${Boost_LIBRARIES}

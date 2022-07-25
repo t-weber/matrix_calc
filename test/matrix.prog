@@ -16,10 +16,13 @@ func start()
 {
 	mat 3 3 rot0 = rotate_z(0.);
 	mat 3 3 rot90 = rotate_z(pi/2.);
+	mat 3 3 rotm90 = rot90^(-1);
 	mat 3 3 rot180 = rotate_z(pi);
 
 	putstr("rot0 = " + rot0);
 	putstr("rot90 = " + rot90);
+	putstr("rotm90 = " + rotm90);
+	putstr("rot90 * rotm90 = " + (rot90*rotm90));
 	putstr("rot180 = " + rot180);
 	putstr("rot90 * rot90 = " + (rot90*rot90));
 }
