@@ -24,9 +24,16 @@
 namespace args = boost::program_options;
 
 
+struct VMOptions
+{
+	t_vm_addr mem_size { 4096 };
+        bool enable_debug { false };
+	bool enable_checks { true };
+	bool enable_memimages { false };
+};
 
-static bool run_vm(const fs::path& prog, t_vm_addr mem_size,
-	bool enable_debug, bool enable_checks)
+
+static bool run_vm(const fs::path& prog, const VMOptions& opts)
 {
 	using namespace m_ops;
 
@@ -42,11 +49,12 @@ static bool run_vm(const fs::path& prog, t_vm_addr mem_size,
 	if(ifstr.fail())
 		return false;
 
-	VM vm(mem_size);
+	VM vm(opts.mem_size);
 	VM::t_addr sp_initial = vm.GetSP();
 
-	vm.SetDebug(enable_debug);
-	vm.SetChecks(enable_checks);
+	vm.SetDebug(opts.enable_debug);
+	vm.SetChecks(opts.enable_checks);
+	vm.SetDrawMemImages(opts.enable_memimages);
 	vm.SetMem(0, bytes.data(), filesize, true);
 	vm.Run();
 
@@ -85,15 +93,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 // get program arguments
                 // --------------------------------------------------------------------
 		std::vector<std::string> progs;
-		bool enable_debug = false;
-		bool enable_checks = true;
-		t_vm_addr mem_size = 4096;
+		VMOptions vmopts
+		{
+			.mem_size = 4096,
+			.enable_debug = false,
+			.enable_memimages = false,
+			.enable_checks = true,
+		};
 
 		args::options_description arg_descr("Virtual machine arguments");
 		arg_descr.add_options()
-			("debug,d", args::bool_switch(&enable_debug), "enable debug output")
-			("checks,c", args::value<decltype(enable_checks)>(&enable_checks), "enable memory checks")
-			("mem,m", args::value<decltype(mem_size)>(&mem_size), "set memory size")
+			("debug,d", args::bool_switch(&vmopts.enable_debug), "enable debug output")
+#ifdef USE_BOOST_GIL
+			("memimages,i", args::bool_switch(&vmopts.enable_memimages), "write memory images")
+#endif
+			("checks,c", args::value<bool>(&vmopts.enable_checks), "enable memory checks")
+			("mem,m", args::value<decltype(vmopts.mem_size)>(&vmopts.mem_size), "set memory size")
 			("prog", args::value<decltype(progs)>(&progs), "input program to run");
 
 		args::positional_options_description posarg_descr;
@@ -129,7 +144,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 // input file
 		fs::path inprog = progs[0];
 
-		if(!run_vm(inprog, mem_size, enable_debug, enable_checks))
+		if(!run_vm(inprog, vmopts))
 		{
 			std::cerr << "Could not run \"" << inprog.string() << "\"." << std::endl;
 			return -1;

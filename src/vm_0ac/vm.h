@@ -68,6 +68,7 @@ public:
 	static constexpr const t_addr m_realsize = sizeof(t_real);
 	static constexpr const t_addr m_intsize = sizeof(t_int);
 	static constexpr const t_addr m_boolsize = sizeof(t_bool);
+	static constexpr const t_addr m_charsize = sizeof(t_char);
 
 	static constexpr const t_addr m_num_interrupts = 16;
 	static constexpr const t_addr m_timer_interrupt = 0;

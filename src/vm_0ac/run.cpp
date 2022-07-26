@@ -148,7 +148,6 @@ bool VM::Run()
 
 			case OpCode::RDARR1DR:
 			{
-				// TODO: inverted ranges with idx2 < idx1
 				t_int idx2 = std::get<m_intidx>(PopData());
 				t_int idx1 = std::get<m_intidx>(PopData());
 				t_data arr = PopData();
@@ -158,11 +157,15 @@ bool VM::Run()
 					// gets vector range
 					const t_vec& vec = std::get<m_vecidx>(arr);
 					idx1 = safe_array_index<t_int>(idx1, vec.size());
-					idx2 = safe_array_index<t_int>(idx2, vec.size()) + 1;
+					idx2 = safe_array_index<t_int>(idx2, vec.size());
 
-					t_vec newvec = m::zero<t_vec>(idx2 - idx1);
-					for(t_int idx=idx1; idx!=idx2; ++idx)
-						newvec[idx-idx1] = vec[idx];
+					t_int delta = (idx2 >= idx1 ? 1 : -1);
+					idx2 += delta;
+
+					t_vec newvec = m::zero<t_vec>(std::abs(idx2 - idx1));
+					t_int new_idx = 0;
+					for(t_int idx=idx1; idx!=idx2; idx+=delta)
+						newvec[new_idx++] = vec[idx];
 					PushData(t_data{std::in_place_index<m_vecidx>, newvec});
 				}
 				else if(arr.index() == m_stridx)
@@ -170,10 +173,13 @@ bool VM::Run()
 					// gets string element as substring
 					const t_str& str = std::get<m_stridx>(arr);
 					idx1 = safe_array_index<t_int>(idx1, str.length());
-					idx2 = safe_array_index<t_int>(idx2, str.length()) + 1;
+					idx2 = safe_array_index<t_int>(idx2, str.length());
+
+					t_int delta = (idx2 >= idx1 ? 1 : -1);
+					idx2 += delta;
 
 					t_str newstr;
-					for(t_int idx=idx1; idx!=idx2; ++idx)
+					for(t_int idx=idx1; idx!=idx2; idx+=delta)
 						newstr += str[idx];
 					PushData(t_data{std::in_place_index<m_stridx>, newstr});
 				}
@@ -182,11 +188,14 @@ bool VM::Run()
 					// gets matrix columns
 					const t_mat& mat = std::get<m_matidx>(arr);
 					idx1 = safe_array_index<t_int>(idx1, mat.size2());
-					idx2 = safe_array_index<t_int>(idx2, mat.size2()) + 1;
+					idx2 = safe_array_index<t_int>(idx2, mat.size2());
+
+					t_int delta = (idx2 >= idx1 ? 1 : -1);
+					idx2 += delta;
 
 					t_mat cols = m::zero<t_mat>(mat.size1(), idx2-idx1);
-					for(t_int idx=idx1; idx!=idx2; ++idx)
-						for(std::size_t i=0; i<mat.size1(); ++i)
+					for(t_int idx=idx1; idx!=idx2; idx += delta)
+						for(std::size_t i=0; i<mat.size1(); i += delta)
 							cols(i, idx) = mat(i, idx);
 					PushData(t_data{std::in_place_index<m_matidx>, cols});
 				}
@@ -200,7 +209,6 @@ bool VM::Run()
 
 			case OpCode::RDARR2D:
 			{
-				// TODO: inverted ranges with idx2 < idx1
 				t_int idx2 = std::get<m_intidx>(PopData());
 				t_int idx1 = std::get<m_intidx>(PopData());
 				t_data arr = PopData();
@@ -224,7 +232,6 @@ bool VM::Run()
 
 			case OpCode::RDARR2DR:
 			{
-				// TODO: inverted ranges with idx2 < idx1 or idx4 < idx3
 				t_int idx4 = std::get<m_intidx>(PopData());
 				t_int idx3 = std::get<m_intidx>(PopData());
 				t_int idx2 = std::get<m_intidx>(PopData());
@@ -236,15 +243,27 @@ bool VM::Run()
 					// gets matrix range
 					const t_mat& mat = std::get<m_matidx>(arr);
 					idx1 = safe_array_index<t_int>(idx1, mat.size1());
-					idx2 = safe_array_index<t_int>(idx2, mat.size1()) + 1;
+					idx2 = safe_array_index<t_int>(idx2, mat.size1());
 					idx3 = safe_array_index<t_int>(idx3, mat.size2());
-					idx4 = safe_array_index<t_int>(idx4, mat.size2()) + 1;
+					idx4 = safe_array_index<t_int>(idx4, mat.size2());
 
-					t_mat newmat = m::create<t_mat>(idx2-idx1, idx4-idx3);
+					t_int delta1 = (idx2 >= idx1 ? 1 : -1);
+					t_int delta2 = (idx4 >= idx3 ? 1 : -1);
 
-					for(t_int i=idx1; i!=idx2; ++i)
-						for(t_int j=idx3; j!=idx4; ++j)
-							newmat(i-idx1, j-idx3) = mat(i, j);
+					idx2 += delta1;
+					idx4 += delta2;
+
+					t_mat newmat = m::create<t_mat>(
+						std::abs(idx2-idx1), std::abs(idx4-idx3));
+
+					t_int new_i = 0;
+					for(t_int i=idx1; i!=idx2; i+=delta1)
+					{
+						t_int new_j = 0;
+						for(t_int j=idx3; j!=idx4; j+=delta2)
+							newmat(new_i, new_j++) = mat(i, j);
+						++new_i;
+					}
 
 					PushData(t_data{std::in_place_index<m_matidx>, newmat});
 				}
@@ -339,7 +358,6 @@ bool VM::Run()
 
 			case OpCode::WRARR1DR:
 			{
-				// TODO: inverted ranges with idx2 < idx1
 				t_int idx2 = std::get<m_intidx>(PopData());
 				t_int idx1 = std::get<m_intidx>(PopData());
 
@@ -351,36 +369,101 @@ bool VM::Run()
 				// skip type descriptor byte
 				addr += m_bytesize;
 
+				// lhs variable is a vector
 				if(ty == VMType::VEC)
 				{
-					if(data.index() != m_vecidx)
+					const t_vec* rhsvec = nullptr;
+					const t_real* rhsreal = nullptr;
+
+					// rhs is a vector
+					if(data.index() == m_vecidx)
+					{
+						rhsvec = &std::get<m_vecidx>(data);
+					}
+					// rhs is a scalar
+					else if(data.index() == m_realidx)
+					{
+						rhsreal = &std::get<m_realidx>(data);
+					}
+					else
 					{
 						throw std::runtime_error(
-							"Vector range has to be of vector type.");
+							"Vector range has to be of vector or scalar type.");
 					}
 
 					// get vector length indicator
 					t_addr veclen = ReadMemRaw<t_addr>(addr);
 					addr += m_addrsize;
 
-					const t_vec& rhsvec = std::get<m_vecidx>(data);
-
 					idx1 = safe_array_index<t_addr>(idx1, veclen);
-					idx2 = safe_array_index<t_addr>(idx2, veclen) + 1;
+					idx2 = safe_array_index<t_addr>(idx2, veclen);
+					t_int delta = (idx2 >= idx1 ? 1 : -1);
+					idx2 += delta;
 
 					// skip to element range and overwrite it
 					addr += idx1 * m_realsize;
-					for(t_int idx=idx1; idx!=idx2; ++idx)
+					t_int cur_idx = 0;
+					for(t_int idx=idx1; idx!=idx2; idx+=delta)
 					{
-						t_addr cur_idx = idx - idx1;
-						if(std::size_t(cur_idx) >= rhsvec.size())
+						t_real elem{};
+
+						if(rhsvec)
 						{
-							throw std::runtime_error(
-								"Vector index out of bounds.");
+							if(std::size_t(cur_idx) >= rhsvec->size())
+							{
+								throw std::runtime_error(
+									"Vector index out of bounds.");
+							}
+
+							elem = (*rhsvec)[cur_idx++];
+						}
+						else if(rhsreal)
+						{
+							elem = *rhsreal;
 						}
 
-						WriteMemRaw(addr, rhsvec[cur_idx]);
-						addr += m_realsize;
+						WriteMemRaw(addr, elem);
+						addr += m_realsize * delta;
+					}
+				}
+
+				// lhs variable is a string
+				else if(ty == VMType::STR)
+				{
+					if(data.index() != m_stridx)
+					{
+						throw std::runtime_error(
+							"String range has to be of string type.");
+					}
+
+					const t_str& rhsstr = std::get<m_stridx>(data);;
+
+					// get vector length indicator
+					t_addr strlen = ReadMemRaw<t_addr>(addr);
+					addr += m_addrsize;
+
+					idx1 = safe_array_index<t_addr>(idx1, strlen);
+					idx2 = safe_array_index<t_addr>(idx2, strlen);
+					t_int delta = (idx2 >= idx1 ? 1 : -1);
+					idx2 += delta;
+
+					// skip to element range and overwrite it
+					addr += idx1 * m_charsize;
+					t_int cur_idx = 0;
+					for(t_int idx=idx1; idx!=idx2; idx+=delta)
+					{
+						t_char elem{};
+
+						if(std::size_t(cur_idx) >= rhsstr.length())
+						{
+							throw std::runtime_error(
+								"String index out of bounds.");
+						}
+
+						elem = rhsstr[cur_idx++];
+
+						WriteMemRaw(addr, elem);
+						addr += m_charsize * delta;
 					}
 				}
 				else
@@ -393,7 +476,6 @@ bool VM::Run()
 
 			case OpCode::WRARR2DR:
 			{
-				// TODO: inverted ranges with idx2 < idx1 or idx4 < idx3
 				t_int idx4 = std::get<m_intidx>(PopData());
 				t_int idx3 = std::get<m_intidx>(PopData());
 				t_int idx2 = std::get<m_intidx>(PopData());
@@ -416,20 +498,40 @@ bool VM::Run()
 					t_addr num_cols = ReadMemRaw<t_addr>(addr);
 					addr += m_addrsize;
 
+					idx1 = safe_array_index<t_addr>(idx1, num_rows);
+					idx2 = safe_array_index<t_addr>(idx2, num_rows);
+					idx3 = safe_array_index<t_addr>(idx3, num_cols);
+					idx4 = safe_array_index<t_addr>(idx4, num_cols);
+
+					t_int delta1 = (idx2 >= idx1 ? 1 : -1);
+					t_int delta2 = (idx4 >= idx3 ? 1 : -1);
+
+					idx2 += delta1;
+					idx4 += delta2;
+
+					// assign from scalar
+					if(rhsdata.index() == m_realidx)
+					{
+						t_real rhsreal = std::get<m_realidx>(rhsdata);
+						for(t_int i=idx1; i!=idx2; i+=delta1)
+						{
+							for(t_int j=idx3; j!=idx4; j+=delta2)
+							{
+								t_int elem_idx = i*num_cols + j;
+								WriteMemRaw(addr + elem_idx*m_realsize, rhsreal);
+							}
+						}
+					}
+
 					// assign from vector
-					if(rhsdata.index() == m_vecidx)
+					else if(rhsdata.index() == m_vecidx)
 					{
 						const t_vec& rhsvec = std::get<m_vecidx>(rhsdata);
 
-						idx1 = safe_array_index<t_addr>(idx1, num_rows);
-						idx2 = safe_array_index<t_addr>(idx2, num_rows) + 1;
-						idx3 = safe_array_index<t_addr>(idx3, num_cols);
-						idx4 = safe_array_index<t_addr>(idx4, num_cols) + 1;
-
 						t_addr vecidx = 0;
-						for(t_int i=idx1; i!=idx2; ++i)
+						for(t_int i=idx1; i!=idx2; i+=delta1)
 						{
-							for(t_int j=idx3; j!=idx4; ++j)
+							for(t_int j=idx3; j!=idx4; j+=delta2)
 							{
 								if(std::size_t(vecidx) >= rhsvec.size())
 								{
@@ -449,19 +551,12 @@ bool VM::Run()
 					{
 						const t_mat& rhsmat = std::get<m_matidx>(rhsdata);
 
-						idx1 = safe_array_index<t_addr>(idx1, num_rows);
-						idx2 = safe_array_index<t_addr>(idx2, num_rows) + 1;
-						idx3 = safe_array_index<t_addr>(idx3, num_cols);
-						idx4 = safe_array_index<t_addr>(idx4, num_cols) + 1;
-
-						for(t_int i=idx1; i!=idx2; ++i)
+						t_int i_rhs = 0;
+						for(t_int i=idx1; i!=idx2; i+=delta1)
 						{
-							t_int i_rhs = i-idx1;
-
-							for(t_int j=idx3; j!=idx4; ++j)
+							t_int j_rhs = 0;
+							for(t_int j=idx3; j!=idx4; j+=delta2)
 							{
-								t_int j_rhs = j-idx3;
-
 								if(std::size_t(i_rhs) >= rhsmat.size1() ||
 									std::size_t(j_rhs) >= rhsmat.size2())
 								{
@@ -472,7 +567,9 @@ bool VM::Run()
 								t_int elem_idx = i*num_cols + j;
 								t_real elem = rhsmat(i_rhs, j_rhs);
 								WriteMemRaw(addr + elem_idx*m_realsize, elem);
+								++j_rhs;
 							}
+							++i_rhs;
 						}
 					}
 
