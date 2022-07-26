@@ -131,11 +131,11 @@ void VM::PushAddress(t_addr addr, VMType ty)
 VM::t_str VM::PopString()
 {
 	t_addr len = PopRaw<t_addr, m_addrsize>();
-	CheckMemoryBounds(m_sp, len);
+	CheckMemoryBounds(m_sp, len*m_charsize);
 
 	t_char* begin = reinterpret_cast<t_char*>(m_mem.get() + m_sp);
 	t_str str(begin, len);
-	m_sp += len;
+	m_sp += len*m_charsize;
 
 	if(m_zeropoppedvals)
 		std::memset(begin, 0, len*m_bytesize);
@@ -152,7 +152,7 @@ VM::t_str VM::TopString(t_addr sp_offs) const
 	t_addr len = TopRaw<t_addr, m_addrsize>(sp_offs);
 	t_addr addr = m_sp + sp_offs + m_addrsize;
 
-	CheckMemoryBounds(addr, len);
+	CheckMemoryBounds(addr, len*m_charsize);
 	t_char* begin = reinterpret_cast<t_char*>(m_mem.get() + addr);
 	t_str str(begin, len);
 
@@ -166,11 +166,11 @@ VM::t_str VM::TopString(t_addr sp_offs) const
 void VM::PushString(const VM::t_str& str)
 {
 	t_addr len = static_cast<t_addr>(str.length());
-	CheckMemoryBounds(m_sp, len);
+	CheckMemoryBounds(m_sp, -len*m_charsize);
 
-	m_sp -= len;
+	m_sp -= len*m_charsize;
 	t_char* begin = reinterpret_cast<t_char*>(m_mem.get() + m_sp);
-	std::memcpy(begin, str.data(), len*sizeof(t_char));
+	std::memcpy(begin, str.data(), len*m_charsize);
 
 	PushRaw<t_addr, m_addrsize>(len);
 }
@@ -248,7 +248,7 @@ VM::t_vec VM::TopVector(t_addr sp_offs) const
 void VM::PushVector(const VM::t_vec& vec)
 {
 	t_addr num_elems = static_cast<t_addr>(vec.size());
-	CheckMemoryBounds(m_sp, num_elems*m_realsize);
+	CheckMemoryBounds(m_sp, -num_elems*m_realsize);
 
 	m_sp -= num_elems*m_realsize;
 	t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
@@ -338,7 +338,7 @@ void VM::PushMatrix(const VM::t_mat& mat)
 {
 	t_addr num_elems_1 = static_cast<t_addr>(mat.size1());
 	t_addr num_elems_2 = static_cast<t_addr>(mat.size2());
-	CheckMemoryBounds(m_sp, num_elems_1*num_elems_2*m_realsize);
+	CheckMemoryBounds(m_sp, -num_elems_1*num_elems_2*m_realsize);
 
 	m_sp -= num_elems_1*num_elems_2*m_realsize;
 	t_real* begin = reinterpret_cast<t_real*>(m_mem.get() + m_sp);
@@ -959,7 +959,7 @@ void VM::UpdateCodeRange(t_addr begin, t_addr end)
 
 void VM::SetMem(t_addr addr, VM::t_byte data)
 {
-	CheckMemoryBounds(addr, sizeof(t_byte));
+	CheckMemoryBounds(addr, m_bytesize);
 
 	m_mem[addr % m_memsize] = data;
 }
@@ -971,7 +971,7 @@ void VM::SetMem(t_addr addr, const t_str& data, bool is_code)
 		UpdateCodeRange(addr, addr + data.size());
 
 	for(std::size_t i=0; i<data.size(); ++i)
-		SetMem(addr + (t_addr)(i), static_cast<t_byte>(data[i]));
+		SetMem(addr + t_addr(i), static_cast<t_byte>(data[i]));
 }
 
 
@@ -1009,12 +1009,13 @@ const char* VM::GetDataTypeName(const t_data& dat)
 }
 
 
-void VM::CheckMemoryBounds(t_addr addr, std::size_t size) const
+void VM::CheckMemoryBounds(t_addr addr, t_addr size) const
 {
 	if(!m_checks)
 		return;
 
-	if(std::size_t(addr) + size > std::size_t(m_memsize) || addr < 0)
+	t_addr new_addr = addr + size;
+	if(new_addr > m_memsize || new_addr < 0 || addr < 0)
 		throw std::runtime_error("Tried to access out of memory bounds.");
 }
 

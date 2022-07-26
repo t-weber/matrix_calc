@@ -179,7 +179,7 @@ protected:
 			t_addr len = ReadMemRaw<t_addr>(addr);
 			addr += m_addrsize;
 
-			CheckMemoryBounds(addr, len);
+			CheckMemoryBounds(addr, len*m_charsize);
 			const t_char* begin = reinterpret_cast<t_char*>(&m_mem[addr]);
 
 			t_str str(begin, len);
@@ -235,7 +235,7 @@ protected:
 		if constexpr(std::is_same_v<std::decay_t<t_val>, t_str>)
 		{
 			t_addr len = static_cast<t_addr>(val.length());
-			CheckMemoryBounds(addr, m_addrsize + len);
+			CheckMemoryBounds(addr, m_addrsize + len*m_charsize);
 
 			// write string length
 			WriteMemRaw<t_addr>(addr, len);
@@ -243,7 +243,7 @@ protected:
 
 			// write string
 			t_char* begin = reinterpret_cast<t_char*>(&m_mem[addr]);
-			std::memcpy(begin, val.data(), len*sizeof(t_char));
+			std::memcpy(begin, val.data(), len*m_charsize);
 		}
 
 		// vector type
@@ -1007,7 +1007,7 @@ protected:
 
 
 private:
-	void CheckMemoryBounds(t_addr addr, std::size_t size = 1) const;
+	void CheckMemoryBounds(t_addr addr, t_addr size = 1) const;
 	void CheckPointerBounds() const;
 	void UpdateCodeRange(t_addr begin, t_addr end);
 

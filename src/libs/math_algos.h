@@ -870,7 +870,7 @@ requires is_basic_vec<t_vec>
 	typename t_vec::value_type val(0);
 
 	const t_size I = vec1.size();
-	const t_size J = vec2.size();
+	[[maybe_unused]] const t_size J = vec2.size();
 	assert(I == J);
 
 	for(t_size i=0; i<I; ++i)
