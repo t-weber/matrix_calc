@@ -28,7 +28,7 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR1D));
 
@@ -45,10 +45,10 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR1DR));
 
@@ -65,10 +65,10 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR2D));
 
@@ -81,16 +81,16 @@ t_astret ZeroACAsm::visit(const ASTArrayAccess* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num3sym = num3->accept(this);
 		if(num3sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num4sym = num4->accept(this);
 		if(num4sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::RDARR2DR));
 
@@ -106,7 +106,7 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 {
 	// get variable from symbol table
 	const t_str& varname = ast->GetIdent();
-	t_astret sym = get_sym(varname);
+	t_astret sym = GetSym(varname);
 	if(!sym)
 		throw std::runtime_error("ASTArrayAssign: Variable \"" + varname + "\" is not in symbol table.");
 	if(!sym->addr)
@@ -133,11 +133,11 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 	if(!ranged12 && !ranged34 && num1 && !num2 && !num3 && !num4)
 	{
 		if(expr->ty != SymbolType::SCALAR)
-			cast_to(m_scalar_const);
+			CastTo(m_scalar_const);
 
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR1D));
 	}
@@ -147,10 +147,10 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR1DR));
 	}
@@ -159,14 +159,14 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 	else if(!ranged12 && !ranged34 && num1 && num2 && !num3 && !num4)
 	{
 		if(expr->ty != SymbolType::SCALAR)
-			cast_to(m_scalar_const);
+			CastTo(m_scalar_const);
 
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR2D));
 	}
@@ -176,16 +176,16 @@ t_astret ZeroACAsm::visit(const ASTArrayAssign* ast)
 	{
 		t_astret num1sym = num1->accept(this);
 		if(num1sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num2sym = num2->accept(this);
 		if(num2sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num3sym = num3->accept(this);
 		if(num3sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 		t_astret num4sym = num4->accept(this);
 		if(num4sym->ty != SymbolType::INT)
-			cast_to(m_int_const);
+			CastTo(m_int_const);
 
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::WRARR2DR));
 	}
@@ -206,7 +206,7 @@ t_astret ZeroACAsm::visit(const ASTExprList* ast)
 
 		// make sure all array elements are real
 		if(is_arr)
-			cast_to(m_scalar_const);
+			CastTo(m_scalar_const);
 
 		if(!sym_ret)
 			sym_ret = sym;

@@ -11,7 +11,7 @@
 /**
  * find the symbol with a specific name in the symbol table
  */
-t_astret ZeroACAsm::get_sym(const t_str& name) const
+t_astret ZeroACAsm::GetSym(const t_str& name) const
 {
 	t_str scoped_name;
 	for(const t_str& scope : m_curscope)
@@ -30,7 +30,7 @@ t_astret ZeroACAsm::get_sym(const t_str& name) const
 
 	if(!sym)
 	{
-		throw std::runtime_error("get_sym: \"" + scoped_name +
+		throw std::runtime_error("GetSym: \"" + scoped_name +
 			"\" does not have an associated symbol.");
 	}
 
@@ -41,7 +41,7 @@ t_astret ZeroACAsm::get_sym(const t_str& name) const
 /**
  * finds the size of the symbol for the stack frame
  */
-std::size_t ZeroACAsm::get_sym_size(const Symbol* sym) const
+std::size_t ZeroACAsm::GetSymSize(const Symbol* sym) const
 {
 	if(sym->ty == SymbolType::SCALAR)
 	{
@@ -87,7 +87,7 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 	for(const auto& varname : ast->GetVariables())
 	{
 		// get variable from symbol table and assign an address
-		t_astret sym = get_sym(varname);
+		t_astret sym = GetSym(varname);
 		if(!sym)
 			throw std::runtime_error("ASTVarDecl: Variable \"" + varname + "\" is not in symbol table.");
 		if(sym->addr)
@@ -97,7 +97,7 @@ t_astret ZeroACAsm::visit(const ASTVarDecl* ast)
 		if(m_local_stack.find(cur_func) == m_local_stack.end())
 			m_local_stack[cur_func] = 0;
 
-		m_local_stack[cur_func] += get_sym_size(sym);
+		m_local_stack[cur_func] += GetSymSize(sym);
 		sym->addr = -m_local_stack[cur_func];
 
 		if(ast->GetAssignment())
@@ -155,7 +155,7 @@ t_astret ZeroACAsm::visit(const ASTVar* ast)
 	const t_str& varname = ast->GetIdent();
 
 	// get variable from symbol table
-	t_astret sym = get_sym(varname);
+	t_astret sym = GetSym(varname);
 	if(!sym)
 		throw std::runtime_error("ASTVar: Variable \"" + varname + "\" is not in symbol table.");
 	if(!sym->addr)
@@ -199,13 +199,13 @@ t_astret ZeroACAsm::visit(const ASTAssign* ast)
 
 	for(const t_str& varname : ast->GetIdents())
 	{
-		t_astret sym = get_sym(varname);
+		t_astret sym = GetSym(varname);
 		if(!sym)
 			throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" is not in symbol table.");
 		if(!sym->addr)
 			throw std::runtime_error("ASTAssign: Variable \"" + varname + "\" has not been declared.");
 
-		cast_to(sym, std::nullopt, true);
+		CastTo(sym, std::nullopt, true);
 		AssignVar(sym);
 
 		if(!sym_ret)

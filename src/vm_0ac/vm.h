@@ -683,10 +683,10 @@ protected:
 		}
 
 		// matrix power
-		else if(val1.index() == m_matidx && val2.index() == m_intidx && op == '^')
+		else if(val1.index() == m_matidx && val2.index() == m_realidx && op == '^')
 		{
 			const t_mat& mat = std::get<m_matidx>(val1);
-			t_int pow = std::get<m_intidx>(val2);
+			t_int pow = static_cast<t_int>(std::get<m_realidx>(val2));
 			auto [matpow, ok] = m::pow<t_mat, t_vec, t_int>(mat, pow);
 			if(!ok)
 				throw std::runtime_error("Matrix power could not be calculated.");

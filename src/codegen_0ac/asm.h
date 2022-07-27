@@ -74,16 +74,20 @@ public:
 
 protected:
 	// finds the symbol with a specific name in the symbol table
-	t_astret get_sym(const t_str& name) const;
+	t_astret GetSym(const t_str& name) const;
 
 	// finds the size of the symbol for the stack frame
-	std::size_t get_sym_size(const Symbol* sym) const;
+	std::size_t GetSymSize(const Symbol* sym) const;
 
 	// finds the size of the local function variables for the stack frame
-	std::size_t get_stackframe_size(const Symbol* func) const;
+	std::size_t GetStackFrameSize(const Symbol* func) const;
+
+	// returns common type of a binary operation
+	std::tuple<t_astret, t_astret, t_astret>
+	GetCastSymType(t_astret term1, t_astret term2);
 
 	// emits code to cast to given type
-	void cast_to(t_astret ty_to,
+	void CastTo(t_astret ty_to,
 		const std::optional<std::streampos>& pos = std::nullopt,
 		bool allow_array_cast = false);
 
@@ -96,6 +100,8 @@ protected:
 
 	void AssignVar(t_astret sym);
 	void CallExternal(const t_str& funcname);
+
+	Symbol* GetTypeConst(SymbolType ty) const;
 
 
 private:

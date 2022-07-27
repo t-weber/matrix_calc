@@ -66,12 +66,12 @@ void ZeroACAsm::Start()
 {
 	// call start function
 	const t_str& funcname = "start";
-	t_astret func = get_sym(funcname);
+	t_astret func = GetSym(funcname);
 	if(!func)
 		throw std::runtime_error("Start function is not in symbol table.");
 
 	// push stack frame size
-	t_vm_int framesize = static_cast<t_vm_int>(get_stackframe_size(func));
+	t_vm_int framesize = static_cast<t_vm_int>(GetStackFrameSize(func));
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
 	m_ostr->write(reinterpret_cast<const char*>(&framesize), vm_type_size<VMType::INT, false>);
@@ -110,7 +110,7 @@ void ZeroACAsm::Finish()
 	// patch function addresses
 	for(const auto& [func_name, pos, num_args, call_ast] : m_func_comefroms)
 	{
-		t_astret sym = get_sym(func_name);
+		t_astret sym = GetSym(func_name);
 		if(!sym)
 			throw std::runtime_error("Tried to call unknown function \"" + func_name + "\".");
 		if(!sym->addr)

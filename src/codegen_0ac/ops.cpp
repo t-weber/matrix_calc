@@ -11,71 +11,92 @@
 // ----------------------------------------------------------------------------
 // operations
 // ----------------------------------------------------------------------------
+Symbol* ZeroACAsm::GetTypeConst(SymbolType ty) const
+{
+	switch(ty)
+	{
+		case SymbolType::SCALAR:
+			return m_scalar_const;
+		case SymbolType::INT:
+			return m_int_const;
+		case SymbolType::STRING:
+			return m_str_const;
+		case SymbolType::MATRIX:
+			return m_mat_const;
+		case SymbolType::VECTOR:
+			return m_vec_const;
+		default:
+			return nullptr;
+	}
+	return nullptr;
+}
+
+
 /**
- * return common type of a binary operation
- * @returns [ needs_cast?, first term is common type? ]
+ * returns common type of a binary operation
+ * @returns [ needs_cast?, first type cast, second type cast, operation result type ]
  */
-static std::tuple<bool, bool>
-get_cast_symtype(t_astret term1, t_astret term2)
+std::tuple<t_astret, t_astret, t_astret>
+ZeroACAsm::GetCastSymType(t_astret term1, t_astret term2)
 {
 	if(!term1 || !term2)
-		return std::make_tuple(false, true);
+		return std::make_tuple(nullptr, nullptr, nullptr);
 
 	SymbolType ty1 = term1->ty;
 	SymbolType ty2 = term2->ty;
 
 	// use return type for function
 	if(ty1 == SymbolType::FUNC)
-		ty1 = term1->retty;
+		term1 = GetTypeConst(term1->retty);
 	if(ty2 == SymbolType::FUNC)
-		ty2 = term2->retty;
+		term2 = GetTypeConst(term2->retty);
 
 	// already same type?
 	if(ty1 == ty2)
-		return std::make_tuple(false, true);
+		return std::make_tuple(nullptr, nullptr, term1);
 
 	else if(ty1 == SymbolType::INT && ty2 == SymbolType::SCALAR)
-		return std::make_tuple(true, false);
+		return std::make_tuple(term2, nullptr, term2);
 	else if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::INT)
-		return std::make_tuple(true, true);
+		return std::make_tuple(nullptr, term1, term1);
 
 	else if(ty1 == SymbolType::STRING && ty2 == SymbolType::SCALAR)
-		return std::make_tuple(true, true);
+		return std::make_tuple(nullptr, term1, term1);
 	else if(ty1 == SymbolType::STRING && ty2 == SymbolType::INT)
-		return std::make_tuple(true, true);
+		return std::make_tuple(nullptr, term1, term1);
 	else if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::STRING)
-		return std::make_tuple(true, false);
+		return std::make_tuple(term2, nullptr, term2);
 	else if(ty1 == SymbolType::INT && ty2 == SymbolType::STRING)
-		return std::make_tuple(true, false);
+		return std::make_tuple(term2, nullptr, term2);
 
 	// no casts between matrix/scalar operations
 	else if(ty1 == SymbolType::MATRIX && ty2 == SymbolType::SCALAR)
-		return std::make_tuple(false, true);
+		return std::make_tuple(nullptr, nullptr, term1);
 	else if(ty1 == SymbolType::MATRIX && ty2 == SymbolType::INT)
-		return std::make_tuple(false, true);
+		return std::make_tuple(nullptr, m_scalar_const, term1);
 	else if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::MATRIX)
-		return std::make_tuple(false, false);
+		return std::make_tuple(nullptr, nullptr, term2);
 	else if(ty1 == SymbolType::INT && ty2 == SymbolType::MATRIX)
-		return std::make_tuple(false, false);
+		return std::make_tuple(m_scalar_const, nullptr, term2);
 
 	// no casts between vector/scalar operations
 	else if(ty1 == SymbolType::VECTOR && ty2 == SymbolType::SCALAR)
-		return std::make_tuple(false, true);
+		return std::make_tuple(nullptr, nullptr, term1);
 	else if(ty1 == SymbolType::VECTOR && ty2 == SymbolType::INT)
-		return std::make_tuple(false, true);
+		return std::make_tuple(nullptr, m_scalar_const, term1);
 	else if(ty1 == SymbolType::SCALAR && ty2 == SymbolType::VECTOR)
-		return std::make_tuple(false, false);
+		return std::make_tuple(nullptr, nullptr, term2);
 	else if(ty1 == SymbolType::INT && ty2 == SymbolType::VECTOR)
-		return std::make_tuple(false, false);
+		return std::make_tuple(m_scalar_const, nullptr, term2);
 
-	return std::make_tuple(true, true);
+	return std::make_tuple(nullptr, term1, term1);
 }
 
 
 /**
  * emit code to cast to given type
  */
-void ZeroACAsm::cast_to(t_astret ty_to,
+void ZeroACAsm::CastTo(t_astret ty_to,
 	const std::optional<std::streampos>& pos,
 	bool allow_array_cast)
 {
@@ -159,19 +180,13 @@ t_astret ZeroACAsm::visit(const ASTPlus* ast)
 	t_astret common_type = term1;
 
 	// cast if needed
-	if(auto [needs_cast, cast_to_first] = get_cast_symtype(term1, term2); needs_cast)
-	{
-		if(cast_to_first)
-		{
-			cast_to(term1, term2_pos);  // cast second term to first term type
-			common_type = term1;
-		}
-		else
-		{
-			cast_to(term2, term1_pos);  // cast fist term to second term type
-			common_type = term2;
-		}
-	}
+	auto [first_ty, second_ty, res_ty]
+		= GetCastSymType(term1, term2);
+	if(first_ty)
+		CastTo(first_ty, term1_pos);
+	if(second_ty)
+		CastTo(second_ty, term2_pos);
+	common_type = res_ty;
 
 	if(ast->IsInverted())
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::SUB));
@@ -195,19 +210,13 @@ t_astret ZeroACAsm::visit(const ASTMult* ast)
 	t_astret common_type = term1;
 
 	// cast if needed
-	if(auto [needs_cast, cast_to_first] = get_cast_symtype(term1, term2); needs_cast)
-	{
-		if(cast_to_first)
-		{
-			cast_to(term1, term2_pos);  // cast second term to first term type
-			common_type = term1;
-		}
-		else
-		{
-			cast_to(term2, term1_pos);  // cast fist term to second term type
-			common_type = term2;
-		}
-	}
+	auto [first_ty, second_ty, res_ty]
+		= GetCastSymType(term1, term2);
+	if(first_ty)
+		CastTo(first_ty, term1_pos);
+	if(second_ty)
+		CastTo(second_ty, term2_pos);
+	common_type = res_ty;
 
 	if(ast->IsInverted())
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::DIV));
@@ -231,19 +240,13 @@ t_astret ZeroACAsm::visit(const ASTMod* ast)
 	t_astret common_type = term1;
 
 	// cast if needed
-	if(auto [needs_cast, cast_to_first] = get_cast_symtype(term1, term2); needs_cast)
-	{
-		if(cast_to_first)
-		{
-			cast_to(term1, term2_pos);  // cast second term to first term type
-			common_type = term1;
-		}
-		else
-		{
-			cast_to(term2, term1_pos);  // cast fist term to second term type
-			common_type = term2;
-		}
-	}
+	auto [first_ty, second_ty, res_ty]
+		= GetCastSymType(term1, term2);
+	if(first_ty)
+		CastTo(first_ty, term1_pos);
+	if(second_ty)
+		CastTo(second_ty, term2_pos);
+	common_type = res_ty;
 
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::MOD));
 
@@ -264,19 +267,13 @@ t_astret ZeroACAsm::visit(const ASTPow* ast)
 	t_astret common_type = term1;
 
 	// cast if needed
-	if(auto [needs_cast, cast_to_first] = get_cast_symtype(term1, term2); needs_cast)
-	{
-		if(cast_to_first)
-		{
-			cast_to(term1, term2_pos);  // cast second term to first term type
-			common_type = term1;
-		}
-		else
-		{
-			cast_to(term2, term1_pos);  // cast fist term to second term type
-			common_type = term2;
-		}
-	}
+	auto [first_ty, second_ty, res_ty]
+		= GetCastSymType(term1, term2);
+	if(first_ty)
+		CastTo(first_ty, term1_pos);
+	if(second_ty)
+		CastTo(second_ty, term2_pos);
+	common_type = res_ty;
 
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::POW));
 

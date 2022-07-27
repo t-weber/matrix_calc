@@ -28,8 +28,8 @@ struct VMOptions
 {
 	t_vm_addr mem_size { 4096 };
         bool enable_debug { false };
-	bool enable_checks { true };
 	bool enable_memimages { false };
+	bool enable_checks { true };
 };
 
 

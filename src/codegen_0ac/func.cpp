@@ -11,7 +11,7 @@
 /**
  * finds the size of the local function variables for the stack frame
  */
-std::size_t ZeroACAsm::get_stackframe_size(const Symbol* func) const
+std::size_t ZeroACAsm::GetStackFrameSize(const Symbol* func) const
 {
 	auto syms = m_syms->FindSymbolsWithSameScope(
 		func->scoped_name + Symbol::get_scopenameseparator());
@@ -19,7 +19,7 @@ std::size_t ZeroACAsm::get_stackframe_size(const Symbol* func) const
 
 	//for(const auto symty : func->argty)
 	for(const Symbol* sym : syms)
-		needed_size += get_sym_size(sym);
+		needed_size += GetSymSize(sym);
 
 	return needed_size;
 }
@@ -43,7 +43,7 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 	for(const auto& [argname, argtype, dim1, dim2] : argnames)
 	{
 		// get variable from symbol table and assign an address
-		t_astret sym = get_sym(argname);
+		t_astret sym = GetSym(argname);
 		if(!sym)
 			throw std::runtime_error("ASTFunc: Argument \"" + argname + "\" is not in symbol table.");
 		if(sym->addr)
@@ -56,13 +56,13 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 			throw std::runtime_error("ASTFunc: Argument \"" + argname + "\" index mismatch.");
 
 		sym->addr = frame_addr;
-		frame_addr += get_sym_size(sym);
+		frame_addr += GetSymSize(sym);
 
 		++argidx;
 	}
 
 	// get function from symbol table and set address
-	t_astret func = get_sym(funcname);
+	t_astret func = GetSym(funcname);
 	if(!func)
 		throw std::runtime_error("ASTFunc: Function \"" + funcname + "\" is not in symbol table.");
 	func->addr = m_ostr->tellp();
@@ -73,7 +73,7 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
 	std::streampos ret_streampos = m_ostr->tellp();
 
 	// push stack frame size
-	t_vm_int framesize = static_cast<t_vm_int>(get_stackframe_size(func));
+	t_vm_int framesize = static_cast<t_vm_int>(GetStackFrameSize(func));
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 	m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
 	m_ostr->write(reinterpret_cast<const char*>(&framesize), vm_type_size<VMType::INT, false>);
@@ -130,7 +130,7 @@ void ZeroACAsm::CallExternal(const t_str& funcname)
 t_astret ZeroACAsm::visit(const ASTCall* ast)
 {
 	const t_str* funcname = &ast->GetIdent();
-	t_astret func = get_sym(*funcname);
+	t_astret func = GetSym(*funcname);
 	if(!func)
 		throw std::runtime_error("ASTCall: Function \"" + (*funcname) + "\" is not in symbol table.");
 
@@ -154,7 +154,7 @@ t_astret ZeroACAsm::visit(const ASTCall* ast)
 	else
 	{
 		// push stack frame size
-		t_vm_int framesize = static_cast<t_vm_int>(get_stackframe_size(func));
+		t_vm_int framesize = static_cast<t_vm_int>(GetStackFrameSize(func));
 		m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
 		m_ostr->put(static_cast<t_vm_byte>(VMType::INT));
 		m_ostr->write(reinterpret_cast<const char*>(&framesize), vm_type_size<VMType::INT, false>);
@@ -187,7 +187,7 @@ t_astret ZeroACAsm::visit(const ASTReturn* ast)
 		throw std::runtime_error("ASTReturn: Not in a function.");
 
 	/*const t_str& cur_func = *m_curscope.rbegin();
-	t_astret func = get_sym(cur_func);
+	t_astret func = GetSym(cur_func);
 	if(!func)
 		throw std::runtime_error("ASTReturn: Function \"" + cur_func + "\" is not in symbol table.");*/
 
