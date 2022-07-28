@@ -14,6 +14,7 @@
 
 #include <fstream>
 #include <locale>
+#include <chrono>
 
 #if __has_include(<filesystem>)
 	#include <filesystem>
@@ -28,12 +29,17 @@
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
 
+using t_clock = std::chrono::steady_clock;
+using t_timepoint = std::chrono::time_point<t_clock>;
+using t_duration = std::chrono::duration<t_real, std::ratio<1, 1000>>; // ms
 
 
 int main(int argc, char** argv)
 {
 	try
 	{
+		t_timepoint start_time  = t_clock::now();
+
 		std::ios_base::sync_with_stdio(0);
 		std::locale loc{};
 		std::locale::global(loc);
@@ -53,7 +59,6 @@ int main(int argc, char** argv)
 		std::vector<std::string> progs;
 		bool show_symbols = false;
 		bool show_ast = false;
-		bool verbose = false;
 		std::string outprog;
 
 		args::options_description arg_descr("Compiler arguments");
@@ -61,7 +66,6 @@ int main(int argc, char** argv)
 			("out,o", args::value(&outprog), "compiled program output")
 			("symbols,s", args::bool_switch(&show_symbols), "output symbol table")
 			("ast,a", args::bool_switch(&show_ast), "output syntax tree")
-			("verbose,v", args::bool_switch(&verbose), "verbose output")
 			("program", args::value<decltype(progs)>(&progs), "input program to compile");
 
 		args::positional_options_description posarg_descr;
@@ -99,8 +103,6 @@ int main(int argc, char** argv)
 		std::string outprog_ast = outprog + "_ast.xml";
 		std::string outprog_syms = outprog + "_syms.txt";
 		std::string outprog_0ac = outprog + ".bin";
-
-		std::string opt_verbose = verbose ? " -v " : "";
 		// --------------------------------------------------------------------
 
 
@@ -178,6 +180,11 @@ int main(int argc, char** argv)
 		zeroacasm.Finish();
 		// --------------------------------------------------------------------
 
+
+		std::cout << "Compilation time: "
+			<< std::chrono::duration_cast<t_duration>(
+				t_clock::now() - start_time).count()
+			<< " ms." << std::endl;
 	}
 	catch(const std::exception& ex)
 	{

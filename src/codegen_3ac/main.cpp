@@ -14,6 +14,7 @@
 
 #include <fstream>
 #include <locale>
+#include <chrono>
 
 #if __has_include(<filesystem>)
 	#include <filesystem>
@@ -28,6 +29,10 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
+
+using t_clock = std::chrono::steady_clock;
+using t_timepoint = std::chrono::time_point<t_clock>;
+using t_duration = std::chrono::duration<t_real, std::ratio<1, 1000>>; // ms
 
 
 
@@ -67,6 +72,8 @@ int main(int argc, char** argv)
 {
 	try
 	{
+		t_timepoint start_time  = t_clock::now();
+
 		std::ios_base::sync_with_stdio(0);
 		std::locale loc{};
 		std::locale::global(loc);
@@ -604,6 +611,11 @@ define i32 @main()
 				}
 			}
 		}
+
+		std::cout << "Compilation time: "
+			<< std::chrono::duration_cast<t_duration>(
+				t_clock::now() - start_time).count()
+			<< " ms." << std::endl;
 	}
 	catch(const std::exception& ex)
 	{

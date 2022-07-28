@@ -7,6 +7,9 @@
 project(mcalc)
 cmake_minimum_required(VERSION 3.0)
 
+option(USE_BOOST_GIL "use boost.gil" FALSE)
+
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
@@ -19,6 +22,13 @@ find_package(Threads REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options)
 
 add_definitions(${Boost_CXX_FLAGS})
+
+if(USE_BOOST_GIL)
+	find_package(PNG REQUIRED)
+	add_definitions(${PNG_DEFINITIONS} -DUSE_BOOST_GIL)
+	include_directories(${PNG_INCLUDE_DIRS})
+endif()
+
 
 include_directories(
 	"${PROJECT_SOURCE_DIR}"
@@ -113,5 +123,6 @@ add_executable(vm_0ac
 
 target_link_libraries(vm_0ac ${Boost_LIBRARIES}
 	$<$<TARGET_EXISTS:Threads::Threads>:Threads::Threads>
+	$<$<TARGET_EXISTS:PNG::PNG>:PNG::PNG>
 )
 # -----------------------------------------------------------------------------

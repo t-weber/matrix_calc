@@ -9,6 +9,7 @@
 #include "../version.h"
 
 #include <vector>
+#include <chrono>
 #include <iostream>
 #include <fstream>
 
@@ -23,14 +24,59 @@
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
 
+using t_clock = std::chrono::steady_clock;
+using t_timepoint = std::chrono::time_point<t_clock>;
+
+template<class t_dur_to>
+using dur_cast = decltype([](const auto& dur_from) -> t_dur_to
+{
+	return std::chrono::duration_cast<t_dur_to>(dur_from);
+});
+
+
+
+/**
+ * get time since start_time
+ */
+static inline std::tuple<t_real, std::string>
+get_runtime(const t_timepoint& start_time)
+{
+	t_real run_time{};
+	using t_duration_ms = std::chrono::duration<t_real, std::ratio<1, 1000>>;
+	t_duration_ms ms = dur_cast<t_duration_ms>()(t_clock::now() - start_time);
+	run_time = ms.count();
+	std::string time_unit = " ms";
+
+	if(run_time >= t_real(1000.))
+	{
+		using t_duration_s = std::chrono::duration<t_real, std::ratio<1, 1>>;
+		t_duration_s s = dur_cast<t_duration_s>()(ms);
+		run_time = s.count();
+		time_unit = " s";
+
+		if(run_time >= t_real(60.))
+		{
+			using t_duration_min = std::chrono::duration<t_real, std::ratio<60, 1>>;
+			t_duration_min min = dur_cast<t_duration_min>()(s);
+			run_time = min.count();
+			time_unit = " min";
+		}
+	}
+
+	return std::make_tuple(run_time, time_unit);
+}
+
+
 
 struct VMOptions
 {
 	t_vm_addr mem_size { 4096 };
-        bool enable_debug { false };
+	bool enable_debug { false };
+	bool zero_mem { false };
 	bool enable_memimages { false };
 	bool enable_checks { true };
 };
+
 
 
 static bool run_vm(const fs::path& prog, const VMOptions& opts)
@@ -54,6 +100,7 @@ static bool run_vm(const fs::path& prog, const VMOptions& opts)
 
 	vm.SetDebug(opts.enable_debug);
 	vm.SetChecks(opts.enable_checks);
+	vm.SetZeroPoppedVals(opts.zero_mem);
 	vm.SetDrawMemImages(opts.enable_memimages);
 	vm.SetMem(0, bytes.data(), filesize, true);
 	vm.Run();
@@ -97,13 +144,17 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 		{
 			.mem_size = 4096,
 			.enable_debug = false,
+			.zero_mem = false,
 			.enable_memimages = false,
 			.enable_checks = true,
 		};
+		bool enable_timer = false;
 
 		args::options_description arg_descr("Virtual machine arguments");
 		arg_descr.add_options()
 			("debug,d", args::bool_switch(&vmopts.enable_debug), "enable debug output")
+			("timer,t", args::bool_switch(&enable_timer), "time code execution")
+			("zeromem,z", args::bool_switch(&vmopts.zero_mem), "zero memory after use")
 #ifdef USE_BOOST_GIL
 			("memimages,i", args::bool_switch(&vmopts.enable_memimages), "write memory images")
 #endif
@@ -144,11 +195,31 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
                 // input file
 		fs::path inprog = progs[0];
 
+		t_timepoint start_time {};
+		if(enable_timer)
+			start_time  = t_clock::now();
+
 		if(!run_vm(inprog, vmopts))
 		{
-			std::cerr << "Could not run \"" << inprog.string() << "\"." << std::endl;
+			std::cerr << "Could not run \"" << inprog.string()
+				<< "\"." << std::endl;
 			return -1;
-		}		
+		}
+
+		if(enable_timer)
+		{
+			auto [run_time, time_unit] = get_runtime(start_time);
+			std::cout << "Program run time: "
+				<< run_time << time_unit << "."
+				<< std::endl;
+		}
+
+		if(vmopts.enable_memimages)
+		{
+			std::cout << "Create memory access video using: "
+				<< "\"ffmpeg -i mem_%d.png mem.mp4\""
+				<< "." << std::endl;
+		}
 	}
 	catch(const std::exception& err)
 	{
