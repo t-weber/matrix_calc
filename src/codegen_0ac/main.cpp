@@ -9,12 +9,12 @@
 #include "../ast.h"
 #include "../printast.h"
 #include "../semantics.h"
+#include "../helpers.h"
 #include "../version.h"
 #include "asm.h"
 
 #include <fstream>
 #include <locale>
-#include <chrono>
 
 #if __has_include(<filesystem>)
 	#include <filesystem>
@@ -28,10 +28,6 @@
 
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
-
-using t_clock = std::chrono::steady_clock;
-using t_timepoint = std::chrono::time_point<t_clock>;
-using t_duration = std::chrono::duration<t_real, std::ratio<1, 1000>>; // ms
 
 
 int main(int argc, char** argv)
@@ -181,10 +177,11 @@ int main(int argc, char** argv)
 		// --------------------------------------------------------------------
 
 
+		auto [comp_time, time_unit] = get_elapsed_time<
+			t_real, t_timepoint>(start_time);
 		std::cout << "Compilation time: "
-			<< std::chrono::duration_cast<t_duration>(
-				t_clock::now() - start_time).count()
-			<< " ms." << std::endl;
+			<< comp_time << " " << time_unit << "."
+			<< std::endl;
 	}
 	catch(const std::exception& ex)
 	{

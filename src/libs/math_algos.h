@@ -21,9 +21,10 @@
 #define __MATH_ALGOS_H__
 
 #include "math_concepts.h"
-//#include "math_conts.h"
 
+#include <cassert>
 #include <cmath>
+#include <iostream>
 #include <complex>
 #include <tuple>
 #include <vector>
@@ -31,9 +32,11 @@
 #include <algorithm>
 #include <random>
 #include <numeric>
-#include <numbers>
-#include <cassert>
-#include <iostream>
+
+#if __has_include(<numbers>)
+	#include <numbers>
+	#define _MATH_ALGOS_HAS_NUMBERS
+#endif
 
 #ifndef MATH_USE_FLAT_DET
 	#define MATH_USE_FLAT_DET 0
@@ -63,8 +66,13 @@ requires is_mat<t_mat>;
 // ----------------------------------------------------------------------------
 // scalar algos and constants
 // ----------------------------------------------------------------------------
-template<typename T> constexpr T pi = std::numbers::pi_v<T>;
-template<typename T> T golden = std::numbers::phi_v<T>; //T(0.5) + std::sqrt(T(5))/T(2);
+#ifdef _MATH_ALGOS_HAS_NUMBERS
+	template<typename T> constexpr T pi = std::numbers::pi_v<T>;
+	template<typename T> T golden = std::numbers::phi_v<T>;
+#else
+	template<typename T> constexpr T pi = T(M_PI);
+	template<typename T> T golden = T(0.5) + std::sqrt(T(5))/T(2);
+#endif
 
 
 /**

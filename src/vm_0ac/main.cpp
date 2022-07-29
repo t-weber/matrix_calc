@@ -6,10 +6,10 @@
  */
 
 #include "vm.h"
+#include "../helpers.h"
 #include "../version.h"
 
 #include <vector>
-#include <chrono>
 #include <iostream>
 #include <fstream>
 
@@ -23,49 +23,6 @@
 
 #include <boost/program_options.hpp>
 namespace args = boost::program_options;
-
-using t_clock = std::chrono::steady_clock;
-using t_timepoint = std::chrono::time_point<t_clock>;
-
-template<class t_dur_to>
-using dur_cast = decltype([](const auto& dur_from) -> t_dur_to
-{
-	return std::chrono::duration_cast<t_dur_to>(dur_from);
-});
-
-
-
-/**
- * get time since start_time
- */
-static inline std::tuple<t_real, std::string>
-get_runtime(const t_timepoint& start_time)
-{
-	t_real run_time{};
-	using t_duration_ms = std::chrono::duration<t_real, std::ratio<1, 1000>>;
-	t_duration_ms ms = dur_cast<t_duration_ms>()(t_clock::now() - start_time);
-	run_time = ms.count();
-	std::string time_unit = " ms";
-
-	if(run_time >= t_real(1000.))
-	{
-		using t_duration_s = std::chrono::duration<t_real, std::ratio<1, 1>>;
-		t_duration_s s = dur_cast<t_duration_s>()(ms);
-		run_time = s.count();
-		time_unit = " s";
-
-		if(run_time >= t_real(60.))
-		{
-			using t_duration_min = std::chrono::duration<t_real, std::ratio<60, 1>>;
-			t_duration_min min = dur_cast<t_duration_min>()(s);
-			run_time = min.count();
-			time_unit = " min";
-		}
-	}
-
-	return std::make_tuple(run_time, time_unit);
-}
-
 
 
 struct VMOptions
@@ -208,9 +165,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 		if(enable_timer)
 		{
-			auto [run_time, time_unit] = get_runtime(start_time);
+			auto [run_time, time_unit] = get_elapsed_time<
+				t_real, t_timepoint>(start_time);
 			std::cout << "Program run time: "
-				<< run_time << time_unit << "."
+				<< run_time << " " << time_unit << "."
 				<< std::endl;
 		}
 
