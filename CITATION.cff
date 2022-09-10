@@ -1,0 +1,16 @@
+#
+# citation file
+# @see: https://github.com/citation-file-format/citation-file-format/blob/main/schema-guide.md
+#
+
+cff-version: 1.2.0
+type: software
+title: matrix_calc
+message: A simple compiler for linear algebra calculations.
+authors:
+  - family-names: Weber
+    given-names: Tobias
+    email: tobias.weber@tum.de
+    orcid: "https://orcid.org/0000-0002-7230-1932"
+license: GPL-3.0
+repository-code: "https://github.com/t-weber/matrix_calc"
