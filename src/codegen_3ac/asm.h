@@ -13,7 +13,7 @@
 #ifndef __LLASM_H__
 #define __LLASM_H__
 
-#include "ast.h"
+#include "ast/ast.h"
 #include <stack>
 #include <type_traits>
 

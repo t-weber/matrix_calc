@@ -8,6 +8,6 @@
 #ifndef __MCALC_VER_H__
 #define __MCALC_VER_H__
 
-#define MCALC_VER "0.3"
+#define MCALC_VER "0.4"
 
 #endif

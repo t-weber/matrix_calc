@@ -9,7 +9,7 @@
 #define __MCALC_MAIN_H__
 
 
-#include "parser.h"
+#include "context.h"
 #include <cstdint>
 
 
@@ -17,7 +17,7 @@
  * registers external runtime functions which should be available to the compiler
  */
 template<class t_real, class t_int>
-void add_ext_funcs(yy::ParserContext& ctx, bool skip_some = false)
+void add_ext_funcs(ParserContext& ctx, bool skip_some = false)
 {
 	// real functions
 	if constexpr(std::is_same_v<std::decay_t<t_real>, float>)

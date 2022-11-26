@@ -20,7 +20,7 @@
 	#include <sstream>
 	#include <iomanip>
 
-	#include "parser.h"
+	#include "parser_yy/parser.h"
 %}
 
 

@@ -8,8 +8,8 @@
 #ifndef __ZEROACASM_H__
 #define __ZEROACASM_H__
 
-#include "ast.h"
-#include "../vm_0ac/opcodes.h"
+#include "ast/ast.h"
+#include "vm_0ac/opcodes.h"
 
 #include <stack>
 #include <unordered_map>

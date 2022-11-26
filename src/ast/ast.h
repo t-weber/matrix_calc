@@ -16,7 +16,7 @@
 #include <iostream>
 #include <cstdint>
 
-#include "sym.h"
+#include "common/sym.h"
 
 
 

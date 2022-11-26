@@ -26,14 +26,14 @@
 // before inclusion of definitions header
 %code requires
 {
-	#include "ast.h"
-	#include "sym.h"
+	#include "ast/ast.h"
+	#include "common/sym.h"
 }
 
 // after inclusion of definitions header
 %code
 {
-	#include "parser.h"
+	#include "parser_yy/parser.h"
 	#include <cmath>
 	#include <cstdint>
 

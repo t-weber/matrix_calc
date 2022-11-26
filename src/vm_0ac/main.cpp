@@ -6,8 +6,8 @@
  */
 
 #include "vm.h"
-#include "../helpers.h"
-#include "../version.h"
+#include "common/helpers.h"
+#include "common/version.h"
 
 #include <vector>
 #include <iostream>

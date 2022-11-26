@@ -10,9 +10,9 @@
 
 #include <vector>
 
-#include "../types.h"
-#include "../libs/math_algos.h"
-#include "../libs/math_conts.h"
+#include "common/types.h"
+#include "libs/math_algos.h"
+#include "libs/math_conts.h"
 
 
 using t_vm_int = ::t_int;

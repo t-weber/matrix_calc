@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../types.h"
+#include "common/types.h"
 
 
 static t_real g_eps = REAL_EPSILON;

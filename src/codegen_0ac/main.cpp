@@ -5,12 +5,13 @@
  * @license: see 'LICENSE.GPL' file
  */
 
-#include "../main.h"
-#include "../ast.h"
-#include "../printast.h"
-#include "../semantics.h"
-#include "../helpers.h"
-#include "../version.h"
+#include "ast/ast.h"
+#include "ast/printast.h"
+#include "ast/semantics.h"
+#include "common/helpers.h"
+#include "common/version.h"
+#include "common/ext_funcs.h"
+#include "parser_yy/parser.h"
 #include "asm.h"
 
 #include <fstream>

@@ -40,14 +40,14 @@ include_directories(
 
 
 BISON_TARGET(parser_impl
-	src/parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser_impl.cpp
+	src/parser_yy/parser.y ${CMAKE_CURRENT_BINARY_DIR}/parser_impl.cpp
 	DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/parser_defs.h
 	VERBOSE REPORT_FILE ${CMAKE_CURRENT_BINARY_DIR}/parser_report.txt
 )
 
 
 FLEX_TARGET(lexer_impl
-	src/lexer.l ${CMAKE_CURRENT_BINARY_DIR}/lexer_impl.cpp
+	src/parser_yy/lexer.l ${CMAKE_CURRENT_BINARY_DIR}/lexer_impl.cpp
 	DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/lexer_impl.h
 )
 
@@ -65,12 +65,15 @@ message("Bison output header: ${BISON_parser_impl_OUTPUT_HEADER}")
 # 3-ac code generator
 # -----------------------------------------------------------------------------
 add_executable(mcalc
-	src/codegen_3ac/main.cpp src/main.h
-	src/parser.cpp src/parser.h src/ast.h src/sym.h
+	src/parser_yy/parser.cpp src/parser_yy/parser.h
+	src/common/types.h src/common/sym.h
+	src/common/ext_funcs.h src/common/ext_funcs.h
+	src/ast/ast.h
+	src/ast/printast.cpp src/ast/printast.h
+	src/ast/semantics.cpp src/ast/semantics.h
+	src/codegen_3ac/main.cpp
 	src/codegen_3ac/asm.cpp src/codegen_3ac/ops.cpp src/codegen_3ac/var.cpp
 	src/codegen_3ac/arr.cpp src/codegen_3ac/func.cpp src/codegen_3ac/asm.h
-	src/printast.cpp src/printast.h
-	src/semantics.cpp src/semantics.h
 	${FLEX_lexer_impl_OUTPUTS}
 	${BISON_parser_impl_OUTPUT_SOURCE} ${BISON_parser_impl_OUTPUT_HEADER}
 )
@@ -81,7 +84,7 @@ target_link_libraries(mcalc ${Boost_LIBRARIES})
 
 
 # build runtime for 3-ac code generator
-execute_process(COMMAND clang -O2 -S -emit-llvm -o runtime_opt.asm "${PROJECT_SOURCE_DIR}/src/libs/runtime.c")
+execute_process(COMMAND clang -O2 -S -emit-llvm -I"${PROJECT_SOURCE_DIR}/src" -o runtime_opt.asm "${PROJECT_SOURCE_DIR}/src/libs/runtime.c")
 execute_process(COMMAND clang -S -emit-llvm -o runtime.asm "${PROJECT_SOURCE_DIR}/src/libs/runtime.c")
 # -----------------------------------------------------------------------------
 
@@ -91,14 +94,16 @@ execute_process(COMMAND clang -S -emit-llvm -o runtime.asm "${PROJECT_SOURCE_DIR
 # 0-ac code generator
 # -----------------------------------------------------------------------------
 add_executable(mcalc_0ac
-	src/codegen_0ac/main.cpp src/main.h
-	src/parser.cpp src/parser.h src/ast.h src/sym.h
+	src/ast/ast.h
+	src/ast/printast.cpp src/ast/printast.h
+	src/ast/semantics.cpp src/ast/semantics.h
+	src/common/types.h src/common/sym.h
+	src/common/ext_funcs.h src/common/context.h
+	src/parser_yy/parser.cpp src/parser_yy/parser.h
+	src/codegen_0ac/main.cpp
 	src/codegen_0ac/asm.cpp src/codegen_0ac/asm.h
 	src/codegen_0ac/func.cpp src/codegen_0ac/var.cpp
 	src/codegen_0ac/ops.cpp src/codegen_0ac/arr.cpp
-	src/printast.cpp src/printast.h
-	src/semantics.cpp src/semantics.h
-	src/types.h
 	${FLEX_lexer_impl_OUTPUTS}
 	${BISON_parser_impl_OUTPUT_SOURCE} ${BISON_parser_impl_OUTPUT_HEADER}
 )
@@ -113,8 +118,8 @@ target_link_libraries(mcalc_0ac ${Boost_LIBRARIES})
 # 0-ac vm
 # -----------------------------------------------------------------------------
 add_executable(vm_0ac
-	src/vm_0ac/main.cpp
-	src/types.h src/vm_0ac/types.h
+	src/vm_0ac/main.cpp src/vm_0ac/types.h
+	src/common/types.h
 	src/vm_0ac/opcodes.h src/vm_0ac/vm.h
 	src/vm_0ac/vm.cpp src/vm_0ac/run.cpp
 	src/vm_0ac/extfuncs.cpp
