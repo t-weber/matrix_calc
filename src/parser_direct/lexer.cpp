@@ -451,8 +451,9 @@ int main(int argc, char **argv)
 	{
 		auto linerange = tok->GetLineRange();
 		std::cout << "id = " << tok->GetId()
-			<< ", idx = " << tok->GetTableIndex()
-			<< ", term = " << tok->IsTerminal();
+			<< ", idx = " << tok->GetTableIndex();
+		if(std::isprint(tok->GetId()))
+			std::cout << ", ch = \"" << char(tok->GetId()) << "\"";
 		if(linerange)
 			std::cout << ", lines = " << linerange->first << ".." << linerange->second;
 		std::cout << std::endl;

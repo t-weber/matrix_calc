@@ -280,7 +280,7 @@ function[res]
 				context.GetScopeName(1), $ident, 
 				$rettype->GetType(), $args->GetArgTypes(), &retdims);
 		}
-			block[blk] {
+		block[blk] {
 			$res = std::make_shared<ASTFunc>($ident, $rettype, $args, $blk);
 
 			context.LeaveScope($ident);

@@ -5,9 +5,6 @@
  * @license: see 'LICENSE.GPL' file
  */
 
-#include "ast/ast.h"
-#include "ast/printast.h"
-#include "ast/semantics.h"
 #include "parser.h"
 
 
