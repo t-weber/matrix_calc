@@ -67,13 +67,13 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			}
 
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::INT_CONST), val, line));
+				static_cast<t_symbol_id>(Token::INT_CONST), val, line));
 		}
 		else if(str == "0x" || str == "0b")
 		{
 			// dummy matches to continue searching for longest int
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::INT_CONST), 0, line));
+				static_cast<t_symbol_id>(Token::INT_CONST), 0, line));
 		}
 	}
 
@@ -85,7 +85,7 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			t_real val{};
 			std::istringstream{str} >> val;
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::REAL_CONST), val, line));
+				static_cast<t_symbol_id>(Token::REAL_CONST), val, line));
 		}
 	}
 
@@ -93,77 +93,77 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 		if(str == "if")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::IF), str, line));
+				static_cast<t_symbol_id>(Token::IF), str, line));
 		}
 		else if(str == "then")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::THEN), str, line));
+				static_cast<t_symbol_id>(Token::THEN), str, line));
 		}
 		else if(str == "else")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::ELSE), str, line));
+				static_cast<t_symbol_id>(Token::ELSE), str, line));
 		}
 		else if(str == "loop")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::LOOP), str, line));
+				static_cast<t_symbol_id>(Token::LOOP), str, line));
 		}
 		else if(str == "break")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::BREAK), str, line));
+				static_cast<t_symbol_id>(Token::BREAK), str, line));
 		}
 		else if(str == "next")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::NEXT), str, line));
+				static_cast<t_symbol_id>(Token::NEXT), str, line));
 		}
 		else if(str == "do")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::DO), str, line));
+				static_cast<t_symbol_id>(Token::DO), str, line));
 		}
 		else if(str == "func")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::FUNC), str, line));
+				static_cast<t_symbol_id>(Token::FUNC), str, line));
 		}
 		else if(str == "ret")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::RET), str, line));
+				static_cast<t_symbol_id>(Token::RET), str, line));
 		}
 		else if(str == "assign")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::ASSIGN), str, line));
+				static_cast<t_symbol_id>(Token::ASSIGN), str, line));
 		}
 		else if(str == "scalar" || str == "var")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::SCALAR), str, line));
+				static_cast<t_symbol_id>(Token::SCALAR), str, line));
 		}
 		else if(str == "vec")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::VEC), str, line));
+				static_cast<t_symbol_id>(Token::VEC), str, line));
 		}
 		else if(str == "mat")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::MAT), str, line));
+				static_cast<t_symbol_id>(Token::MAT), str, line));
 		}
 		else if(str == "str")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::STR), str, line));
+				static_cast<t_symbol_id>(Token::STR), str, line));
 		}
 		else if(str == "int")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::INT), str, line));
+				static_cast<t_symbol_id>(Token::INT), str, line));
 		}
 		else
 		{
@@ -172,7 +172,7 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			std::smatch smatch;
 			if(std::regex_match(str, smatch, regex))
 				matches.emplace_back(std::make_tuple(
-					static_cast<t_tok>(Token::IDENT), str, line));
+					static_cast<t_symbol_id>(Token::IDENT), str, line));
 		}
 	}
 
@@ -181,47 +181,47 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 		if(str == "==")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::EQU), str, line));
+				static_cast<t_symbol_id>(Token::EQU), str, line));
 		}
 		else if(str == "!=" || str == "<>")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::NEQU), str, line));
+				static_cast<t_symbol_id>(Token::NEQU), str, line));
 		}
 		if(str == "||" || str == "or")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::OR), str, line));
+				static_cast<t_symbol_id>(Token::OR), str, line));
 		}
 		if(str == "&&" || str == "and")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::AND), str, line));
+				static_cast<t_symbol_id>(Token::AND), str, line));
 		}
 		if(str == "xor")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::XOR), str, line));
+				static_cast<t_symbol_id>(Token::XOR), str, line));
 		}
 		if(str == "not")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::NOT), str, line));
+				static_cast<t_symbol_id>(Token::NOT), str, line));
 		}
 		else if(str == ">=")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::GEQU), str, line));
+				static_cast<t_symbol_id>(Token::GEQU), str, line));
 		}
 		else if(str == "<=")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::LEQU), str, line));
+				static_cast<t_symbol_id>(Token::LEQU), str, line));
 		}
 		else if(str == "~")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(Token::RANGE), str, line));
+				static_cast<t_symbol_id>(Token::RANGE), str, line));
 		}
 
 		// tokens represented by themselves
@@ -232,7 +232,7 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			str == ">" || str == "<" ||
 			str == "!" || str == "|" || str == "&")
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_tok>(str[0]), std::nullopt, line));
+				static_cast<t_symbol_id>(str[0]), std::nullopt, line));
 	}
 
 	//std::cerr << "Input \"" << str << "\" has " << matches.size() << " matches." << std::endl;
@@ -295,7 +295,7 @@ t_lexer_match Lexer::GetNextToken(std::size_t* _line)
 					replace_escapes(input);
 					in_string = false;
 					return std::make_tuple(
-						static_cast<t_tok>(Token::STR_CONST), input, *line);
+						static_cast<t_symbol_id>(Token::STR_CONST), input, *line);
 				}
 			}
 
@@ -343,7 +343,7 @@ t_lexer_match Lexer::GetNextToken(std::size_t* _line)
 	}
 
 	if(longest_lexer_matching.size() == 0 && eof)
-		return std::make_tuple((t_tok)Token::END, std::nullopt, *line);
+		return std::make_tuple((t_symbol_id)Token::END, std::nullopt, *line);
 
 	if(longest_lexer_matching.size() == 0)
 	{
@@ -360,7 +360,7 @@ t_lexer_match Lexer::GetNextToken(std::size_t* _line)
 template<std::size_t IDX> struct _Lval_LoopFunc
 {
 	void operator()(
-		std::vector<t_toknode>* vec, std::size_t id, std::size_t tableidx,
+		std::vector<t_toknode>* vec, t_symbol_id id, t_index tableidx,
 		const t_lval& lval, std::size_t line) const
 	{
 		using t_val = std::variant_alternative_t<IDX, typename t_lval::value_type>;
@@ -394,12 +394,12 @@ std::vector<t_toknode> Lexer::GetAllTokens()
 	while(true)
 	{
 		auto tup = GetNextToken(&line);
-		std::size_t id = std::get<0>(tup);
+		t_symbol_id id = std::get<0>(tup);
 		const t_lval& lval = std::get<1>(tup);
 		std::size_t line = std::get<2>(tup);
 
 		// get index into parse tables
-		std::size_t tableidx = 0;
+		t_index tableidx = 0;
 		if(m_mapTermIdx)
 		{
 			auto iter = m_mapTermIdx->find(id);
@@ -426,7 +426,7 @@ std::vector<t_toknode> Lexer::GetAllTokens()
 			vec.emplace_back(std::move(astnode));
 		}
 
-		if(id == (t_tok)Token::END)
+		if(id == (t_symbol_id)Token::END)
 			break;
 	}
 
