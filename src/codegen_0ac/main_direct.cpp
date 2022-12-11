@@ -133,7 +133,7 @@ int main(int argc, char** argv)
 
 		MatrixCalcGrammar grammar;
 		ParserContext& ctx = grammar.GetContext();
-		grammar.CreateGrammar(false, true);
+		grammar.CreateGrammar();
 		const auto& rules = grammar.GetSemanticRules();
 
 		// register external runtime functions which should be available to the compiler

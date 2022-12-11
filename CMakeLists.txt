@@ -129,7 +129,7 @@ if(LibLalr1_FOUND)
 	)
 
 	target_compile_definitions(mcalc_0ac_direct_parsergen
-		PUBLIC -DUSE_DIRECT_PARSER
+		PUBLIC -DUSE_DIRECT_PARSER -DCREATE_PRODUCTION_RULES
 	)
 
 	target_include_directories(mcalc_0ac_direct_parsergen
@@ -160,7 +160,7 @@ if(LibLalr1_FOUND)
 		)
 
 		target_compile_definitions(mcalc_0ac_direct
-			PUBLIC -DUSE_DIRECT_PARSER -DUSE_RECASC=1
+			PUBLIC -DUSE_DIRECT_PARSER -DCREATE_SEMANTIC_RULES -DUSE_RECASC=1
 		)
 
 		target_include_directories(mcalc_0ac_direct
@@ -168,7 +168,7 @@ if(LibLalr1_FOUND)
 		)
 
 		target_link_libraries(mcalc_0ac_direct
-			${LibLalr1_LIBRARIES}
+			#${LibLalr1_LIBRARIES}
 			${Boost_LIBRARIES}
 		)
 	elseif(EXISTS "${CMAKE_BINARY_DIR}/matrix_calc.tab")
@@ -188,7 +188,7 @@ if(LibLalr1_FOUND)
 		)
 
 		target_compile_definitions(mcalc_0ac_direct
-			PUBLIC -DUSE_DIRECT_PARSER -DUSE_RECASC=0
+			PUBLIC -DUSE_DIRECT_PARSER -DCREATE_SEMANTIC_RULES -DUSE_RECASC=0
 		)
 
 		target_include_directories(mcalc_0ac_direct
@@ -196,7 +196,7 @@ if(LibLalr1_FOUND)
 		)
 
 		target_link_libraries(mcalc_0ac_direct
-			${LibLalr1Parser_LIBRARIES} ${LibLalr1_LIBRARIES}
+			${LibLalr1Parser_LIBRARIES} #${LibLalr1_LIBRARIES}
 			${Boost_LIBRARIES}
 		)
 	endif()

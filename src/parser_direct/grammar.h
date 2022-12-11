@@ -44,8 +44,9 @@ enum : std::size_t
 class MatrixCalcGrammar
 {
 public:
-	void CreateGrammar(bool add_rules = true, bool add_semantics = true);
+	void CreateGrammar();
 
+#ifdef CREATE_PRODUCTION_RULES
 	template<template<class...> class t_cont = std::vector>
 	t_cont<lalr1::NonTerminalPtr> GetAllNonTerminals() const
 	{
@@ -63,12 +64,18 @@ public:
 	}
 
 	const lalr1::NonTerminalPtr& GetStartNonTerminal() const { return start; }
+#endif
+
+#ifdef CREATE_SEMANTIC_RULES
 	const lalr1::t_semanticrules& GetSemanticRules() const { return rules; }
+#endif
+
 	const ParserContext& GetContext() const { return m_context; }
 	ParserContext& GetContext() { return m_context; }
 
 
 private:
+#ifdef CREATE_PRODUCTION_RULES
 	// non-terminals
 	lalr1::NonTerminalPtr start{},
 		expressions{}, expression{},
@@ -99,11 +106,14 @@ private:
 	lalr1::TerminalPtr sym_real{}, sym_int{}, sym_str{}, ident{};
 	lalr1::TerminalPtr real_decl{}, vec_decl{}, mat_decl{},
 		int_decl{}, str_decl{};
+#endif
 
 	ParserContext m_context{};
 
+#ifdef CREATE_SEMANTIC_RULES
 	// semantic rules
 	lalr1::t_semanticrules rules{};
+#endif
 };
 
 #endif

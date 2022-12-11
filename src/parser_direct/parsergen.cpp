@@ -38,7 +38,7 @@ static bool lalr1_create_parser(
 	try
 	{
 		MatrixCalcGrammar grammar;
-		grammar.CreateGrammar(true, false);
+		grammar.CreateGrammar();
 		NonTerminalPtr start = grammar.GetStartNonTerminal();
 
 		if(verbose)
