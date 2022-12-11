@@ -73,7 +73,8 @@
 
 
 // nonterminals
-%type<std::shared_ptr<AST>> expr
+%type<std::shared_ptr<AST>> expression
+%type<std::shared_ptr<ASTExprList>> expressions
 %type<std::shared_ptr<AST>> statement
 %type<std::shared_ptr<ASTStmts>> statements
 %type<std::shared_ptr<ASTVarDecl>> variables
@@ -84,7 +85,6 @@
 %type<std::shared_ptr<ASTStmts>> block
 %type<std::shared_ptr<ASTFunc>> function
 %type<std::shared_ptr<ASTTypeDecl>> typedecl
-%type<std::shared_ptr<ASTExprList>> exprlist
 %type<std::shared_ptr<AST>> opt_assign
 
 
@@ -139,24 +139,24 @@ statements[res]
 variables[res]
 	// several variables
 	: IDENT[name] ',' variables[lst] {
-			t_str symName = context.AddScopedSymbol($name)->scoped_name;
-			$lst->AddVariable(symName);
-			$res = $lst;
-		}
+		t_str symName = context.AddScopedSymbol($name)->scoped_name;
+		$lst->AddVariable(symName);
+		$res = $lst;
+	}
 
 	// a variable
 	| IDENT[name] {
-			t_str symName = context.AddScopedSymbol($name)->scoped_name;
-			$res = std::make_shared<ASTVarDecl>();
-			$res->AddVariable(symName);
-		}
+		t_str symName = context.AddScopedSymbol($name)->scoped_name;
+		$res = std::make_shared<ASTVarDecl>();
+		$res->AddVariable(symName);
+	}
 
 	// a variable with an assignment
-	| IDENT[name] '=' expr[term] {
-			t_str symName = context.AddScopedSymbol($name)->scoped_name;
-			$res = std::make_shared<ASTVarDecl>(std::make_shared<ASTAssign>($name, $term));
-			$res->AddVariable(symName);
-		}
+	| IDENT[name] '=' expression[term] {
+		t_str symName = context.AddScopedSymbol($name)->scoped_name;
+		$res = std::make_shared<ASTVarDecl>(std::make_shared<ASTAssign>($name, $term));
+		$res->AddVariable(symName);
+	}
 	;
 
 
@@ -164,16 +164,16 @@ variables[res]
  * statement
  */
 statement[res]
-	: expr[term] ';'             { $res = $term; }
+	: expression[term] ';'       { $res = $term; }
 	| block[blk]                 { $res = $blk; }
 
 	// function
 	| function[func]             { $res = $func;  }
 	
 	// (multiple) return(s)
-	| RET exprlist[terms] ';' {
-			$res = std::make_shared<ASTReturn>($terms);
-		}
+	| RET expressions[terms] ';' {
+		$res = std::make_shared<ASTReturn>($terms);
+	}
 
 	// variable declarations
 	// scalar / t_real
@@ -221,34 +221,34 @@ statement[res]
 		variables[vars] ';'  { $res = $vars; }
 
 	// conditional
-	| IF expr[cond] THEN statement[if_stmt] {
+	| IF expression[cond] THEN statement[if_stmt] {
 		$res = std::make_shared<ASTCond>($cond, $if_stmt); }
-	| IF expr[cond] THEN statement[if_stmt] ELSE statement[else_stmt] {
+	| IF expression[cond] THEN statement[if_stmt] ELSE statement[else_stmt] {
 		$res = std::make_shared<ASTCond>($cond, $if_stmt, $else_stmt); }
 
 	// loop
-	| LOOP expr[cond] DO statement[stmt] {
+	| LOOP expression[cond] DO statement[stmt] {
 		$res = std::make_shared<ASTLoop>($cond, $stmt); }
 
 	// break multiple loops
 	| BREAK INT[num] ';' {
-			$res = std::make_shared<ASTLoopBreak>($num);
-		}
+		$res = std::make_shared<ASTLoopBreak>($num);
+	}
 
 	// break current loop
 	| BREAK ';' {
-			$res = std::make_shared<ASTLoopBreak>();
-		}
+		$res = std::make_shared<ASTLoopBreak>();
+	}
 
 	// continue multiple loops
 	| NEXT INT[num] ';' {
-			$res = std::make_shared<ASTLoopNext>($num);
-		}
+		$res = std::make_shared<ASTLoopNext>($num);
+	}
 
 	// continue current loop
 	| NEXT ';' {
-			$res = std::make_shared<ASTLoopNext>();
-		}
+		$res = std::make_shared<ASTLoopNext>();
+	}
 	;
 
 
@@ -398,13 +398,13 @@ full_argumentlist[res]
  */
 argumentlist[res]
 	: typedecl[ty] IDENT[argname] ',' argumentlist[lst] {
-			$lst->AddArg($argname, $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
-			$res = $lst;
-		}
+		$lst->AddArg($argname, $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
+		$res = $lst;
+	}
 	| typedecl[ty] IDENT[argname] {
-			$res = std::make_shared<ASTArgNames>();
-			$res->AddArg($argname, $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
-		}
+		$res = std::make_shared<ASTArgNames>();
+		$res->AddArg($argname, $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
+	}
 	;
 
 
@@ -413,13 +413,13 @@ argumentlist[res]
  */
 identlist[res]
 	: IDENT[argname] ',' identlist[lst] {
-			$lst->AddArg($argname);
-			$res = $lst;
-		}
+		$lst->AddArg($argname);
+		$res = $lst;
+	}
 	| IDENT[argname] {
-			$res = std::make_shared<ASTArgNames>();
-			$res->AddArg($argname);
-		}
+		$res = std::make_shared<ASTArgNames>();
+		$res->AddArg($argname);
+	}
 	;
 
 
@@ -428,28 +428,28 @@ identlist[res]
  */
 typelist[res]
 	: typedecl[ty] ',' typelist[lst] {
-			$lst->AddArg("ret", $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
-			$res = $lst;
-		}
+		$lst->AddArg("ret", $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
+		$res = $lst;
+	}
 	| typedecl[ty] {
-			$res = std::make_shared<ASTArgNames>();
-			$res->AddArg("ret", $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
-		}
+		$res = std::make_shared<ASTArgNames>();
+		$res->AddArg("ret", $ty->GetType(), $ty->GetDim(0), $ty->GetDim(1));
+	}
 	;
 
 
 /**
  * a comma-separated list of expressions
  */
-exprlist[res]
-	: expr[num] ',' exprlist[lst] {
-			$lst->AddExpr($num);
-			$res = $lst; 
-		}
-	| expr[num] {
-			$res = std::make_shared<ASTExprList>();
-			$res->AddExpr($num);
-		}
+expressions[res]
+	: expression[num] ',' expressions[lst] {
+		$lst->AddExpr($num);
+		$res = $lst; 
+	}
+	| expression[num] {
+		$res = std::make_shared<ASTExprList>();
+		$res->AddExpr($num);
+	}
 	;
 
 
@@ -464,165 +464,165 @@ block[res]
 /**
  * expression
  */
-expr[res]
-	: '(' expr[term] ')'             { $res = $term; }
+expression[res]
+	: '(' expression[term] ')'             { $res = $term; }
 
 	// unary expressions
-	| '+' expr[term] %prec UNARY_OP  { $res = $term; }
-	| '-' expr[term] %prec UNARY_OP  { $res = std::make_shared<ASTUMinus>($term); }
-	| '|' expr[term] '|'             { $res = std::make_shared<ASTNorm>($term); }
-	| expr[term] '\''                { $res = std::make_shared<ASTTransp>($term); }
+	| '+' expression[term] %prec UNARY_OP  { $res = $term; }
+	| '-' expression[term] %prec UNARY_OP  { $res = std::make_shared<ASTUMinus>($term); }
+	| '|' expression[term] '|'             { $res = std::make_shared<ASTNorm>($term); }
+	| expression[term] '\''                { $res = std::make_shared<ASTTransp>($term); }
 
 	// unary boolean expression
-	| NOT expr[term]                 { $res = std::make_shared<ASTBool>($term, ASTBool::NOT); }
+	| NOT expression[term]                 { $res = std::make_shared<ASTBool>($term, ASTBool::NOT); }
 
 	// binary expressions
-	| expr[term1] '+' expr[term2]    { $res = std::make_shared<ASTPlus>($term1, $term2, 0); }
-	| expr[term1] '-' expr[term2]    { $res = std::make_shared<ASTPlus>($term1, $term2, 1); }
-	| expr[term1] '*' expr[term2]    { $res = std::make_shared<ASTMult>($term1, $term2, 0); }
-	| expr[term1] '/' expr[term2]    { $res = std::make_shared<ASTMult>($term1, $term2, 1); }
-	| expr[term1] '%' expr[term2]    { $res = std::make_shared<ASTMod>($term1, $term2); }
-	| expr[term1] '^' expr[term2]    { $res = std::make_shared<ASTPow>($term1, $term2); }
+	| expression[term1] '+' expression[term2]    { $res = std::make_shared<ASTPlus>($term1, $term2, 0); }
+	| expression[term1] '-' expression[term2]    { $res = std::make_shared<ASTPlus>($term1, $term2, 1); }
+	| expression[term1] '*' expression[term2]    { $res = std::make_shared<ASTMult>($term1, $term2, 0); }
+	| expression[term1] '/' expression[term2]    { $res = std::make_shared<ASTMult>($term1, $term2, 1); }
+	| expression[term1] '%' expression[term2]    { $res = std::make_shared<ASTMod>($term1, $term2); }
+	| expression[term1] '^' expression[term2]    { $res = std::make_shared<ASTPow>($term1, $term2); }
 
 	// binary boolean expressions
-	| expr[term1] AND expr[term2]    { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::AND); }
-	| expr[term1] OR expr[term2]     { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::OR); }
-	| expr[term1] XOR expr[term2]    { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::XOR); }
+	| expression[term1] AND expression[term2]    { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::AND); }
+	| expression[term1] OR expression[term2]     { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::OR); }
+	| expression[term1] XOR expression[term2]    { $res = std::make_shared<ASTBool>($term1, $term2, ASTBool::XOR); }
 
 	// comparison expressions
-	| expr[term1] EQU expr[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::EQU); }
-	| expr[term1] NEQ expr[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::NEQ); }
-	| expr[term1] GT expr[term2]     { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::GT); }
-	| expr[term1] LT expr[term2]     { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LT); }
-	| expr[term1] GEQ expr[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::GEQ); }
-	| expr[term1] LEQ expr[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LEQ); }
+	| expression[term1] EQU expression[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::EQU); }
+	| expression[term1] NEQ expression[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::NEQ); }
+	| expression[term1] GT expression[term2]     { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::GT); }
+	| expression[term1] LT expression[term2]     { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LT); }
+	| expression[term1] GEQ expression[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::GEQ); }
+	| expression[term1] LEQ expression[term2]    { $res = std::make_shared<ASTComp>($term1, $term2, ASTComp::LEQ); }
 
 	// constants
-	| REAL[num]                      { $res = std::make_shared<ASTNumConst<t_real>>($num); }
-	| INT[num]                       { $res = std::make_shared<ASTNumConst<t_int>>($num); }
-	| STRING[str]                    { $res = std::make_shared<ASTStrConst>($str); }
-	| '[' exprlist[arr] ']'	{  // scalar array
-			$arr->SetScalarArray(true); 
-			$res = $arr; 
-		}
+	| REAL[num]               { $res = std::make_shared<ASTNumConst<t_real>>($num); }
+	| INT[num]                { $res = std::make_shared<ASTNumConst<t_int>>($num); }
+	| STRING[str]             { $res = std::make_shared<ASTStrConst>($str); }
+	| '[' expressions[arr] ']' {  // scalar array
+		$arr->SetScalarArray(true); 
+		$res = $arr; 
+	}
 
 	// variable
 	| IDENT[ident] %prec IDENT {
-			// does the identifier name a constant?
-			auto pair = context.GetConst($ident);
-			if(std::get<0>(pair))
-			{
-				auto variant = std::get<1>(pair);
-				if(std::holds_alternative<t_real>(variant))
-					$res = std::make_shared<ASTNumConst<t_real>>(std::get<t_real>(variant));
-				else if(std::holds_alternative<t_int>(variant))
-					$res = std::make_shared<ASTNumConst<t_int>>(std::get<t_int>(variant));
-				else if(std::holds_alternative<t_str>(variant))
-					$res = std::make_shared<ASTStrConst>(std::get<t_str>(variant));
-			}
-
-			// identifier names a variable
-			else
-			{
-				const Symbol* sym = context.FindScopedSymbol($ident);
-				if(sym)
-					++sym->refcnt;
-				else
-					error("Cannot find symbol \"" + $ident + "\".");
-
-				$res = std::make_shared<ASTVar>($ident);
-			}
+		// does the identifier name a constant?
+		auto pair = context.GetConst($ident);
+		if(std::get<0>(pair))
+		{
+			auto variant = std::get<1>(pair);
+			if(std::holds_alternative<t_real>(variant))
+				$res = std::make_shared<ASTNumConst<t_real>>(std::get<t_real>(variant));
+			else if(std::holds_alternative<t_int>(variant))
+				$res = std::make_shared<ASTNumConst<t_int>>(std::get<t_int>(variant));
+			else if(std::holds_alternative<t_str>(variant))
+				$res = std::make_shared<ASTStrConst>(std::get<t_str>(variant));
 		}
+
+		// identifier names a variable
+		else
+		{
+			const Symbol* sym = context.FindScopedSymbol($ident);
+			if(sym)
+				++sym->refcnt;
+			else
+				error("Cannot find symbol \"" + $ident + "\".");
+
+			$res = std::make_shared<ASTVar>($ident);
+		}
+	}
 
 	// vector access and assignment
-	| expr[term] '[' expr[idx] ']' opt_assign[opt_term] {
-			if(!$opt_term)
-			{	// array access into any vector expression
-				$res = std::make_shared<ASTArrayAccess>($term, $idx);
+	| expression[term] '[' expression[idx] ']' opt_assign[opt_term] {
+		if(!$opt_term)
+		{	// array access into any vector expression
+			$res = std::make_shared<ASTArrayAccess>($term, $idx);
+		}
+		else
+		{	// assignment of a vector element
+			if($term->type() != ASTType::Var)
+			{
+				error("Can only assign to an l-value symbol.");
+				$res = nullptr;
 			}
 			else
-			{	// assignment of a vector element
-				if($term->type() != ASTType::Var)
-				{
-					error("Can only assign to an l-value symbol.");
-					$res = nullptr;
-				}
-				else
-				{
-					auto var = std::static_pointer_cast<ASTVar>($term);
-					$res = std::make_shared<ASTArrayAssign>(
-						var->GetIdent(), $opt_term, $idx);
-				}
+			{
+				auto var = std::static_pointer_cast<ASTVar>($term);
+				$res = std::make_shared<ASTArrayAssign>(
+					var->GetIdent(), $opt_term, $idx);
 			}
 		}
+	}
 
 	// vector ranged access and assignment
-	| expr[term] '[' expr[idx1] RANGE expr[idx2] ']' opt_assign[opt_term] {
-			if(!$opt_term)
-			{	// array access into any vector expression
-				$res = std::make_shared<ASTArrayAccess>(
-					$term, $idx1, $idx2, nullptr, nullptr, true);
+	| expression[term] '[' expression[idx1] RANGE expression[idx2] ']' opt_assign[opt_term] {
+		if(!$opt_term)
+		{	// array access into any vector expression
+			$res = std::make_shared<ASTArrayAccess>(
+				$term, $idx1, $idx2, nullptr, nullptr, true);
+		}
+		else
+		{	// assignment of a vector element
+			if($term->type() != ASTType::Var)
+			{
+				error("Can only assign to an l-value symbol.");
+				$res = nullptr;
 			}
 			else
-			{	// assignment of a vector element
-				if($term->type() != ASTType::Var)
-				{
-					error("Can only assign to an l-value symbol.");
-					$res = nullptr;
-				}
-				else
-				{
-					auto var = std::static_pointer_cast<ASTVar>($term);
-					$res = std::make_shared<ASTArrayAssign>(
-						var->GetIdent(), $opt_term, $idx1, $idx2, nullptr, nullptr, true);
-				}
+			{
+				auto var = std::static_pointer_cast<ASTVar>($term);
+				$res = std::make_shared<ASTArrayAssign>(
+					var->GetIdent(), $opt_term, $idx1, $idx2, nullptr, nullptr, true);
 			}
 		}
+	}
 
 	// matrix access and assignment
-	| expr[term] '[' expr[idx1] ',' expr[idx2] ']' opt_assign[opt_term] {
-			if(!$opt_term)
-			{	// array access into any matrix expression
-				$res = std::make_shared<ASTArrayAccess>($term, $idx1, $idx2);
+	| expression[term] '[' expression[idx1] ',' expression[idx2] ']' opt_assign[opt_term] {
+		if(!$opt_term)
+		{	// array access into any matrix expression
+			$res = std::make_shared<ASTArrayAccess>($term, $idx1, $idx2);
+		}
+		else
+		{	// assignment of a matrix element
+			if($term->type() != ASTType::Var)
+			{
+				error("Can only assign to an l-value symbol.");
+				$res = nullptr;
 			}
 			else
-			{	// assignment of a matrix element
-				if($term->type() != ASTType::Var)
-				{
-					error("Can only assign to an l-value symbol.");
-					$res = nullptr;
-				}
-				else
-				{
-					auto var = std::static_pointer_cast<ASTVar>($term);
-					$res = std::make_shared<ASTArrayAssign>(
-						var->GetIdent(), $opt_term, $idx1, $idx2);
-				}
+			{
+				auto var = std::static_pointer_cast<ASTVar>($term);
+				$res = std::make_shared<ASTArrayAssign>(
+					var->GetIdent(), $opt_term, $idx1, $idx2);
 			}
 		}
+	}
 
 	// matrix ranged access and assignment
-	| expr[term] '[' expr[idx1] RANGE expr[idx2] ',' expr[idx3] RANGE expr[idx4] ']' opt_assign[opt_term] {
-			if(!$opt_term)
-			{	// array access into any matrix expression
-				$res = std::make_shared<ASTArrayAccess>(
-					$term, $idx1, $idx2, $idx3, $idx4, true, true);
+	| expression[term] '[' expression[idx1] RANGE expression[idx2] ',' expression[idx3] RANGE expression[idx4] ']' opt_assign[opt_term] {
+		if(!$opt_term)
+		{	// array access into any matrix expression
+			$res = std::make_shared<ASTArrayAccess>(
+				$term, $idx1, $idx2, $idx3, $idx4, true, true);
+		}
+		else
+		{	// assignment of a matrix element
+			if($term->type() != ASTType::Var)
+			{
+				error("Can only assign to an l-value symbol.");
+				$res = nullptr;
 			}
 			else
-			{	// assignment of a matrix element
-				if($term->type() != ASTType::Var)
-				{
-					error("Can only assign to an l-value symbol.");
-					$res = nullptr;
-				}
-				else
-				{
-					auto var = std::static_pointer_cast<ASTVar>($term);
-					$res = std::make_shared<ASTArrayAssign>(
-						var->GetIdent(), $opt_term, $idx1, $idx2, $idx3, $idx4, true, true);
-				}
+			{
+				auto var = std::static_pointer_cast<ASTVar>($term);
+				$res = std::make_shared<ASTArrayAssign>(
+					var->GetIdent(), $opt_term, $idx1, $idx2, $idx3, $idx4, true, true);
 			}
 		}
+	}
 
 	// function calls
 	| IDENT[ident] '(' ')' {
@@ -640,7 +640,7 @@ expr[res]
 
 		$res = std::make_shared<ASTCall>($ident);
 	}
-	| IDENT[ident] '(' exprlist[args] ')' {
+	| IDENT[ident] '(' expressions[args] ')' {
 		const Symbol* sym = context.GetSymbols().FindSymbol($ident);
 		if(sym && sym->ty == SymbolType::FUNC)
 		{
@@ -657,12 +657,12 @@ expr[res]
 	}
 
 	// (multiple) assignments
-	| IDENT[ident] '=' expr[term] %prec '=' {
-			$res = std::make_shared<ASTAssign>($ident, $term);
-		}
-	| ASSIGN identlist[idents] '=' expr[term] %prec '=' {
-			$res = std::make_shared<ASTAssign>($idents->GetArgIdents(), $term);
-		}
+	| IDENT[ident] '=' expression[term] %prec '=' {
+		$res = std::make_shared<ASTAssign>($ident, $term);
+	}
+	| ASSIGN identlist[idents] '=' expression[term] %prec '=' {
+		$res = std::make_shared<ASTAssign>($idents->GetArgIdents(), $term);
+	}
 	;
 
 
@@ -670,7 +670,7 @@ expr[res]
  * optional assignment
  */
 opt_assign[res]
-	: '=' expr[term]       { $res = $term; }
+	: '=' expression[term] { $res = $term; }
 	| %empty               { $res = nullptr; }
 	;
 

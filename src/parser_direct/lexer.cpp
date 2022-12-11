@@ -15,6 +15,8 @@
 #include <type_traits>
 #include <boost/algorithm/string.hpp>
 
+using namespace lalr1;
+
 
 template<template<std::size_t, class...> class t_func, class t_params, std::size_t ...seq>
 constexpr void constexpr_loop(const std::index_sequence<seq...>&, const t_params& params)
@@ -67,25 +69,26 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			}
 
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::INT_CONST), val, line));
+				static_cast<t_symbol_id>(Token::INT), val, line));
 		}
 		else if(str == "0x" || str == "0b")
 		{
 			// dummy matches to continue searching for longest int
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::INT_CONST), 0, line));
+				static_cast<t_symbol_id>(Token::INT), 0, line));
 		}
 	}
 
 	{	// real
-		std::regex regex{"[0-9]+(\\.[0-9]*)?"};
+		//std::regex regex{"[0-9]+(\\.[0-9]*)?"};
+		std::regex regex{"[0-9]+(\\.[0-9]*)?([Ee][+-]?[0-9]*)?"};
 		std::smatch smatch;
 		if(std::regex_match(str, smatch, regex))
 		{
 			t_real val{};
 			std::istringstream{str} >> val;
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::REAL_CONST), val, line));
+				static_cast<t_symbol_id>(Token::REAL), val, line));
 		}
 	}
 
@@ -143,27 +146,27 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 		else if(str == "scalar" || str == "var")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::SCALAR), str, line));
+				static_cast<t_symbol_id>(Token::SCALARDECL), str, line));
 		}
 		else if(str == "vec")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::VEC), str, line));
+				static_cast<t_symbol_id>(Token::VECTORDECL), str, line));
 		}
 		else if(str == "mat")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::MAT), str, line));
+				static_cast<t_symbol_id>(Token::MATRIXDECL), str, line));
 		}
 		else if(str == "str")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::STR), str, line));
+				static_cast<t_symbol_id>(Token::STRINGDECL), str, line));
 		}
 		else if(str == "int")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::INT), str, line));
+				static_cast<t_symbol_id>(Token::INTDECL), str, line));
 		}
 		else
 		{
@@ -186,7 +189,7 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 		else if(str == "!=" || str == "<>")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::NEQU), str, line));
+				static_cast<t_symbol_id>(Token::NEQ), str, line));
 		}
 		if(str == "||" || str == "or")
 		{
@@ -211,12 +214,12 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 		else if(str == ">=")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::GEQU), str, line));
+				static_cast<t_symbol_id>(Token::GEQ), str, line));
 		}
 		else if(str == "<=")
 		{
 			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::LEQU), str, line));
+				static_cast<t_symbol_id>(Token::LEQ), str, line));
 		}
 		else if(str == "~")
 		{
@@ -295,7 +298,7 @@ t_lexer_match Lexer::GetNextToken(std::size_t* _line)
 					replace_escapes(input);
 					in_string = false;
 					return std::make_tuple(
-						static_cast<t_symbol_id>(Token::STR_CONST), input, *line);
+						static_cast<t_symbol_id>(Token::STR), input, *line);
 				}
 			}
 
@@ -436,7 +439,7 @@ std::vector<t_toknode> Lexer::GetAllTokens()
 
 
 // test
-#include <fstream>
+/*#include <fstream>
 
 // g++ -DUSE_DIRECT_PARSER -I.. -std=c++20 -o 0 lexer.cpp
 int main(int argc, char **argv)
@@ -460,4 +463,4 @@ int main(int argc, char **argv)
 	}
 
 	return 0;
-}
+}*/

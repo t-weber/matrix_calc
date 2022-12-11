@@ -194,7 +194,8 @@ void ZeroACAsm::AssignVar(t_astret sym)
 
 t_astret ZeroACAsm::visit(const ASTAssign* ast)
 {
-	ast->GetExpr()->accept(this);
+	if(ast->GetExpr())
+		ast->GetExpr()->accept(this);
 	t_astret sym_ret = nullptr;
 
 	for(const t_str& varname : ast->GetIdents())

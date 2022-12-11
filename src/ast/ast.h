@@ -141,7 +141,7 @@ public:
  */
 class AST
 #ifdef USE_DIRECT_PARSER
-	: public ASTLALR1Base
+	: public lalr1::ASTBase
 #endif
 {
 public:
@@ -536,6 +536,9 @@ private:
 class ASTAssign : public ASTAcceptor<ASTAssign>
 {
 public:
+	ASTAssign()
+	{}
+
 	ASTAssign(const t_str& ident, ASTPtr _expr)
 		: idents{{ident}}, expr{_expr}
 	{}
@@ -549,6 +552,7 @@ public:
 	const ASTPtr GetExpr() const { return expr; }
 
 	bool IsMultiAssign() const { return idents.size() > 1; }
+	bool IsNullAssign() const { return idents.size() == 0; }
 
 	virtual ASTType type() override { return ASTType::Assign; }
 

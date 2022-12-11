@@ -62,12 +62,22 @@ public:
 	ParserContext() = default;
 	virtual ~ParserContext() = default;
 
-	virtual std::size_t GetCurLine() const = 0;
+	virtual std::size_t GetCurLine() const
+	{
+		return 0;
+	};
 
 
 	// --------------------------------------------------------------------
-	void SetStatements(std::shared_ptr<ASTStmts> stmts) { m_statements = stmts; }
-	const std::shared_ptr<ASTStmts> GetStatements() const { return m_statements; }
+	void SetStatements(std::shared_ptr<ASTStmts> stmts)
+	{
+		m_statements = stmts;
+	}
+
+	const std::shared_ptr<ASTStmts> GetStatements() const
+	{
+		return m_statements;
+	}
 	// --------------------------------------------------------------------
 
 
@@ -104,7 +114,8 @@ public:
 		{
 			std::cerr << "Error in line " << GetCurLine()
 				<< ": Trying to leave scope " << name
-				<< ", but the top scope is " <<curscope << ".";
+				<< ", but the top scope is " << curscope
+				<< ".";
 		}
 
 		m_curscope.pop_back();
@@ -125,11 +136,21 @@ public:
 		return m_symbols.FindSymbol(scope + name);
 	}
 
-	const SymTab& GetSymbols() const { return m_symbols; }
-	SymTab& GetSymbols() { return m_symbols; }
+	const SymTab& GetSymbols() const
+	{
+		return m_symbols;
+	}
+
+	SymTab& GetSymbols()
+	{
+		return m_symbols;
+	}
 
 	// type of current symbol
-	void SetSymType(SymbolType ty) { m_symtype = ty; }
+	void SetSymType(SymbolType ty)
+	{
+		m_symtype = ty;
+	}
 
 	// dimensions of vector and matrix symbols
 	void SetSymDims(std::size_t dim1, std::size_t dim2=1)

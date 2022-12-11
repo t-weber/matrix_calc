@@ -20,29 +20,29 @@
 
 
 // [ token, lvalue, line number ]
-using t_lexer_match = std::tuple<t_symbol_id, t_lval, std::size_t>;
+using t_lexer_match = std::tuple<lalr1::t_symbol_id, t_lval, std::size_t>;
 
 
-enum class Token : t_symbol_id
+enum class Token : lalr1::t_symbol_id
 {
 	// tokens with an lvalue
-	REAL_CONST  = 1000,
-	INT_CONST   = 1001,
-	STR_CONST   = 1002,
+	REAL        = 1000,
+	INT         = 1001,
+	STR         = 1002,
 	IDENT       = 1003,
 
-	// types
-	SCALAR      = 2000,
-	VEC         = 2001,
-	MAT         = 2002,
-	INT         = 2003,
-	STR         = 2004,
+	// type declarations
+	SCALARDECL  = 2000,
+	VECTORDECL  = 2001,
+	MATRIXDECL  = 2002,
+	INTDECL     = 2003,
+	STRINGDECL  = 2004,
 
 	// logical operators
 	EQU         = 3000,
-	NEQU        = 3001,
-	GEQU        = 3002,
-	LEQU        = 3003,
+	NEQ         = 3001,
+	GEQ         = 3002,
+	LEQ         = 3003,
 	AND         = 3004,
 	OR          = 3005,
 	XOR         = 3006,
@@ -66,7 +66,7 @@ enum class Token : t_symbol_id
 	FUNC        = 7000,
 	RET         = 7001,
 
-	END         = END_IDENT,
+	END         = lalr1::END_IDENT,
 };
 
 
@@ -76,9 +76,9 @@ public:
 	Lexer(std::istream* = &std::cin);
 
 	// get all tokens and attributes
-	std::vector<t_toknode> GetAllTokens();
+	std::vector<lalr1::t_toknode> GetAllTokens();
 
-	void SetTermIdxMap(const t_mapIdIdx* map) { m_mapTermIdx = map; }
+	void SetTermIdxMap(const lalr1::t_mapIdIdx* map) { m_mapTermIdx = map; }
 
 
 protected:
@@ -92,7 +92,7 @@ protected:
 
 private:
 	std::istream* m_istr{nullptr};
-	const t_mapIdIdx* m_mapTermIdx{nullptr};
+	const lalr1::t_mapIdIdx* m_mapTermIdx{nullptr};
 };
 
 

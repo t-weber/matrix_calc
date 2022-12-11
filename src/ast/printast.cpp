@@ -217,6 +217,10 @@ t_astret ASTPrinter::visit(const ASTReturn* ast)
 
 t_astret ASTPrinter::visit(const ASTAssign* ast)
 {
+	// empty optional assignment
+	if(ast->IsNullAssign())
+		return nullptr;
+
 	// multiple assignments
 	if(ast->IsMultiAssign())
 	{
