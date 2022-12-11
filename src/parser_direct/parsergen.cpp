@@ -30,7 +30,7 @@ namespace args = boost::program_options;
 using namespace lalr1;
 
 
-static bool lr1_create_parser(
+static bool lalr1_create_parser(
 	bool create_ascent_parser = true, bool create_tables = false,
 	bool verbose = false, bool gen_debug_code = true, bool gen_error_code = true,
 	bool write_graph = false)
@@ -203,18 +203,12 @@ int main(int argc, char** argv)
 	g_options.SetUseAsciiChars(ascii);
 
 	if(!create_asc && !create_tables)
-	{
-		/*std::cerr << "Warning: Neither recursive ascent parser"
-			<< " nor LALR(1) table generation was selected,"
-			<< " defaulting to recursive ascent parser."
-			<< std::endl;*/
 		create_asc = true;
-	}
 	// --------------------------------------------------------------------
 
 	t_timepoint start_parsergen = t_clock::now();
 
-	if(lr1_create_parser(create_asc, create_tables,
+	if(lalr1_create_parser(create_asc, create_tables,
 		verbose, !no_debug_code, !no_error_code,
 		write_graph))
 	{

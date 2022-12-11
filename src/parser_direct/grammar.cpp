@@ -13,121 +13,124 @@
 
 void MatrixCalcGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 {
-	// non-terminals
-	start = std::make_shared<lalr1::NonTerminal>(START, "start");
-	expression = std::make_shared<lalr1::NonTerminal>(EXPRESSION, "expression");
-	expressions = std::make_shared<lalr1::NonTerminal>(EXPRESSIONS, "expressions");
-	statement = std::make_shared<lalr1::NonTerminal>(STATEMENT, "statement");
-	statements = std::make_shared<lalr1::NonTerminal>(STATEMENTS, "statements");
-	variables = std::make_shared<lalr1::NonTerminal>(VARIABLES, "variables");
-	full_argumentlist = std::make_shared<lalr1::NonTerminal>(FULL_ARGUMENTLIST, "full_argumentlist");
-	argumentlist = std::make_shared<lalr1::NonTerminal>(ARGUMENTLIST, "argumentlist");
-	identlist = std::make_shared<lalr1::NonTerminal>(IDENTLIST, "identlist");
-	typelist = std::make_shared<lalr1::NonTerminal>(TYPELIST, "typelist");
-	block = std::make_shared<lalr1::NonTerminal>(BLOCK, "block");
-	function = std::make_shared<lalr1::NonTerminal>(FUNCTION, "function");
-	typedecl = std::make_shared<lalr1::NonTerminal>(TYPEDECL, "typedecl");
-	opt_assign = std::make_shared<lalr1::NonTerminal>(OPT_ASSIGN, "opt_assign");
+	if(add_rules)
+	{
+		// non-terminals
+		start = std::make_shared<lalr1::NonTerminal>(START, "start");
+		expression = std::make_shared<lalr1::NonTerminal>(EXPRESSION, "expression");
+		expressions = std::make_shared<lalr1::NonTerminal>(EXPRESSIONS, "expressions");
+		statement = std::make_shared<lalr1::NonTerminal>(STATEMENT, "statement");
+		statements = std::make_shared<lalr1::NonTerminal>(STATEMENTS, "statements");
+		variables = std::make_shared<lalr1::NonTerminal>(VARIABLES, "variables");
+		full_argumentlist = std::make_shared<lalr1::NonTerminal>(FULL_ARGUMENTLIST, "full_argumentlist");
+		argumentlist = std::make_shared<lalr1::NonTerminal>(ARGUMENTLIST, "argumentlist");
+		identlist = std::make_shared<lalr1::NonTerminal>(IDENTLIST, "identlist");
+		typelist = std::make_shared<lalr1::NonTerminal>(TYPELIST, "typelist");
+		block = std::make_shared<lalr1::NonTerminal>(BLOCK, "block");
+		function = std::make_shared<lalr1::NonTerminal>(FUNCTION, "function");
+		typedecl = std::make_shared<lalr1::NonTerminal>(TYPEDECL, "typedecl");
+		opt_assign = std::make_shared<lalr1::NonTerminal>(OPT_ASSIGN, "opt_assign");
 
-	// terminals
-	op_assign = std::make_shared<lalr1::Terminal>('=', "=");
-	op_plus = std::make_shared<lalr1::Terminal>('+', "+");
-	op_minus = std::make_shared<lalr1::Terminal>('-', "-");
-	op_mult = std::make_shared<lalr1::Terminal>('*', "*");
-	op_div = std::make_shared<lalr1::Terminal>('/', "/");
-	op_mod = std::make_shared<lalr1::Terminal>('%', "%");
-	op_pow = std::make_shared<lalr1::Terminal>('^', "^");
-	op_norm = std::make_shared<lalr1::Terminal>('|', "|");
-	op_trans = std::make_shared<lalr1::Terminal>('\'', "'");
+		// terminals
+		op_assign = std::make_shared<lalr1::Terminal>('=', "=");
+		op_plus = std::make_shared<lalr1::Terminal>('+', "+");
+		op_minus = std::make_shared<lalr1::Terminal>('-', "-");
+		op_mult = std::make_shared<lalr1::Terminal>('*', "*");
+		op_div = std::make_shared<lalr1::Terminal>('/', "/");
+		op_mod = std::make_shared<lalr1::Terminal>('%', "%");
+		op_pow = std::make_shared<lalr1::Terminal>('^', "^");
+		op_norm = std::make_shared<lalr1::Terminal>('|', "|");
+		op_trans = std::make_shared<lalr1::Terminal>('\'', "'");
 
-	op_equ = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::EQU), "==");
-	op_neq = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::NEQ), "!=");
-	op_geq = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::GEQ), ">=");
-	op_leq = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::LEQ), "<=");
-	op_and = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::AND), "&&");
-	op_or = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::OR), "||");
-	op_xor = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::XOR), "xor");
-	op_gt = std::make_shared<lalr1::Terminal>('>', ">");
-	op_lt = std::make_shared<lalr1::Terminal>('<', "<");
-	op_not = std::make_shared<lalr1::Terminal>('!', "!");
+		op_equ = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::EQU), "==");
+		op_neq = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::NEQ), "!=");
+		op_geq = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::GEQ), ">=");
+		op_leq = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::LEQ), "<=");
+		op_and = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::AND), "&&");
+		op_or = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::OR), "||");
+		op_xor = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::XOR), "xor");
+		op_gt = std::make_shared<lalr1::Terminal>('>', ">");
+		op_lt = std::make_shared<lalr1::Terminal>('<', "<");
+		op_not = std::make_shared<lalr1::Terminal>('!', "!");
 
-	bracket_open = std::make_shared<lalr1::Terminal>('(', "(");
-	bracket_close = std::make_shared<lalr1::Terminal>(')', ")");
-	block_begin = std::make_shared<lalr1::Terminal>('{', "{");
-	block_end = std::make_shared<lalr1::Terminal>('}', "}");
-	array_begin = std::make_shared<lalr1::Terminal>('[', "[");
-	array_end = std::make_shared<lalr1::Terminal>(']', "]");
-	range = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::RANGE), "~");
+		bracket_open = std::make_shared<lalr1::Terminal>('(', "(");
+		bracket_close = std::make_shared<lalr1::Terminal>(')', ")");
+		block_begin = std::make_shared<lalr1::Terminal>('{', "{");
+		block_end = std::make_shared<lalr1::Terminal>('}', "}");
+		array_begin = std::make_shared<lalr1::Terminal>('[', "[");
+		array_end = std::make_shared<lalr1::Terminal>(']', "]");
+		range = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::RANGE), "~");
 
-	comma = std::make_shared<lalr1::Terminal>(',', ",");
-	stmt_end = std::make_shared<lalr1::Terminal>(';', ";");
+		comma = std::make_shared<lalr1::Terminal>(',', ",");
+		stmt_end = std::make_shared<lalr1::Terminal>(';', ";");
 
-	sym_real = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::REAL), "real");
-	sym_int = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::INT), "integer");
-	sym_str = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::STR), "string");
-	ident = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::IDENT), "ident");
+		sym_real = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::REAL), "real");
+		sym_int = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::INT), "integer");
+		sym_str = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::STR), "string");
+		ident = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::IDENT), "ident");
 
-	real_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::SCALARDECL), "real_decl");
-	vec_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::VECTORDECL), "vector_decl");
-	mat_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::MATRIXDECL), "matrix_decl");
-	int_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::INTDECL), "integer_decl");
-	str_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::STRINGDECL), "string_decl");
+		real_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::SCALARDECL), "real_decl");
+		vec_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::VECTORDECL), "vector_decl");
+		mat_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::MATRIXDECL), "matrix_decl");
+		int_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::INTDECL), "integer_decl");
+		str_decl = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::STRINGDECL), "string_decl");
 
-	keyword_if = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::IF), "if");
-	keyword_then = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::THEN), "then");
-	keyword_else = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::ELSE), "else");
-	keyword_loop = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::LOOP), "loop");
-	keyword_do = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::DO), "do");
-	keyword_func = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::FUNC), "func");
-	keyword_ret = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::RET), "ret");
-	keyword_next = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::NEXT), "next");
-	keyword_break = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::BREAK), "break");
-	keyword_assign = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::ASSIGN), "assign");
+		keyword_if = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::IF), "if");
+		keyword_then = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::THEN), "then");
+		keyword_else = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::ELSE), "else");
+		keyword_loop = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::LOOP), "loop");
+		keyword_do = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::DO), "do");
+		keyword_func = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::FUNC), "func");
+		keyword_ret = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::RET), "ret");
+		keyword_next = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::NEXT), "next");
+		keyword_break = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::BREAK), "break");
+		keyword_assign = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::ASSIGN), "assign");
 
 
-	// operator precedences and associativities
-	// see: https://en.wikipedia.org/wiki/Order_of_operations
-	comma->SetPrecedence(5, 'l');
-	op_assign->SetPrecedence(10, 'r');
+		// operator precedences and associativities
+		// see: https://en.wikipedia.org/wiki/Order_of_operations
+		comma->SetPrecedence(5, 'l');
+		op_assign->SetPrecedence(10, 'r');
 
-	op_xor->SetPrecedence(20, 'l');
-	op_or->SetPrecedence(21, 'l');
-	op_and->SetPrecedence(22, 'l');
+		op_xor->SetPrecedence(20, 'l');
+		op_or->SetPrecedence(21, 'l');
+		op_and->SetPrecedence(22, 'l');
 
-	op_lt->SetPrecedence(30, 'l');
-	op_gt->SetPrecedence(30, 'l');
+		op_lt->SetPrecedence(30, 'l');
+		op_gt->SetPrecedence(30, 'l');
 
-	op_geq->SetPrecedence(30, 'l');
-	op_leq->SetPrecedence(30, 'l');
+		op_geq->SetPrecedence(30, 'l');
+		op_leq->SetPrecedence(30, 'l');
 
-	op_equ->SetPrecedence(40, 'l');
-	op_neq->SetPrecedence(40, 'l');
+		op_equ->SetPrecedence(40, 'l');
+		op_neq->SetPrecedence(40, 'l');
 
-	op_plus->SetPrecedence(50, 'l');
-	op_minus->SetPrecedence(50, 'l');
+		op_plus->SetPrecedence(50, 'l');
+		op_minus->SetPrecedence(50, 'l');
 
-	op_mult->SetPrecedence(60, 'l');
-	op_div->SetPrecedence(60, 'l');
-	op_mod->SetPrecedence(60, 'l');
+		op_mult->SetPrecedence(60, 'l');
+		op_div->SetPrecedence(60, 'l');
+		op_mod->SetPrecedence(60, 'l');
 
-	op_not->SetPrecedence(70, 'l');
-	// TODO: unary_ops->SetPrecedence(75, 'r');
+		op_not->SetPrecedence(70, 'l');
+		// TODO: unary_ops->SetPrecedence(75, 'r');
 
-	op_pow->SetPrecedence(80, 'r');
+		op_pow->SetPrecedence(80, 'r');
 
-	bracket_open->SetPrecedence(90, 'l');
-	block_begin->SetPrecedence(90, 'l');
-	array_begin->SetPrecedence(90, 'l');
-	op_norm->SetPrecedence(90, 'l');
-	op_trans->SetPrecedence(90, 'r');
+		bracket_open->SetPrecedence(90, 'l');
+		block_begin->SetPrecedence(90, 'l');
+		array_begin->SetPrecedence(90, 'l');
+		op_norm->SetPrecedence(90, 'l');
+		op_trans->SetPrecedence(90, 'r');
 
-	// for the if/else r/s conflict shift "else"
-	// see: https://www.gnu.org/software/bison/manual/html_node/Non-Operators.html
-	keyword_if->SetPrecedence(100, 'l');
-	keyword_then->SetPrecedence(100, 'l');
-	keyword_else->SetPrecedence(110, 'l');
-	ident->SetPrecedence(120, 'l');
-	keyword_func->SetPrecedence(0, 'l');
+		// for the if/else r/s conflict shift "else"
+		// see: https://www.gnu.org/software/bison/manual/html_node/Non-Operators.html
+		keyword_if->SetPrecedence(100, 'l');
+		keyword_then->SetPrecedence(100, 'l');
+		keyword_else->SetPrecedence(110, 'l');
+		ident->SetPrecedence(120, 'l');
+		keyword_func->SetPrecedence(0, 'l');
+	}
 
 
 	// rule semantic id number
@@ -1550,7 +1553,7 @@ void MatrixCalcGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	if(add_semantics)
 	{
 		rules.emplace(std::make_pair(semanticindex,
-		[this](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
+		[](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
 		{
 			if(!full_match)
 				return nullptr;
@@ -1595,7 +1598,7 @@ void MatrixCalcGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	if(add_semantics)
 	{
 		rules.emplace(std::make_pair(semanticindex,
-		[this](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
+		[](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
 		{
 			if(!full_match)
 				return nullptr;
@@ -1643,7 +1646,7 @@ void MatrixCalcGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	if(add_semantics)
 	{
 		rules.emplace(std::make_pair(semanticindex,
-		[this](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
+		[](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
 		{
 			if(!full_match)
 				return nullptr;
@@ -1690,7 +1693,7 @@ void MatrixCalcGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	if(add_semantics)
 	{
 		rules.emplace(std::make_pair(semanticindex,
-		[this](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
+		[](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
 		{
 			if(!full_match)
 				return nullptr;
@@ -1805,7 +1808,7 @@ void MatrixCalcGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	if(add_semantics)
 	{
 		rules.emplace(std::make_pair(semanticindex,
-		[this](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
+		[](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
 		{
 			if(!full_match)
 				return nullptr;
@@ -1827,7 +1830,7 @@ void MatrixCalcGrammar::CreateGrammar(bool add_rules, bool add_semantics)
 	if(add_semantics)
 	{
 		rules.emplace(std::make_pair(semanticindex,
-		[this](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
+		[](bool full_match, const lalr1::t_semanticargs& args, [[maybe_unused]] lalr1::t_astbaseptr retval) -> lalr1::t_astbaseptr
 		{
 			if(!full_match)
 				return nullptr;

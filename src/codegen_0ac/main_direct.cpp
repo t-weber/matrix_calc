@@ -15,8 +15,15 @@
 #include "common/ext_funcs.h"
 #include "parser_direct/lexer.h"
 #include "parser_direct/grammar.h"
-#include "parser.h"
 #include "asm.h"
+
+#if USE_RECASC != 0
+	#include "parser.h"
+#else
+	#include "lalr1/parser.h"
+	#include "matrix_calc.tab"
+#endif
+
 
 #include <fstream>
 #include <locale>
@@ -133,6 +140,16 @@ int main(int argc, char** argv)
 		add_ext_funcs<t_real, t_int>(ctx);
 
 		Lexer lexer(&ifstr);
+#if USE_RECASC == 0
+		// get created parsing tables
+		auto [shift_tab, reduce_tab, jump_tab, num_rhs, lhs_idx] = get_lalr1_tables();
+		auto [term_idx, nonterm_idx, semantic_idx] = get_lalr1_table_indices();
+		auto [err_idx, acc_idx, eps_id, end_id, start_idx, acc_rule_idx] = get_lalr1_constants();
+		auto [part_term, part_termlens, part_nonterms, parts_nontermlens] = get_lalr1_partials_tables();
+
+		lexer.SetTermIdxMap(term_idx);
+#endif
+
 		const std::vector<t_toknode>& tokens = lexer.GetAllTokens();
 		if(debug)
 		{
@@ -150,7 +167,24 @@ int main(int argc, char** argv)
 			}
 		}
 
+#if USE_RECASC != 0
 		Parser parser;
+#else
+		lalr1::Parser parser;
+		parser.SetShiftTable(shift_tab);
+		parser.SetReduceTable(reduce_tab);
+		parser.SetJumpTable(jump_tab);
+		parser.SetSemanticIdxMap(semantic_idx);
+		parser.SetNumRhsSymsPerRule(num_rhs);
+		parser.SetLhsIndices(lhs_idx);
+		parser.SetEndId(end_id);
+		parser.SetStartingState(start_idx);
+		parser.SetAcceptingRule(acc_rule_idx);
+		parser.SetPartialsRulesTerm(part_term);
+		parser.SetPartialsMatchLenTerm(part_termlens);
+		parser.SetPartialsRulesNonTerm(part_nonterms);
+		parser.SetPartialsMatchLenNonTerm(parts_nontermlens);
+#endif
 		parser.SetSemanticRules(&rules);
 		parser.SetDebug(debug);
 

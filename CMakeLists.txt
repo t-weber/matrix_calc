@@ -143,7 +143,7 @@ if(LibLalr1_FOUND)
 
 
 	if(EXISTS "${CMAKE_BINARY_DIR}/parser.cpp")
-		message("Building LibLalr1-based compiler.")
+		message("Building LibLalr1-based recursive-ascent compiler.")
 
 		add_executable(mcalc_0ac_direct
 			src/codegen_0ac/main_direct.cpp
@@ -160,7 +160,7 @@ if(LibLalr1_FOUND)
 		)
 
 		target_compile_definitions(mcalc_0ac_direct
-			PUBLIC -DUSE_DIRECT_PARSER
+			PUBLIC -DUSE_DIRECT_PARSER -DUSE_RECASC=1
 		)
 
 		target_include_directories(mcalc_0ac_direct
@@ -169,6 +169,34 @@ if(LibLalr1_FOUND)
 
 		target_link_libraries(mcalc_0ac_direct
 			${LibLalr1_LIBRARIES}
+			${Boost_LIBRARIES}
+		)
+	elseif(EXISTS "${CMAKE_BINARY_DIR}/matrix_calc.tab")
+		message("Building LibLalr1-based table-driven compiler.")
+
+		add_executable(mcalc_0ac_direct
+			src/codegen_0ac/main_direct.cpp
+			src/parser_direct/grammar.cpp src/parser_direct/grammar.h
+			src/parser_direct/lexer.cpp src/parser_direct/lexer.h
+			src/codegen_0ac/asm.cpp src/codegen_0ac/asm.h
+			src/codegen_0ac/arr.cpp
+			src/codegen_0ac/func.cpp
+			src/codegen_0ac/ops.cpp
+			src/codegen_0ac/var.cpp
+			src/ast/ast.h
+			src/ast/printast.cpp src/ast/printast.h
+		)
+
+		target_compile_definitions(mcalc_0ac_direct
+			PUBLIC -DUSE_DIRECT_PARSER -DUSE_RECASC=0
+		)
+
+		target_include_directories(mcalc_0ac_direct
+			PUBLIC ${LibLalr1_INCLUDE_DIRECTORIES}
+		)
+
+		target_link_libraries(mcalc_0ac_direct
+			${LibLalr1Parser_LIBRARIES} ${LibLalr1_LIBRARIES}
 			${Boost_LIBRARIES}
 		)
 	endif()
