@@ -139,6 +139,7 @@ int main(int argc, char** argv)
 		// register external runtime functions which should be available to the compiler
 		add_ext_funcs<t_real, t_int>(ctx);
 
+		t_timepoint lex_start_time  = t_clock::now();
 		Lexer lexer(&ifstr);
 #if USE_RECASC == 0
 		// get created parsing tables
@@ -166,7 +167,10 @@ int main(int argc, char** argv)
 				std::cout << std::endl;
 			}
 		}
+		auto [lex_time, lex_time_unit] = get_elapsed_time<
+			t_real, t_timepoint>(lex_start_time);
 
+		t_timepoint parse_start_time  = t_clock::now();
 #if USE_RECASC != 0
 		Parser parser;
 #else
@@ -194,6 +198,8 @@ int main(int argc, char** argv)
 			std::cerr << "Parser reports failure." << std::endl;
 			return -1;
 		}
+		auto [parse_time, parse_time_unit] = get_elapsed_time<
+			t_real, t_timepoint>(parse_start_time);
 
 		if(show_symbols)
 		{
@@ -245,8 +251,10 @@ int main(int argc, char** argv)
 
 		auto [comp_time, time_unit] = get_elapsed_time<
 			t_real, t_timepoint>(start_time);
-		std::cout << "Compilation time: "
-			<< comp_time << " " << time_unit << "."
+		std::cout << "Total compilation time: "
+			<< comp_time << " " << time_unit << ", including "
+			<< lex_time << " " << lex_time_unit << " for lexing and "
+			<< parse_time << " " << parse_time_unit << " for parsing."
 			<< std::endl;
 	}
 	catch(const std::exception& ex)
