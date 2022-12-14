@@ -90,6 +90,7 @@ if(FLEX_FOUND AND BISON_FOUND)
 
 	#add_dependencies(mcalc parser_impl lexer_impl)
 	target_link_libraries(mcalc ${Boost_LIBRARIES})
+	# -----------------------------------------------------------------------------
 
 
 
@@ -123,20 +124,20 @@ find_package(LibLalr1)
 if(LibLalr1_FOUND)
 	message("Building LibLalr1-based parser generator.")
 
-	add_executable(mcalc_0ac_direct_parsergen
+	add_executable(mcalc_direct_parsergen
 		src/parser_direct/parsergen.cpp
 		src/parser_direct/grammar.cpp
 	)
 
-	target_compile_definitions(mcalc_0ac_direct_parsergen
+	target_compile_definitions(mcalc_direct_parsergen
 		PUBLIC -DUSE_DIRECT_PARSER -DCREATE_PRODUCTION_RULES
 	)
 
-	target_include_directories(mcalc_0ac_direct_parsergen
+	target_include_directories(mcalc_direct_parsergen
 		PUBLIC ${LibLalr1_INCLUDE_DIRECTORIES}
 	)
 
-	target_link_libraries(mcalc_0ac_direct_parsergen
+	target_link_libraries(mcalc_direct_parsergen
 		${LibLalr1_LIBRARIES}
 		${Boost_LIBRARIES}
 	)
