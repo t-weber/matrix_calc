@@ -9,6 +9,7 @@
 #define __ZEROACASM_H__
 
 #include "ast/ast.h"
+#include "codegen_0ac/consttab.h"
 #include "vm_0ac/opcodes.h"
 
 #include <stack>
@@ -107,6 +108,10 @@ protected:
 private:
 	// symbol table
 	SymTab* m_syms{nullptr};
+
+	// constants table
+	ConstTab m_consttab{};
+
 	// code output
 	std::ostream* m_ostr{&std::cout};
 
@@ -119,6 +124,7 @@ private:
 	std::vector<std::tuple<std::string, std::streampos, t_vm_addr, const AST*>>
 		m_func_comefroms{};
 	std::vector<std::streampos> m_endfunc_comefroms{};
+	std::vector<std::tuple<std::streampos, std::streampos>> m_const_addrs{};
 
 	// currently active loops in function
 	std::vector<std::size_t> m_cur_loop{};

@@ -5,8 +5,8 @@
  * @license: see 'LICENSE.GPL' file
  */
 
-#ifndef __LVAL_TYPES_H__
-#define __LVAL_TYPES_H__
+#ifndef __MCALC_LVAL_TYPES_H__
+#define __MCALC_LVAL_TYPES_H__
 
 
 #ifdef __cplusplus

@@ -107,6 +107,26 @@ void ZeroACAsm::Finish()
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::HALT));
 
 
+	// write constants block
+	std::streampos consttab_pos = m_ostr->tellp();
+	if(auto [constsize, constbytes] = m_consttab.GetBytes(); constsize && constbytes)
+	{
+		m_ostr->write((char*)constbytes.get(), constsize);
+	}
+
+	// patch in the addresses of the constants
+	for(auto [addr_pos, const_addr] : m_const_addrs)
+	{
+		// add address offset to constants table
+		t_vm_addr addr = const_addr + consttab_pos;
+
+		// write new address
+		m_ostr->seekp(addr_pos);
+		m_ostr->write(reinterpret_cast<const char*>(&addr),
+			vm_type_size<VMType::ADDR_MEM, false>);
+        }
+
+
 	// patch function addresses
 	for(const auto& [func_name, pos, num_args, call_ast] : m_func_comefroms)
 	{
@@ -133,6 +153,7 @@ void ZeroACAsm::Finish()
 		to_skip -= vm_type_size<VMType::ADDR_IP, true>;
 		m_ostr->write(reinterpret_cast<const char*>(&to_skip), vm_type_size<VMType::ADDR_IP, false>);
 	}
+
 
 	// seek to end of stream
 	m_ostr->seekp(0, std::ios_base::end);

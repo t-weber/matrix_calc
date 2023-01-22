@@ -113,16 +113,27 @@ t_astret ZeroACAsm::visit(const ASTFunc* ast)
  */
 void ZeroACAsm::CallExternal(const t_str& funcname)
 {
-	// push external function name
+	// get constant address
+	std::streampos funcname_addr = m_consttab.AddConst(funcname);
+
+	// push constant address
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-	// write type descriptor byte
-	m_ostr->put(static_cast<t_vm_byte>(VMType::STR));
-	// write function name
-	t_vm_addr len = static_cast<t_vm_addr>(funcname.length());
-	m_ostr->write(reinterpret_cast<const char*>(&len),
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+
+	std::streampos addr_pos = m_ostr->tellp();
+	funcname_addr -= addr_pos;
+	funcname_addr -= static_cast<std::streampos>(
+		vm_type_size<VMType::ADDR_IP, true>);
+
+	m_const_addrs.push_back(std::make_tuple(addr_pos, funcname_addr));
+
+	m_ostr->write(reinterpret_cast<const char*>(&funcname_addr),
 		vm_type_size<VMType::ADDR_MEM, false>);
-	// write string data
-	m_ostr->write(funcname.data(), len);
+
+	// dereference function name address
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::RDMEM));
+
+	// call external function
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::EXTCALL));
 }
 

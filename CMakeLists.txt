@@ -76,7 +76,8 @@ if(FLEX_FOUND AND BISON_FOUND)
 	# -----------------------------------------------------------------------------
 	add_executable(mcalc
 		src/parser_yy/parser.cpp src/parser_yy/parser.h
-		src/common/types.h src/common/sym.h
+		src/common/types.h
+		src/common/sym.cpp src/common/sym.h
 		src/common/ext_funcs.h src/common/ext_funcs.h
 		src/ast/ast.h
 		src/ast/printast.cpp src/ast/printast.h
@@ -101,13 +102,15 @@ if(FLEX_FOUND AND BISON_FOUND)
 		src/ast/ast.h
 		src/ast/printast.cpp src/ast/printast.h
 		src/ast/semantics.cpp src/ast/semantics.h
-		src/common/types.h src/common/sym.h
+		src/common/types.h
+		src/common/sym.cpp src/common/sym.h
 		src/common/ext_funcs.h src/common/context.h
 		src/parser_yy/parser.cpp src/parser_yy/parser.h
 		src/codegen_0ac/main_yy.cpp
 		src/codegen_0ac/asm.cpp src/codegen_0ac/asm.h
 		src/codegen_0ac/func.cpp src/codegen_0ac/var.cpp
 		src/codegen_0ac/ops.cpp src/codegen_0ac/arr.cpp
+		src/codegen_0ac/consttab.cpp src/codegen_0ac/consttab.h
 		${FLEX_lexer_impl_OUTPUTS}
 		${BISON_parser_impl_OUTPUT_SOURCE} ${BISON_parser_impl_OUTPUT_HEADER}
 	)

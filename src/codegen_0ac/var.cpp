@@ -247,15 +247,25 @@ void ZeroACAsm::PushIntConst(t_vm_int val)
 
 void ZeroACAsm::PushStrConst(const t_vm_str& val)
 {
+	// get string constant address
+	std::streampos str_addr = m_consttab.AddConst(val);
+
+	// push string constant address
 	m_ostr->put(static_cast<t_vm_byte>(OpCode::PUSH));
-	// write type descriptor byte
-	m_ostr->put(static_cast<t_vm_byte>(VMType::STR));
-	// write string length
-	t_vm_addr len = static_cast<t_vm_addr>(val.length());
-	m_ostr->write(reinterpret_cast<const char*>(&len),
+	m_ostr->put(static_cast<t_vm_byte>(VMType::ADDR_IP));
+
+	std::streampos addr_pos = m_ostr->tellp();
+	str_addr -= addr_pos;
+	str_addr -= static_cast<std::streampos>(
+		vm_type_size<VMType::ADDR_IP, true>);
+
+	m_const_addrs.push_back(std::make_tuple(addr_pos, str_addr));
+
+	m_ostr->write(reinterpret_cast<const char*>(&str_addr),
 		vm_type_size<VMType::ADDR_MEM, false>);
-	// write string data
-	m_ostr->write(val.data(), len);
+
+	// dereference string constant address
+	m_ostr->put(static_cast<t_vm_byte>(OpCode::RDMEM));
 }
 
 
