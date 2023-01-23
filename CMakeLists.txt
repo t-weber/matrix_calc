@@ -187,6 +187,8 @@ if(LibLalr1_FOUND)
 			src/codegen_0ac/func.cpp
 			src/codegen_0ac/ops.cpp
 			src/codegen_0ac/var.cpp
+			src/codegen_0ac/consttab.cpp src/codegen_0ac/consttab.h
+			src/common/sym.cpp src/common/sym.h
 			src/ast/ast.h
 			src/ast/printast.cpp src/ast/printast.h
 		)
