@@ -80,7 +80,7 @@ void* ext_heap_alloc(uint64_t num, uint64_t elemsize)
 
 	if(g_debug)
 	{
-		printf("%s: count=%ld, elem_size=%ld, mem=%08lx.\n",
+		printf("%s: count=%lu, elem_size=%lu, mem=%08lx.\n",
 			__func__, num, elemsize, (uint64_t)mem);
 	}
 
@@ -121,7 +121,7 @@ void ext_deinit()
 	}
 
 	if(g_debug)
-		printf("%s: %ld memory leaks detected.\n", __func__, leaks);
+		printf("%s: %lu memory leaks detected.\n", __func__, leaks);
 }
 
 

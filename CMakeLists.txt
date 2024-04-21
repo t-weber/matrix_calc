@@ -4,7 +4,7 @@
 # @license: see 'LICENSE.GPL' file
 #
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 project(mcalc)
 list(APPEND CMAKE_MODULE_PATH
