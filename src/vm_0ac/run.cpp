@@ -193,7 +193,7 @@ bool VM::Run()
 					t_int delta = (idx2 >= idx1 ? 1 : -1);
 					idx2 += delta;
 
-					t_mat cols = m::zero<t_mat>(mat.size1(), idx2-idx1);
+					t_mat cols = m::zero<t_mat>(mat.size1(), std::size_t(idx2 - idx1));
 					for(t_int idx=idx1; idx!=idx2; idx += delta)
 						for(std::size_t i=0; i<mat.size1(); i += delta)
 							cols(i, idx) = mat(i, idx);

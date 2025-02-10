@@ -23,10 +23,13 @@
 *.exe
 *.out
 
-# CMake build files
-build/**
-
 # LLVM intermediate files
 *.asm
 *.s
 *.bc
+
+# CMake build files
+build/**
+
+mathlibs
+mathlibs/**

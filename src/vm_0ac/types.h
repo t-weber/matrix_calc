@@ -11,8 +11,9 @@
 #include <vector>
 
 #include "common/types.h"
-#include "libs/math_algos.h"
-#include "libs/math_conts.h"
+
+#include "mathlibs/libs/matrix_algos.h"
+#include "mathlibs/libs/matrix_conts.h"
 
 
 using t_vm_int = ::t_int;
