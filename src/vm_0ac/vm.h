@@ -655,7 +655,7 @@ protected:
 				result = val1 % val2;
 			else if constexpr(op == '%' && std::is_floating_point_v<t_val>)
 				result = std::fmod(val1, val2);
-			else if constexpr(op == '^' && std::is_floating_point_v<t_val>)
+			else if constexpr(op == '^' /*&& std::is_floating_point_v<t_val>*/)
 				result = pow<t_val>(val1, val2);
 		}
 

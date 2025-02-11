@@ -191,25 +191,20 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::NEQ), str, line));
 		}
-		if(str == "||" || str == "or")
+		else if(str == "||" || str == "or")
 		{
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::OR), str, line));
 		}
-		if(str == "&&" || str == "and")
+		else if(str == "&&" || str == "and")
 		{
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::AND), str, line));
 		}
-		if(str == "xor")
+		else if(str == "xor")
 		{
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::XOR), str, line));
-		}
-		if(str == "not")
-		{
-			matches.emplace_back(std::make_tuple(
-				static_cast<t_symbol_id>(Token::NOT), str, line));
 		}
 		else if(str == ">=")
 		{
@@ -220,6 +215,11 @@ Lexer::GetMatchingTokens(const std::string& str, std::size_t line)
 		{
 			matches.emplace_back(std::make_tuple(
 				static_cast<t_symbol_id>(Token::LEQ), str, line));
+		}
+		else if(str == "!" || str == "not")
+		{
+			matches.emplace_back(std::make_tuple(
+				static_cast<t_symbol_id>(Token::NOT), str, line));
 		}
 		else if(str == "~")
 		{
@@ -380,6 +380,7 @@ template<std::size_t IDX> struct _Lval_LoopFunc
 			astnode->SetId(id);
 			astnode->SetTableIndex(tableidx);
 			astnode->SetLineRange(std::make_pair(line, line));
+			astnode->SetTerminalOverride(true);
 			vec->emplace_back(std::move(astnode));
 		}
 	};
@@ -426,6 +427,7 @@ std::vector<t_toknode> Lexer::GetAllTokens()
 			astnode->SetId(id);
 			astnode->SetTableIndex(tableidx);
 			astnode->SetLineRange(std::make_pair(line, line));
+			astnode->SetTerminalOverride(true);
 			vec.emplace_back(std::move(astnode));
 		}
 

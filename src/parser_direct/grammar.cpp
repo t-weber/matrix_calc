@@ -48,9 +48,9 @@ void MatrixCalcGrammar::CreateGrammar()
 	op_and = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::AND), "&&");
 	op_or = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::OR), "||");
 	op_xor = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::XOR), "xor");
+	op_not = std::make_shared<lalr1::Terminal>(static_cast<std::size_t>(Token::NOT), "!");
 	op_gt = std::make_shared<lalr1::Terminal>('>', ">");
 	op_lt = std::make_shared<lalr1::Terminal>('<', "<");
-	op_not = std::make_shared<lalr1::Terminal>('!', "!");
 
 	bracket_open = std::make_shared<lalr1::Terminal>('(', "(");
 	bracket_close = std::make_shared<lalr1::Terminal>(')', ")");

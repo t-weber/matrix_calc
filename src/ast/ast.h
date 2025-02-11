@@ -149,6 +149,9 @@ public:
 
 	virtual t_astret accept(ASTVisitor* visitor) const = 0;
 	virtual ASTType type() = 0;
+
+	// TODO: either add this to all derived ast classes or use terminal override value in lexer
+	//virtual bool IsTerminal() const override { return false; }
 };
 
 
