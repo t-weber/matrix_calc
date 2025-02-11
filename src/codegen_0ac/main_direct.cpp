@@ -257,9 +257,9 @@ int main(int argc, char** argv)
 			<< parse_time << " " << parse_time_unit << " for parsing."
 			<< std::endl;
 	}
-	catch(const std::exception& ex)
+	catch(const std::exception& err)
 	{
-		std::cerr << "Error: " << ex.what() << std::endl;
+		std::cerr << "Error: " << err.what() << std::endl;
 		return -1;
 	}
 
