@@ -23,8 +23,10 @@ add_definitions(-Wall -Wextra)
 
 find_package(Threads REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options)
+find_package(Mathlibs REQUIRED)
 
 add_definitions(${Boost_CXX_FLAGS})
+include_directories(${Mathlibs_INCLUDE_DIRS})
 
 if(USE_BOOST_GIL)
 	find_package(PNG REQUIRED)

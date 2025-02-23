@@ -12,8 +12,8 @@
 
 #include "common/types.h"
 
-#include "mathlibs/libs/matrix_algos.h"
-#include "mathlibs/libs/matrix_conts.h"
+#include "mathlibs/matrix_algos.h"
+#include "mathlibs/matrix_conts.h"
 
 
 using t_vm_int = ::t_int;

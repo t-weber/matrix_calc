@@ -7,4 +7,4 @@ A simple compiler for linear algebra calculations.
 
 ## Dependencies
  - Install the LALR(1) library: https://github.com/t-weber/lalr1.
- - Copy or symlink the mathlibs library into the projects's directory: https://github.com/t-weber/mathlibs.
+ - Install Mathlibs: https://github.com/t-weber/mathlibs.
